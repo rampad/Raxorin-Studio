@@ -10,6 +10,9 @@ evalúa y cambia una variable, continúa y comprueba la salida del programa. Con
 """
 import json, os, queue, subprocess, sys, tempfile, threading, time
 
+# La consola de Windows usa otra codificación: forzar UTF-8 para los ✔/✖.
+sys.stdout.reconfigure(encoding="utf-8")
+
 adapter, kind = sys.argv[1], sys.argv[2]
 con_entrada = "--entrada" in sys.argv
 aqui = os.path.dirname(os.path.abspath(__file__))
