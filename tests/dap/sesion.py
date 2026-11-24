@@ -126,6 +126,11 @@ r = pedir("evaluate", {"expression": "total", "frameId": marco["id"], "context":
 ok(r["success"] and r["body"]["result"] == "6", "evaluar una expresión (inspección)")
 r = pedir("setVariable", {"variablesReference": ambitos[0]["variablesReference"], "name": "total", "value": "41"})
 ok(r["success"] and r["body"]["value"] == "41", "cambiar el valor de una variable")
+r = pedir("evaluate", {"expression": "total", "frameId": marco["id"], "context": "watch"})
+ok(r["success"] and r["body"]["result"] == "41", "el valor cambiado se mantiene (total = 41)")
+# En Windows, CodeLLDB abre el programa en su propia ventana de consola: su salida no llega
+# como eventos "output" (la app lo avisa). En macOS y Linux sí.
+captura_salida = os.name != "nt"
 
 escribir_ya.set()
 for _ in range(6):
@@ -138,7 +143,8 @@ time.sleep(0.5)
 texto = "".join(salida).strip()
 print("  salida del programa:", repr(texto))
 ok(fin.get("event") == "exited" and fin["body"].get("exitCode") == 0, "el programa terminó con código 0")
-ok(texto.startswith("Ana 42 Some(7)"), "la salida refleja el valor cambiado (42)")
+if captura_salida:
+    ok(texto.startswith("Ana 42 Some(7)"), "la salida refleja el valor cambiado (42)")
 if fifo:
     ok(texto.endswith("[hola]"), "el programa leyó la entrada estándar")
 p.kill()

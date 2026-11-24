@@ -190,7 +190,15 @@ export class DebugController {
           : "▶ Depurando. No hay puntos de interrupción: pon uno con clic en el margen o F9.\n",
         "info",
       );
-      this.host.output(stdinPath ? "" : "(La entrada por teclado no está disponible al depurar en este sistema)\n", "muted");
+      const windows = navigator.userAgent.includes("Windows");
+      this.host.output(
+        stdinPath
+          ? ""
+          : windows && codelldb
+            ? "(En Windows el programa se abre en su propia ventana de consola: ahí ves lo que imprime y puedes escribirle.)\n"
+            : "(La entrada por teclado no está disponible al depurar en este sistema)\n",
+        "muted",
+      );
     } catch (e) {
       this.host.output(`No se pudo iniciar la depuración: ${e}\n`, "error");
       await this.end();
