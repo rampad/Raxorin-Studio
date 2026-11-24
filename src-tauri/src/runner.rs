@@ -202,7 +202,12 @@ fn run_task(
 
     let mut executable: Option<PathBuf> = None;
     let (mut errors, mut warnings) = (0u32, 0u32);
+    let mut linker_problem = false;
     let mut on_line = |line: &str| {
+        // Errores del enlazador (sin link.exe, sin el SDK de Windows, sin compilador de C).
+        if linker_hint(line) {
+            linker_problem = true;
+        }
         handle_cargo_line(
             app,
             project,
@@ -226,6 +231,14 @@ fn run_task(
             format!("✖ Falló la compilación: {errors} error(es), {warnings} advertencia(s) ({secs:.1}s)\n")
         };
         out(app, msg, "error");
+        if linker_problem {
+            out(
+                app,
+                "→ El error viene del enlazador: falta (o está incompleto) el compilador de C/C++ del sistema. \
+                 Abre Ayuda → Herramientas necesarias para instalarlo o repararlo.\n",
+                "warning",
+            );
+        }
         return Ok((false, status.and_then(|s| s.code())));
     }
     let msg = if task == "test" {
@@ -539,6 +552,14 @@ fn launch_in_terminal(project: &Path, exe: &Path) -> Result<(), String> {
     }
 }
 
+/// ¿La línea de cargo habla de un problema del enlazador?
+fn linker_hint(line: &str) -> bool {
+    ["linker `link.exe` not found", "linking with `link.exe` failed", "LNK1181", "LNK1104", "kernel32.lib",
+     "linker `cc` not found", "linker `clang` not found", "link: extra operand", "xcrun: error: invalid active developer path"]
+        .iter()
+        .any(|p| line.contains(p))
+}
+
 /// Comando de cargo para compilar. Si se compila para otra plataforma, le indica el
 /// enlazador y pone sus herramientas en el PATH (una app abierta desde Finder no las ve).
 fn cargo_command(project: &Path, sub: &str, extra: &[String], target: Option<&str>) -> Command {
@@ -663,7 +684,7 @@ fn make_zip(dir: &Path, name: &str, zip: &Path) -> Result<(), String> {
     let status = if cfg!(target_os = "linux") {
         Command::new("zip").arg("-rq").arg(zip).arg(name).current_dir(dir).status()
     } else {
-        Command::new("tar").arg("-a").arg("-c").arg("-f").arg(zip).arg(name).current_dir(dir).status()
+        new_command("tar").arg("-a").arg("-c").arg("-f").arg(zip).arg(name).current_dir(dir).status()
     };
     match status {
         Ok(s) if s.success() => Ok(()),
@@ -851,6 +872,13 @@ mod publish_tests {
         assert!(path.starts_with("/opt/homebrew/bin") || path.contains("mingw"), "PATH sin MinGW: {path}");
         let status = cmd.env("CARGO_TERM_COLOR", "never").stdout(Stdio::null()).status().unwrap();
         assert!(status.success());
+    }
+
+    #[test]
+    fn detecta_errores_del_enlazador() {
+        assert!(linker_hint(r#"{"message":"linker `link.exe` not found"}"#));
+        assert!(linker_hint("LINK : fatal error LNK1181: cannot open input file 'kernel32.lib'"));
+        assert!(!linker_hint("error[E0425]: cannot find value `x` in this scope"));
     }
 
     #[test]

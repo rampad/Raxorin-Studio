@@ -22,7 +22,12 @@ export default function SetupDialog({ onInstall, busy, onChanged, onClose, first
   const queue = useRef<string[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
 
+  const lastCheck = useRef(0);
+  const installingRef = useRef<string | null>(null);
+  installingRef.current = installing;
+
   const refresh = useCallback(async () => {
+    lastCheck.current = Date.now();
     const t = await api.setupStatus().catch(() => null);
     setTools(t);
     return t;
@@ -30,8 +35,12 @@ export default function SetupDialog({ onInstall, busy, onChanged, onClose, first
 
   useEffect(() => {
     void refresh();
-    // Al volver a la ventana (p. ej. tras el instalador de Apple), revisar de nuevo.
-    const onFocus = () => void refresh();
+    // Al volver a la ventana (p. ej. tras el instalador de Apple), revisar de nuevo. Como mucho
+    // cada 10 s y nunca durante una instalación: una ventana del sistema que se abre y se cierra
+    // no debe provocar revisiones en cadena.
+    const onFocus = () => {
+      if (!installingRef.current && Date.now() - lastCheck.current > 10_000) void refresh();
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
@@ -127,6 +136,11 @@ export default function SetupDialog({ onInstall, busy, onChanged, onClose, first
                       {!t.required && !t.installed && !t.unavailable && <span className="setup-tag opt">Opcional</span>}
                     </div>
                     <div className="muted small">{t.unavailable ?? (t.installed ? t.version ?? "Instalado" : t.description)}</div>
+                    {t.problem && (
+                      <div className="setup-problem small">
+                        <Codicon name="warning" /> {t.problem}
+                      </div>
+                    )}
                     {!t.installed && !t.unavailable && !t.canInstall && t.manual && (
                       <div className="setup-manual small">
                         {manualIsUrl ? (
@@ -154,7 +168,13 @@ export default function SetupDialog({ onInstall, busy, onChanged, onClose, first
                       }}
                       title={t.needsAdmin ? "El sistema pedirá permiso de administrador" : undefined}
                     >
-                      {installing === t.id ? <><Codicon name="loading" spin /> Instalando…</> : <><Codicon name="cloud-download" /> Instalar</>}
+                      {installing === t.id ? (
+                        <><Codicon name="loading" spin /> Instalando…</>
+                      ) : t.problem ? (
+                        <><Codicon name="tools" /> Reparar</>
+                      ) : (
+                        <><Codicon name="cloud-download" /> Instalar</>
+                      )}
                       {t.needsAdmin && installing !== t.id && <Codicon name="shield" />}
                     </button>
                   )}

@@ -31,6 +31,8 @@ export interface SetupTool {
   needsAdmin: boolean;
   manual: string | null;
   unavailable: string | null;
+  /** Instalado pero incompleto (p. ej. Visual Studio sin el SDK de Windows). */
+  problem: string | null;
 }
 
 /** Opciones de "Publicar" (ver runner.rs). */

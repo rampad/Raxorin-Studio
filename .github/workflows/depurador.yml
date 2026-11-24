@@ -9,6 +9,7 @@ on:
       - "src/debug/**"
       - "src-tauri/src/dap.rs"
       - "src-tauri/src/setup.rs"
+      - "src-tauri/src/runner.rs"
       - "tests/dap/**"
       - ".github/workflows/depurador.yml"
   pull_request:
@@ -23,6 +24,19 @@ env:
   CODELLDB_VERSION: v1.12.3
 
 jobs:
+  herramientas-windows:
+    name: Herramientas necesarias (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      # Detección de Visual Studio (link.exe y SDK de Windows) en un Windows real.
+      - name: Pruebas de setup.rs
+        run: "cargo test --manifest-path src-tauri/Cargo.toml --lib setup:: -- --nocapture"
+
   sesion:
     name: ${{ matrix.name }}
     strategy:

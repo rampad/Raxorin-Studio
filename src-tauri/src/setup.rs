@@ -31,6 +31,8 @@ pub struct Tool {
     manual: Option<String>,
     /// No aplica a este sistema (p. ej. el depurador en Windows).
     unavailable: Option<&'static str>,
+    /// Está instalado pero incompleto (p. ej. Visual Studio sin el SDK de Windows): se ofrece reparar.
+    problem: Option<String>,
 }
 
 fn first_line(program: &Path, args: &[&str]) -> Option<String> {
@@ -99,22 +101,64 @@ fn vswhere() -> PathBuf {
     base.join(r"Microsoft Visual Studio\Installer\vswhere.exe")
 }
 
-fn msvc_installed() -> Option<String> {
+/// Estado de las herramientas de C++ de Visual Studio: lo que Rust necesita para enlazar
+/// es `link.exe` (MSVC) y las bibliotecas del SDK de Windows (p. ej. kernel32.lib).
+#[derive(Debug, Default)]
+struct Msvc {
+    /// Carpeta de una instalación de Visual Studio / Build Tools (aunque esté incompleta).
+    install_path: Option<PathBuf>,
+    name: Option<String>,
+    link: Option<PathBuf>,
+    sdk: bool,
+}
+
+impl Msvc {
+    fn complete(&self) -> bool {
+        self.link.is_some() && self.sdk
+    }
+}
+
+/// vswhere sin ventana de consola (si no, en Windows parpadea una terminal).
+fn vswhere_prop(args: &[&str], prop: &str) -> Option<String> {
     let vs = vswhere();
     if !vs.exists() {
         return None;
     }
-    let o = Command::new(vs)
-        .args(["-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "displayName"])
-        .output()
-        .ok()?;
+    let o = new_command(vs).args(args).args(["-property", prop]).output().ok()?;
     String::from_utf8_lossy(&o.stdout).lines().next().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+/// `link.exe` dentro de VC\Tools\MSVC\<versión>\bin\Hostx64\x64.
+fn find_link(install: &Path) -> Option<PathBuf> {
+    let tools = install.join(r"VC\Tools\MSVC");
+    let mut versions: Vec<PathBuf> = std::fs::read_dir(tools).ok()?.flatten().map(|e| e.path()).collect();
+    versions.sort();
+    versions.into_iter().rev().map(|v| v.join(r"bin\Hostx64\x64\link.exe")).find(|p| p.is_file())
+}
+
+/// El SDK de Windows tiene kernel32.lib en Windows Kits\10\Lib\<versión>\um\x64.
+fn windows_sdk() -> bool {
+    let base = std::env::var_os("ProgramFiles(x86)").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Program Files (x86)"));
+    let lib = base.join(r"Windows Kits\10\Lib");
+    std::fs::read_dir(lib).ok().is_some_and(|d| d.flatten().any(|e| e.path().join(r"um\x64\kernel32.lib").is_file()))
+}
+
+fn msvc() -> Msvc {
+    let all = ["-latest", "-products", "*"];
+    let with_vc = ["-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"];
+    let install_path = vswhere_prop(&with_vc, "installationPath").or_else(|| vswhere_prop(&all, "installationPath")).map(PathBuf::from);
+    Msvc {
+        name: vswhere_prop(&all, "displayName"),
+        link: install_path.as_deref().and_then(find_link),
+        sdk: windows_sdk(),
+        install_path,
+    }
 }
 
 // ---------- Detección ----------
 
 fn macos_clt() -> bool {
-    Command::new("xcode-select").arg("-p").output().is_ok_and(|o| o.status.success())
+    new_command("xcode-select").arg("-p").output().is_ok_and(|o| o.status.success())
 }
 
 /// Plataforma de los paquetes de CodeLLDB (codelldb-<plataforma>.vsix).
@@ -150,12 +194,21 @@ pub fn status() -> Vec<Tool> {
         needs_admin: false,
         manual: Some("https://rustup.rs".into()),
         unavailable: None,
+        problem: None,
     });
 
     // Compilador de C/C++ (Rust lo usa para enlazar los programas)
+    let mut cpp_problem: Option<String> = None;
     let (cpp_ok, cpp_version) = if win {
-        let v = msvc_installed();
-        (v.is_some(), v)
+        let m = msvc();
+        if m.install_path.is_some() && !m.complete() {
+            cpp_problem = Some(match (m.link.is_some(), m.sdk) {
+                (false, false) => "Visual Studio está instalado pero faltan las herramientas de C++ (link.exe) y el SDK de Windows.",
+                (false, true) => "Visual Studio está instalado pero falta el enlazador de C++ (link.exe).",
+                _ => "Falta el SDK de Windows (kernel32.lib): Rust no puede enlazar los programas.",
+            }.to_string());
+        }
+        (m.complete(), m.name.map(|n| format!("{n} · link.exe y SDK de Windows")))
     } else if mac {
         let ok = macos_clt();
         (ok, if ok { first_line(Path::new("clang"), &["--version"]) } else { None })
@@ -167,6 +220,7 @@ pub fn status() -> Vec<Tool> {
         id: "cpp",
         name: if win { "Visual Studio Build Tools (C++)" } else if mac { "Herramientas de línea de comandos de Xcode" } else { "Compilador de C/C++" },
         description: "Rust lo necesita para crear los programas (enlazador). Incluye el compilador de C/C++.",
+        problem: cpp_problem,
         required: true,
         installed: cpp_ok,
         version: cpp_version,
@@ -196,6 +250,7 @@ pub fn status() -> Vec<Tool> {
         needs_admin: true,
         manual: Some(if win { "https://git-scm.com/download/win".into() } else if mac { "xcode-select --install".into() } else { linux_manual("git") }),
         unavailable: None,
+        problem: None,
     });
 
     // Depurador: lldb-dap (macOS, con las herramientas de Apple) o CodeLLDB (Windows y Linux).
@@ -211,6 +266,7 @@ pub fn status() -> Vec<Tool> {
         needs_admin: mac,
         manual: Some(if mac { "xcode-select --install".into() } else { "https://github.com/vadimcn/codelldb/releases".into() }),
         unavailable: None,
+        problem: None,
     });
 
     // GitHub CLI (opcional)
@@ -227,6 +283,7 @@ pub fn status() -> Vec<Tool> {
         needs_admin: false,
         manual: Some(if mac { "brew install gh".into() } else { "https://cli.github.com".into() }),
         unavailable: None,
+        problem: None,
     });
     tools
 }
@@ -273,7 +330,7 @@ fn run(app: &AppHandle, inner: &Arc<Inner>, mut cmd: Command, label: &str) -> Re
 /// Ejecuta un programa como administrador en Windows (el sistema muestra su ventana de UAC).
 fn windows_elevated(program: &Path, args: &[&str]) -> Command {
     let quoted = args.iter().map(|a| format!("'{a}'")).collect::<Vec<_>>().join(",");
-    let mut cmd = Command::new("powershell");
+    let mut cmd = new_command("powershell");
     cmd.args([
         "-NoProfile",
         "-Command",
@@ -315,7 +372,7 @@ fn install_inner(app: &AppHandle, inner: &Arc<Inner>, id: &str) -> Result<bool, 
         "rust" => install_rust(app, inner, None),
         // macOS: el instalador de Apple trae compilador, Git y lldb-dap.
         "cpp" | "git" | "debugger" if mac => {
-            Command::new("xcode-select").arg("--install").spawn().map_err(|e| e.to_string())?;
+            new_command("xcode-select").arg("--install").spawn().map_err(|e| e.to_string())?;
             out(app, "Se abrió el instalador de Apple: pulsa «Instalar», espera a que termine y vuelve a revisar.\n", "warning");
             Ok(true)
         }
@@ -325,19 +382,39 @@ fn install_inner(app: &AppHandle, inner: &Arc<Inner>, id: &str) -> Result<bool, 
             let dest = temp_dir()?.join("vs_BuildTools.exe");
             download(app, "https://aka.ms/vs/17/release/vs_BuildTools.exe", &dest)?;
             out(app, "Windows pedirá permiso de administrador. La instalación tarda varios minutos.\n", "warning");
-            let cmd = windows_elevated(
-                &dest,
-                &["--passive", "--wait", "--norestart", "--add", "Microsoft.VisualStudio.Workload.VCTools", "--includeRecommended"],
-            );
-            run(app, inner, cmd, "Instalando Visual Studio Build Tools (C++)…")
+            // Si ya hay una instalación (incompleta), se modifica para agregar lo que falta.
+            let existing = msvc().install_path;
+            let path_arg = existing.as_ref().map(|p| p.to_string_lossy().into_owned());
+            let mut args: Vec<&str> = Vec::new();
+            if let Some(p) = &path_arg {
+                args.extend(["modify", "--installPath", p.as_str()]);
+            }
+            args.extend([
+                "--passive", "--wait", "--norestart",
+                "--add", "Microsoft.VisualStudio.Workload.VCTools",
+                "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "--add", "Microsoft.VisualStudio.Component.Windows11SDK.22621",
+                "--includeRecommended",
+            ]);
+            let cmd = windows_elevated(&dest, &args);
+            let label = if existing.is_some() { "Completando Visual Studio Build Tools (C++ y SDK de Windows)…" } else { "Instalando Visual Studio Build Tools (C++)…" };
+            let ok = run(app, inner, cmd, label)?;
+            // Comprobar de verdad: el instalador puede terminar sin instalar todo.
+            let m = msvc();
+            if !m.complete() {
+                out(app, format!("✖ Falta {}. Vuelve a intentarlo, o instálalo desde el Instalador de Visual Studio (carga de trabajo «Desarrollo para el escritorio con C++»).\n",
+                    if m.link.is_none() { "link.exe" } else { "el SDK de Windows" }), "error");
+                return Ok(false);
+            }
+            Ok(ok)
         }
         "git" if win => {
-            let mut cmd = Command::new("winget");
+            let mut cmd = new_command("winget");
             cmd.args(["install", "--id", "Git.Git", "-e", "--silent", "--accept-package-agreements", "--accept-source-agreements"]);
             run(app, inner, cmd, "Instalando Git con winget…")
         }
         "gh" if win => {
-            let mut cmd = Command::new("winget");
+            let mut cmd = new_command("winget");
             cmd.args(["install", "--id", "GitHub.cli", "-e", "--silent", "--accept-package-agreements", "--accept-source-agreements"]);
             run(app, inner, cmd, "Instalando GitHub CLI con winget…")
         }
@@ -436,6 +513,19 @@ mod tests {
         // En la máquina de desarrollo Rust está instalado.
         let rust = &tools[0];
         assert!(rust.installed && rust.version.as_deref().unwrap_or("").starts_with("cargo "));
+    }
+
+    /// En las máquinas Windows de GitHub hay Visual Studio con C++ y el SDK: debe detectarse completo.
+    #[cfg(windows)]
+    #[test]
+    fn detecta_visual_studio_completo() {
+        let m = msvc();
+        println!("{m:?}");
+        assert!(m.install_path.is_some(), "no encontró Visual Studio");
+        assert!(m.link.as_ref().is_some_and(|p| p.ends_with("link.exe")), "no encontró link.exe");
+        assert!(m.sdk, "no encontró el SDK de Windows (kernel32.lib)");
+        let cpp = status().into_iter().find(|t| t.id == "cpp").unwrap();
+        assert!(cpp.installed && cpp.problem.is_none(), "{cpp:?}");
     }
 
     #[test]
