@@ -7,8 +7,16 @@ import { Codicon, FileIcon } from "./Icon";
 
 export interface FileProblems { errors: number; warnings: number }
 
+export type SolutionAction = "new-project" | "add-existing" | "remove" | "edit-file" | "save-as";
+
 interface Props {
-  root: string | null;
+  /** Carpetas raíz: una al abrir una carpeta; una por proyecto al abrir una solución. */
+  roots: string[];
+  /** Solución abierta (muestra una cabecera y acciones de solución). */
+  solution: { name: string; file: string } | null;
+  /** Clave para recordar las carpetas expandidas (carpeta o archivo .rxsln). */
+  storageKey: string | null;
+  onSolution: (action: SolutionAction, path?: string) => void;
   activePath: string | null;
   problems: Map<string, FileProblems>;
   onOpenFile: (path: string) => void;
@@ -29,15 +37,20 @@ type Editing =
 
 interface Menu { x: number; y: number; entry: Entry; isRoot: boolean }
 
-const DRAG_TYPE = "application/x-oxidestudio-path";
-const expandedKey = (root: string) => `oxidestudio.expanded:${root}`;
+const DRAG_TYPE = "application/x-raxorinstudio-path";
+const expandedKey = (root: string) => `raxorinstudio.expanded:${root}`;
 
 export default function Explorer(p: Props) {
-  const { root } = p;
+  const { roots } = p;
+  const rootsKey = roots.join("|");
+  /** Raíz que contiene una ruta (o null). */
+  const rootOf = (path: string) => roots.find((r) => isInside(path, r)) ?? null;
+  const isRootPath = (path: string) => roots.includes(path);
   const [children, setChildren] = useState<Record<string, Entry[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [solutionMenu, setSolutionMenu] = useState<{ x: number; y: number } | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const projectByDir = useMemo(() => new Map(p.projects.map((pr) => [pr.dir, pr])), [p.projects]);
@@ -58,32 +71,33 @@ export default function Explorer(p: Props) {
     }
   }, []);
 
-  // Al abrir un proyecto: restaurar carpetas expandidas y empezar a vigilar cambios.
+  // Al abrir una carpeta o solución: restaurar las carpetas expandidas.
   useEffect(() => {
-    if (!root) return;
-    let saved: string[] = [];
+    if (!roots.length) return;
+    const defaults = roots.map((r) => joinPath(r, "src"));
+    let saved: string[] = defaults;
     try {
-      saved = JSON.parse(localStorage.getItem(expandedKey(root)) ?? "null") ?? [joinPath(root, "src")];
-    } catch {
-      saved = [joinPath(root, "src")];
-    }
-    const initial = new Set([root, ...saved.filter((d) => isInside(d, root))]);
-    setChildren({});
-    setExpanded(initial);
-    initial.forEach(loadDir);
-    api.watchProject(root).catch((e) => p.onError(String(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [root, loadDir]);
-
-  // Guardar carpetas expandidas.
-  useEffect(() => {
-    if (!root) return;
-    try {
-      localStorage.setItem(expandedKey(root), JSON.stringify([...expanded].filter((d) => d !== root)));
+      saved = JSON.parse(localStorage.getItem(expandedKey(p.storageKey ?? rootsKey)) ?? "null") ?? defaults;
     } catch {
       /* sin almacenamiento */
     }
-  }, [expanded, root]);
+    const initial = new Set([...roots, ...saved.filter((d) => roots.some((r) => isInside(d, r)))]);
+    setChildren({});
+    setExpanded(initial);
+    initial.forEach(loadDir);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootsKey, p.storageKey, loadDir]);
+
+  // Guardar carpetas expandidas.
+  useEffect(() => {
+    if (!roots.length) return;
+    try {
+      localStorage.setItem(expandedKey(p.storageKey ?? rootsKey), JSON.stringify([...expanded].filter((d) => !roots.includes(d))));
+    } catch {
+      /* sin almacenamiento */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, rootsKey, p.storageKey]);
 
   // Actualización automática cuando cambian archivos en disco.
   useEffect(() => {
@@ -98,7 +112,8 @@ export default function Explorer(p: Props) {
   // Mostrar en el árbol el archivo activo del editor.
   useEffect(() => {
     const path = p.activePath;
-    if (!root || !path || !isInside(path, root) || path === root) return;
+    const root = path ? rootOf(path) : null;
+    if (!root || !path || path === root) return;
     const ancestors: string[] = [];
     for (let d = dirname(path); d !== root && isInside(d, root); d = dirname(d)) ancestors.push(d);
     setExpanded((e) => {
@@ -111,7 +126,16 @@ export default function Explorer(p: Props) {
     setTimeout(() => {
       treeRef.current?.querySelector(`[data-path="${CSS.escape(path)}"]`)?.scrollIntoView({ block: "nearest" });
     }, 50);
-  }, [p.activePath, root, loadDir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.activePath, rootsKey, loadDir]);
+
+  // Cerrar el menú de la solución con cualquier clic fuera.
+  useEffect(() => {
+    if (!solutionMenu) return;
+    const close = () => setSolutionMenu(null);
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [solutionMenu]);
 
   // Cerrar el menú contextual con cualquier clic o Escape.
   useEffect(() => {
@@ -143,14 +167,14 @@ export default function Explorer(p: Props) {
   };
 
   const findEntry = (path: string): Entry | undefined => {
-    if (path === root) return { name: basename(path), path, isDir: true };
+    if (isRootPath(path)) return { name: basename(path), path, isDir: true };
     return childrenRef.current[dirname(path)]?.find((e) => e.path === path);
   };
 
   /** Carpeta destino para "nuevo archivo": la seleccionada, la del archivo seleccionado o la raíz. */
   const targetDir = (path: string | null) => {
-    if (!root) return null;
-    if (!path) return root;
+    if (!roots.length) return null;
+    if (!path) return roots[0];
     const entry = findEntry(path);
     return entry?.isDir ? path : dirname(path);
   };
@@ -221,7 +245,7 @@ export default function Explorer(p: Props) {
   };
 
   const refreshAll = () => Object.keys(childrenRef.current).forEach(loadDir);
-  const collapseAll = () => setExpanded(new Set(root ? [root] : []));
+  const collapseAll = () => setExpanded(new Set(roots));
   const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
 
   // ---------- Teclado ----------
@@ -229,17 +253,19 @@ export default function Explorer(p: Props) {
   /** Filas visibles en orden, para moverse con las flechas. */
   const visible = useMemo(() => {
     const out: Entry[] = [];
-    if (!root) return out;
     const walk = (dir: string) => {
       for (const e of children[dir] ?? []) {
         out.push(e);
         if (e.isDir && expanded.has(e.path)) walk(e.path);
       }
     };
-    out.push({ name: basename(root), path: root, isDir: true });
-    if (expanded.has(root)) walk(root);
+    for (const root of roots) {
+      out.push({ name: basename(root), path: root, isDir: true });
+      if (expanded.has(root)) walk(root);
+    }
     return out;
-  }, [children, expanded, root]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [children, expanded, rootsKey]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (editing || !selected) return;
@@ -253,10 +279,10 @@ export default function Explorer(p: Props) {
     } else if (e.key === "ArrowRight" && entry.isDir && !expanded.has(entry.path)) toggle(entry.path);
     else if (e.key === "ArrowLeft") {
       if (entry.isDir && expanded.has(entry.path)) toggle(entry.path);
-      else if (entry.path !== root) setSelected(dirname(entry.path));
+      else if (!isRootPath(entry.path)) setSelected(dirname(entry.path));
     } else if (e.key === "Enter") entry.isDir ? toggle(entry.path) : p.onOpenFile(entry.path);
-    else if (e.key === "F2" && entry.path !== root) setEditing({ mode: "rename", path: entry.path, isDir: entry.isDir });
-    else if ((e.key === "Delete" || (mod && e.key === "Backspace")) && entry.path !== root) remove(entry);
+    else if (e.key === "F2" && !isRootPath(entry.path)) setEditing({ mode: "rename", path: entry.path, isDir: entry.isDir });
+    else if ((e.key === "Delete" || (mod && e.key === "Backspace")) && !isRootPath(entry.path)) remove(entry);
     else return;
     e.preventDefault();
   };
@@ -277,7 +303,7 @@ export default function Explorer(p: Props) {
 
   // ---------- Render ----------
 
-  if (!root) {
+  if (!roots.length && !p.solution) {
     return (
       <div className="explorer">
         <div className="panel-title"><span>EXPLORADOR</span></div>
@@ -310,7 +336,7 @@ export default function Explorer(p: Props) {
         data-path={entry.path}
         className={cls}
         style={{ paddingLeft: 6 + depth * 14 }}
-        title={relative(root, entry.path) || entry.path}
+        title={relative(rootOf(entry.path), entry.path) || entry.path}
         draggable={!isRoot && !renaming}
         onClick={() => {
           setSelected(entry.path);
@@ -403,20 +429,65 @@ export default function Explorer(p: Props) {
         tabIndex={0}
         onKeyDown={onKeyDown}
         onContextMenu={(e) => {
-          if (e.target !== e.currentTarget) return;
+          if (e.target !== e.currentTarget || roots.length !== 1) return;
           e.preventDefault();
-          setMenu({ x: e.clientX, y: e.clientY, entry: { name: basename(root), path: root, isDir: true }, isRoot: true });
+          setMenu({ x: e.clientX, y: e.clientY, entry: { name: basename(roots[0]), path: roots[0], isDir: true }, isRoot: true });
         }}
         onDragOver={(e) => e.dataTransfer.types.includes(DRAG_TYPE) && e.target === e.currentTarget && e.preventDefault()}
         onDrop={(e) => {
           if (e.target !== e.currentTarget) return;
           const from = e.dataTransfer.getData(DRAG_TYPE);
-          if (from) move(from, root);
+          if (from && roots.length === 1) move(from, roots[0]);
         }}
       >
-        {renderRow({ name: basename(root), path: root, isDir: true }, 0, true)}
-        {expanded.has(root) && renderDir(root, 1)}
+        {p.solution && (
+          <div
+            className="tree-row solution-row"
+            title={p.solution.file}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setSolutionMenu({ x: e.clientX, y: e.clientY });
+            }}
+            onDoubleClick={() => p.onSolution("edit-file")}
+          >
+            <span className="twisty" />
+            <span className="file-icon"><Codicon name="layers" /></span>
+            <span className="label">Solución “{p.solution.name}”</span>
+            <span className="muted small solution-count">{roots.length} {roots.length === 1 ? "proyecto" : "proyectos"}</span>
+            <button className="icon-btn" title="Agregar proyecto nuevo" onClick={(e) => { e.stopPropagation(); p.onSolution("new-project"); }}>
+              <Codicon name="add" />
+            </button>
+            <button className="icon-btn" title="Agregar proyecto existente" onClick={(e) => { e.stopPropagation(); p.onSolution("add-existing"); }}>
+              <Codicon name="folder-library" />
+            </button>
+          </div>
+        )}
+        {p.solution && roots.length === 0 && (
+          <div className="muted small pad">La solución está vacía. Usa <Codicon name="add" /> para agregar un proyecto.</div>
+        )}
+        {roots.map((root) => (
+          <div key={root}>
+            {renderRow({ name: basename(root), path: root, isDir: true }, p.solution ? 1 : 0, true)}
+            {expanded.has(root) && renderDir(root, p.solution ? 2 : 1)}
+          </div>
+        ))}
       </div>
+
+      {solutionMenu && p.solution && (
+        <div
+          className="context-menu"
+          style={{ left: Math.min(solutionMenu.x, window.innerWidth - 250), top: Math.min(solutionMenu.y, window.innerHeight - 200) }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => setSolutionMenu(null)}
+        >
+          <div className="menu-header">Solución · {p.solution.name}</div>
+          <MenuItem icon="add" label="Agregar proyecto nuevo…" onClick={() => p.onSolution("new-project")} />
+          <MenuItem icon="folder-library" label="Agregar proyecto existente…" onClick={() => p.onSolution("add-existing")} />
+          <div className="menu-sep" />
+          <MenuItem icon="go-to-file" label="Abrir el archivo .rxsln" onClick={() => p.onSolution("edit-file")} />
+          <MenuItem icon="folder-opened" label={revealLabel()} onClick={() => api.revealPath(p.solution!.file).catch(() => {})} />
+        </div>
+      )}
 
       {menu && menuEntry && menuDir && (
         <div
@@ -446,7 +517,7 @@ export default function Explorer(p: Props) {
           <div className="menu-sep" />
           <MenuItem icon="folder-opened" label={revealLabel()} onClick={() => api.revealPath(menuEntry.path).catch((e) => p.onError(String(e)))} />
           <MenuItem icon="copy" label="Copiar ruta" onClick={() => copy(menuEntry.path)} />
-          {!menu.isRoot && <MenuItem label="Copiar ruta relativa" onClick={() => copy(relative(root, menuEntry.path))} />}
+          {!menu.isRoot && <MenuItem label="Copiar ruta relativa" onClick={() => copy(relative(rootOf(menuEntry.path), menuEntry.path))} />}
           {!menu.isRoot && (
             <>
               <div className="menu-sep" />
@@ -462,6 +533,11 @@ export default function Explorer(p: Props) {
           {menu.isRoot && (
             <>
               <div className="menu-sep" />
+              {p.solution ? (
+                <MenuItem icon="close" label="Quitar de la solución" onClick={() => p.onSolution("remove", menuEntry.path)} />
+              ) : (
+                <MenuItem icon="layers" label="Guardar como solución (.rxsln)…" onClick={() => p.onSolution("save-as")} />
+              )}
               <MenuItem icon="refresh" label="Actualizar" onClick={refreshAll} />
               <MenuItem icon="collapse-all" label="Contraer todo" onClick={collapseAll} />
             </>

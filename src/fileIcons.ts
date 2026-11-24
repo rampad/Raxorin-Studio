@@ -57,6 +57,7 @@ const EXTENSIONS: Record<string, string> = {
   ps1: "console",
   log: "log",
   slint: "slint",
+  rxsln: "raxorin-solution",
   exe: "exe",
   ts: "typescript",
   tsx: "typescript",

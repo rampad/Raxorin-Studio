@@ -42,6 +42,16 @@ export interface ProjectInfo {
   workspaceManifest: string;
 }
 
+export interface SolutionProject { ruta: string; path: string; exists: boolean }
+export interface SolutionInfo {
+  file: string;
+  dir: string;
+  name: string;
+  /** Carpeta absoluta del proyecto de inicio. */
+  startup: string | null;
+  projects: SolutionProject[];
+}
+
 export interface CrateSummary {
   name: string;
   description: string;
@@ -101,7 +111,14 @@ export const api = {
     invoke<string>("add_project_reference", { project, dependency }),
   debuggerInfo: () => invoke<DebuggerInfo>("debugger_info"),
   debugStdinWrite: (text: string) => invoke<void>("debug_stdin_write", { text }),
-  watchProject: (root: string) => invoke<void>("watch_project", { root }),
+  watchProject: (roots: string[]) => invoke<void>("watch_project", { roots }),
+  solutionRead: (file: string) => invoke<SolutionInfo>("solution_read", { file }),
+  solutionCreate: (dir: string, name: string, projects: string[]) =>
+    invoke<string>("solution_create", { dir, name, projects }),
+  solutionAddProject: (file: string, path: string) => invoke<SolutionInfo>("solution_add_project", { file, path }),
+  solutionRemoveProject: (file: string, path: string) => invoke<SolutionInfo>("solution_remove_project", { file, path }),
+  solutionSetStartup: (file: string, dir: string | null) => invoke<void>("solution_set_startup", { file, dir }),
+  solutionFind: (dir: string) => invoke<string | null>("solution_find", { dir }),
   stopTask: () => invoke<void>("stop_task"),
   sendStdin: (text: string) => invoke<void>("send_stdin", { text }),
   toolchainStatus: () => invoke<ToolchainStatus>("toolchain_status"),

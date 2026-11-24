@@ -5,6 +5,7 @@ mod lsp;
 mod monitor;
 mod projects;
 mod runner;
+mod solution;
 mod toolchain;
 mod watcher;
 
@@ -31,6 +32,12 @@ pub fn run() {
             fs_cmds::reveal_path,
             watcher::watch_project,
             projects::find_projects,
+            solution::solution_read,
+            solution::solution_create,
+            solution::solution_add_project,
+            solution::solution_remove_project,
+            solution::solution_set_startup,
+            solution::solution_find,
             dap::debugger_info,
             dap::dap_start,
             dap::dap_send,
@@ -56,7 +63,7 @@ pub fn run() {
             crates::crate_set_features,
         ])
         .build(tauri::generate_context!())
-        .expect("error al iniciar Oxide Studio")
+        .expect("error al iniciar Raxorin Studio")
         .run(|app, event| {
             // Al cerrar la app, no dejar programas depurados huérfanos.
             if let tauri::RunEvent::Exit = event {

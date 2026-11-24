@@ -3,11 +3,13 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { homeDir, join } from "@tauri-apps/api/path";
 import { Codicon } from "./Icon";
 
-type Kind = "bin" | "lib" | "slint";
+type Kind = "bin" | "lib" | "slint" | "solution";
 
 interface Props {
   /** Carpeta abierta actualmente (para "agregar a la carpeta actual"). */
   currentRoot: string | null;
+  /** Nombre de la solución abierta (si hay): “Agregar a la solución”. */
+  solutionName?: string | null;
   onCancel: () => void;
   onCreate: (parent: string, name: string, kind: Kind, addToCurrent: boolean) => Promise<void>;
 }
@@ -16,9 +18,10 @@ const TEMPLATES: { kind: Kind | null; icon: string; title: string; desc: string 
   { kind: "bin", icon: "terminal", title: "Aplicación de consola", desc: "Un programa que se ejecuta en la terminal." },
   { kind: "lib", icon: "library", title: "Biblioteca", desc: "Código reutilizable para otros proyectos." },
   { kind: "slint", icon: "window", title: "Aplicación de ventana", desc: "Ventana con diseñador visual (Slint), como WPF." },
+  { kind: "solution", icon: "layers", title: "Solución en blanco", desc: "Un archivo .rxsln para agrupar proyectos de cualquier carpeta." },
 ];
 
-export default function NewProjectDialog({ currentRoot, onCancel, onCreate }: Props) {
+export default function NewProjectDialog({ currentRoot, solutionName, onCancel, onCreate }: Props) {
   const [kind, setKind] = useState<Kind>("bin");
   const [name, setName] = useState("mi_app");
   const [location, setLocation] = useState("");
@@ -38,11 +41,15 @@ export default function NewProjectDialog({ currentRoot, onCancel, onCreate }: Pr
   }, [currentRoot]);
 
   useEffect(() => {
-    if (addToCurrent && currentRoot) setLocation(currentRoot);
+    // Una solución nueva va en su propia carpeta (por defecto ~/RustProjects).
+    if (addToCurrent && currentRoot && kind !== "solution") setLocation(currentRoot);
     else if (defaultLocation) setLocation(defaultLocation);
-  }, [addToCurrent, currentRoot, defaultLocation]);
+  }, [addToCurrent, currentRoot, defaultLocation, kind]);
 
-  const valid = /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name) && location.length > 0;
+  const isSolution = kind === "solution";
+  // Las soluciones admiten espacios en el nombre (no son crates de Rust).
+  const nameOk = isSolution ? /^[^/\\:*?"<>|]+$/.test(name.trim()) : /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name);
+  const valid = nameOk && location.length > 0;
 
   const browse = async () => {
     const dir = await open({ directory: true, defaultPath: location || undefined });
@@ -55,7 +62,7 @@ export default function NewProjectDialog({ currentRoot, onCancel, onCreate }: Pr
     setBusy(true);
     setError("");
     try {
-      await onCreate(location, name, kind, addToCurrent && !!currentRoot);
+      await onCreate(location, name.trim(), kind, !isSolution && addToCurrent && !!currentRoot);
     } catch (err) {
       setError(String(err));
       setBusy(false);
@@ -84,16 +91,18 @@ export default function NewProjectDialog({ currentRoot, onCancel, onCreate }: Pr
           ))}
         </div>
         <label>
-          Nombre del proyecto
+          {isSolution ? "Nombre de la solución" : "Nombre del proyecto"}
           <input value={name} onChange={(e) => setName(e.target.value)} autoFocus spellCheck={false} />
         </label>
-        {!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name) && name.length > 0 && (
-          <div className="hint err">Usa letras, números, “_” o “-”, sin empezar con número.</div>
+        {!nameOk && name.length > 0 && (
+          <div className="hint err">
+            {isSolution ? "El nombre no puede tener / \\ : * ? \" < > |" : "Usa letras, números, “_” o “-”, sin empezar con número."}
+          </div>
         )}
-        {currentRoot && (
+        {currentRoot && !isSolution && (
           <div className="segmented">
             <button type="button" className={addToCurrent ? "active" : ""} onClick={() => setAddToCurrent(true)}>
-              <Codicon name="add" /> Agregar a la carpeta actual
+              <Codicon name="add" /> {solutionName ? `Agregar a la solución “${solutionName}”` : "Agregar a la carpeta actual"}
             </button>
             <button type="button" className={!addToCurrent ? "active" : ""} onClick={() => setAddToCurrent(false)}>
               <Codicon name="folder-opened" /> Crear en otra ubicación
@@ -111,7 +120,7 @@ export default function NewProjectDialog({ currentRoot, onCancel, onCreate }: Pr
         <div className="actions">
           <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
           <button type="submit" className="btn primary" disabled={!valid || busy}>
-            {busy ? "Creando…" : addToCurrent && currentRoot ? "Agregar" : "Crear"}
+            {busy ? "Creando…" : addToCurrent && currentRoot && !isSolution ? "Agregar" : "Crear"}
           </button>
         </div>
       </form>

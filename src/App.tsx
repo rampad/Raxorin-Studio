@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { join } from "@tauri-apps/api/path";
-import { ask, open } from "@tauri-apps/plugin-dialog";
+import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import * as monaco from "monaco-editor";
 import type { OnMount } from "@monaco-editor/react";
 import {
@@ -13,9 +13,10 @@ import {
   type TaskFinished,
   type ToolchainStatus,
   type DebuggerInfo,
+  type SolutionInfo,
 } from "./api";
 import Toolbar from "./components/Toolbar";
-import Explorer, { type FileProblems } from "./components/Explorer";
+import Explorer, { type FileProblems, type SolutionAction } from "./components/Explorer";
 import EditorArea, { type Tab } from "./components/EditorArea";
 import BottomPanel, { type BottomTab } from "./components/BottomPanel";
 import NewProjectDialog from "./components/NewProjectDialog";
@@ -36,11 +37,11 @@ import DebugConsole, { type ConsoleEntry } from "./debug/DebugConsole";
 import type * as L from "./lsp/types";
 import { basename, dirname, isInside, joinPath, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
-import oxideMark from "./assets/brand/oxide-mark.svg";
+import raxorinMark from "./assets/brand/raxorin-mark.svg";
 
-const LAST_PROJECT_KEY = "oxidestudio.lastProject";
-const RUN_EXTERNAL_KEY = "oxidestudio.runExternal";
-const startupKey = (root: string) => `oxidestudio.startup:${root}`;
+const LAST_PROJECT_KEY = "raxorinstudio.lastProject";
+const RUN_EXTERNAL_KEY = "raxorinstudio.runExternal";
+const startupKey = (root: string) => `raxorinstudio.startup:${root}`;
 const MAX_CHUNKS = 5000;
 
 const TASK_LABEL: Record<Task, string> = {
@@ -56,9 +57,9 @@ const uriOf = (path: string) => monaco.Uri.file(path).toString();
 /** Almacén de puntos y controlador de depuración: uno solo por ventana. */
 function debugSingletons() {
   const g = globalThis as unknown as {
-    __oxideDebug?: { breakpoints: BreakpointStore; controller: DebugController; hostRef: { current: DebugHost } };
+    __raxorinDebug?: { breakpoints: BreakpointStore; controller: DebugController; hostRef: { current: DebugHost } };
   };
-  if (!g.__oxideDebug) {
+  if (!g.__raxorinDebug) {
     const breakpoints = new BreakpointStore();
     const hostRef: { current: DebugHost } = {
       current: { output: () => {}, showLocation: () => {}, isUserCode: () => false, onStopped: () => {}, onEnded: () => {} },
@@ -70,9 +71,9 @@ function debugSingletons() {
       onStopped: () => hostRef.current.onStopped(),
       onEnded: () => hostRef.current.onEnded(),
     });
-    g.__oxideDebug = { breakpoints, controller, hostRef };
+    g.__raxorinDebug = { breakpoints, controller, hostRef };
   }
-  return g.__oxideDebug;
+  return g.__raxorinDebug;
 }
 
 /** Diagnóstico LSP → formato de la lista de errores. */
@@ -103,6 +104,22 @@ export default function App() {
   const [referenceFor, setReferenceFor] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [startupDir, setStartupDir] = useState<string | null>(null);
+  // Solución abierta (.rxsln); null si se abrió una carpeta suelta.
+  const [solution, setSolution] = useState<SolutionInfo | null>(null);
+  const solutionRef = useRef<SolutionInfo | null>(null);
+  solutionRef.current = solution;
+  // Raíces del explorador: la carpeta abierta, o la carpeta de cada proyecto de la solución.
+  const roots = useMemo(
+    () => (solution ? solution.projects.filter((p) => p.exists).map((p) => p.path) : project ? [project] : []),
+    [solution, project],
+  );
+  const rootsKey = roots.join("|");
+  const rootsRef = useRef(roots);
+  rootsRef.current = roots;
+  /** Clave para recordar la configuración: el .rxsln, o la carpeta. */
+  const workspaceKey = solution?.file ?? project;
+  const workspaceKeyRef = useRef(workspaceKey);
+  workspaceKeyRef.current = workspaceKey;
   const [toolchain, setToolchain] = useState<ToolchainStatus | null>(null);
   const [lspStatus, setLspStatus] = useState("");
   const [lspReady, setLspReady] = useState(false);
@@ -260,22 +277,30 @@ export default function App() {
   );
 
   /** Vuelve a buscar los proyectos de la carpeta y elige el de inicio. */
-  const refreshProjects = useCallback(async (root: string, prefer?: string) => {
-    let list: ProjectInfo[] = [];
-    try {
-      list = await api.findProjects(root);
-    } catch (e) {
-      log(String(e), "error");
+  /** Busca los proyectos en todas las raíces (una carpeta, o cada proyecto de la solución). */
+  const refreshProjects = useCallback(async (roots: string[], key: string, prefer?: string) => {
+    const list: ProjectInfo[] = [];
+    for (const root of roots) {
+      try {
+        for (const p of await api.findProjects(root)) if (!list.some((x) => x.dir === p.dir)) list.push(p);
+      } catch (e) {
+        log(String(e), "error");
+      }
     }
     let saved: string | null = null;
     try {
-      saved = localStorage.getItem(startupKey(root));
+      saved = localStorage.getItem(startupKey(key));
     } catch {
       /* sin almacenamiento */
     }
     const byDir = (d?: string | null) => list.find((p) => p.dir === d);
     const startup =
-      byDir(prefer) ?? byDir(saved) ?? list.find((p) => p.kind === "bin") ?? list[0] ?? null;
+      byDir(prefer) ??
+      byDir(solutionRef.current?.startup) ??
+      byDir(saved) ??
+      list.find((p) => p.kind === "bin") ??
+      list[0] ??
+      null;
     setProjects(list);
     setStartupDir(startup?.dir ?? null);
     return { list, startup };
@@ -284,12 +309,19 @@ export default function App() {
   const setStartup = useCallback(
     (dir: string) => {
       setStartupDir(dir);
-      if (project) {
+      const key = solutionRef.current?.file ?? project;
+      if (key) {
         try {
-          localStorage.setItem(startupKey(project), dir);
+          localStorage.setItem(startupKey(key), dir);
         } catch {
           /* sin almacenamiento */
         }
+      }
+      // En una solución, el proyecto de inicio se guarda en el .rxsln (se comparte con git).
+      const sol = solutionRef.current;
+      if (sol) {
+        api.solutionSetStartup(sol.file, dir).catch((e) => log(String(e), "error"));
+        setSolution({ ...sol, startup: dir });
       }
       const p = projects.find((x) => x.dir === dir);
       if (p) log(`Proyecto de inicio: ${p.name}`);
@@ -299,24 +331,56 @@ export default function App() {
 
   const startupProject = projects.find((p) => p.dir === startupDir) ?? null;
 
+  /** Cierra las pestañas y limpia el estado antes de abrir otra carpeta o solución. */
+  const resetWorkspace = useCallback((key: string) => {
+    for (const t of tabsRef.current) monaco.editor.getModel(monaco.Uri.file(t.path))?.dispose();
+    tabsRef.current = [];
+    setTabs([]);
+    setActive(null);
+    setBuildDiagnostics([]);
+    setLspDiagnostics({});
+    try {
+      localStorage.setItem(LAST_PROJECT_KEY, key);
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
+
+  /** Abre una solución .rxsln con todos sus proyectos. */
+  const openSolution = useCallback(
+    async (file: string) => {
+      const info = await api.solutionRead(file);
+      resetWorkspace(file);
+      solutionRef.current = info;
+      setSolution(info);
+      setProject(info.dir);
+      const roots = info.projects.filter((p) => p.exists).map((p) => p.path);
+      log(`Solución abierta: ${info.name} (${roots.length} ${roots.length === 1 ? "proyecto" : "proyectos"})`);
+      for (const p of info.projects.filter((x) => !x.exists)) {
+        log(`Aviso: no se encontró el proyecto “${p.ruta}” (${p.path}).`, "warning");
+      }
+      const found = await refreshProjects(roots, info.file);
+      if (found.startup) await openMainFile(found.startup.dir);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [log, resetWorkspace],
+  );
+
   const openProject = useCallback(
     async (path: string) => {
-      const entries = await api.listDir(path);
-      for (const t of tabsRef.current) monaco.editor.getModel(monaco.Uri.file(t.path))?.dispose();
-      tabsRef.current = [];
-      setProject(path);
-      setTabs([]);
-      setActive(null);
-      setBuildDiagnostics([]);
-      setLspDiagnostics({});
-      try {
-        localStorage.setItem(LAST_PROJECT_KEY, path);
-      } catch {
-        /* almacenamiento no disponible */
+      // Si la carpeta tiene una solución, abrir la solución (como Visual Studio).
+      const sln = await api.solutionFind(path).catch(() => null);
+      if (sln) {
+        log(`Se encontró la solución ${basename(sln)} en la carpeta.`, "muted");
+        return openSolution(sln);
       }
-      void entries;
+      await api.listDir(path);
+      resetWorkspace(path);
+      solutionRef.current = null;
+      setSolution(null);
+      setProject(path);
       log(`Carpeta abierta: ${path}`);
-      const found = await refreshProjects(path);
+      const found = await refreshProjects([path], path);
       if (found.list.length === 0) {
         log("No se encontraron proyectos de Rust en esta carpeta. Crea uno con “Nuevo”.", "warning");
       } else if (found.list.length > 1) {
@@ -325,7 +389,7 @@ export default function App() {
       if (found.startup) await openMainFile(found.startup.dir);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [log, openFile],
+    [log, openFile, openSolution, resetWorkspace],
   );
 
   const saveTab = useCallback(
@@ -334,11 +398,25 @@ export default function App() {
         await api.writeFile(tab.path, tab.content);
         setTabs((ts) => ts.map((t) => (t.path === tab.path ? { ...t, saved: tab.content } : t)));
         lspRef.current?.didSave(tab.path); // dispara Clippy en segundo plano
+        // Si se editó el .rxsln a mano, volver a cargar la solución.
+        if (solutionRef.current && tab.path === solutionRef.current.file) {
+          api
+            .solutionRead(tab.path)
+            .then((info) => {
+              solutionRef.current = info;
+              setSolution(info);
+              const roots = info.projects.filter((p) => p.exists).map((p) => p.path);
+              refreshProjects(roots, info.file);
+              log("Solución actualizada.", "muted");
+            })
+            .catch((e) => log(String(e), "error"));
+        }
       } catch (err) {
         log(String(err), "error");
         throw err;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [log],
   );
 
@@ -495,7 +573,16 @@ export default function App() {
   }, [openProject, log]);
 
   const createProject = useCallback(
-    async (parent: string, name: string, kind: "bin" | "lib" | "slint", addToCurrent: boolean) => {
+    async (parent: string, name: string, kind: "bin" | "lib" | "slint" | "solution", addToCurrent: boolean) => {
+      if (kind === "solution") {
+        // Solución en blanco: una carpeta con el .rxsln, lista para agregar proyectos.
+        const dir = await join(parent, name);
+        const file = await api.solutionCreate(dir, name, []);
+        setShowNew(false);
+        log(`Solución creada: ${file}`, "success");
+        await openSolution(file);
+        return;
+      }
       const path = await api.createProject(parent, name, kind);
       const openDesigner = async () => {
         if (kind !== "slint") return;
@@ -503,11 +590,21 @@ export default function App() {
         log("Ventana creada: diseña en app-window.slint y escribe el código en main.rs. La primera compilación de Slint tarda un poco.", "muted");
       };
       setShowNew(false);
-      if (addToCurrent && project && isInside(path, project)) {
-        log(`Proyecto agregado a la carpeta: ${name} (${{ bin: "aplicación de consola", lib: "biblioteca", slint: "aplicación de ventana" }[kind]})`, "success");
+      const sol = solutionRef.current;
+      if (addToCurrent && project && (sol || isInside(path, project))) {
+        let roots = [project];
+        if (sol) {
+          // En una solución: registrarlo en el .rxsln.
+          const info = await api.solutionAddProject(sol.file, path);
+          solutionRef.current = info;
+          setSolution(info);
+          roots = info.projects.filter((p) => p.exists).map((p) => p.path);
+        }
+        const kindName = { bin: "aplicación de consola", lib: "biblioteca", slint: "aplicación de ventana" }[kind];
+        log(`Proyecto agregado a la ${sol ? "solución" : "carpeta"}: ${name} (${kindName})`, "success");
         // Si aún no hay un ejecutable de inicio, el nuevo pasa a serlo.
         const prefer = kind !== "lib" && startupProject?.kind !== "bin" ? path : startupDir ?? undefined;
-        await refreshProjects(project, kind === "slint" && startupProject?.kind !== "bin" ? path : prefer);
+        await refreshProjects(roots, sol?.file ?? project, prefer);
         await openMainFile(path);
         await openDesigner();
         if (kind === "lib") {
@@ -519,7 +616,7 @@ export default function App() {
         await openDesigner();
       }
     },
-    [project, startupProject, startupDir, refreshProjects, openMainFile, openProject, openFile, log],
+    [project, startupProject, startupDir, refreshProjects, openMainFile, openProject, openSolution, openFile, log],
   );
 
   const refreshToolchain = useCallback(async () => {
@@ -571,7 +668,7 @@ export default function App() {
     showLocation: (path, line) => {
       openFile(path).then(() => setReveal({ path, line, column: 1 }));
     },
-    isUserCode: (path) => !!projectRef.current && isInside(path, projectRef.current),
+    isUserCode: (path) => rootsRef.current.some((r) => isInside(path, r)),
     onStopped: () => setBottomTab("debug"),
     onEnded: () => setBottomTab((t) => (t === "debug" ? "output" : t)),
   };
@@ -581,7 +678,13 @@ export default function App() {
     api.debuggerInfo().then(setDebuggerInfo).catch(() => {});
   }, [debug]);
 
-  useEffect(() => bpStore.load(project), [bpStore, project]);
+  useEffect(() => bpStore.load(workspaceKey), [bpStore, workspaceKey]);
+
+  // Vigilar cambios en disco de la carpeta abierta (para el explorador).
+  useEffect(() => {
+    if (roots.length) api.watchProject(roots).catch((e) => log(String(e), "error"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootsKey, log]);
 
   // La compilación para depurar terminó: lanzar lldb-dap.
   useEffect(() => {
@@ -739,7 +842,7 @@ export default function App() {
       const prefer = startupRef.current && isInside(startupRef.current, from)
         ? to + startupRef.current.slice(from.length)
         : startupRef.current ?? undefined;
-      refreshProjects(projectRef.current, prefer);
+      refreshProjects(rootsRef.current, workspaceKeyRef.current ?? projectRef.current, prefer);
     }
   }, [refreshProjects]);
 
@@ -751,14 +854,14 @@ export default function App() {
     tabsRef.current = remaining;
     setTabs(remaining);
     setActive((a) => (a && isInside(a, path) ? remaining[remaining.length - 1]?.path ?? null : a));
-    if (projectRef.current) refreshProjects(projectRef.current, startupRef.current ?? undefined);
+    if (projectRef.current) refreshProjects(rootsRef.current, workspaceKeyRef.current ?? projectRef.current, startupRef.current ?? undefined);
   }, [refreshProjects]);
 
   /** Al crear `src/algo.rs`, ofrecer agregar `mod algo;` para que el compilador lo incluya. */
   const onCreated = useCallback(
     async (path: string, isDir: boolean) => {
       if (!project) return;
-      if (isDir || basename(path) === "Cargo.toml") refreshProjects(project, startupDir ?? undefined);
+      if (isDir || basename(path) === "Cargo.toml") refreshProjects(rootsRef.current, workspaceKeyRef.current ?? project, startupDir ?? undefined);
       if (isDir) return;
       await openFile(path);
       const owner = projectsRef.current
@@ -812,6 +915,87 @@ export default function App() {
     }
     return m;
   }, [diagnostics]);
+
+  // ---------- Soluciones (.rxsln) ----------
+
+  const applySolution = useCallback(
+    (info: SolutionInfo) => {
+      solutionRef.current = info;
+      setSolution(info);
+      const r = info.projects.filter((p) => p.exists).map((p) => p.path);
+      return refreshProjects(r, info.file, startupRef.current ?? undefined);
+    },
+    [refreshProjects],
+  );
+
+  const openSolutionDialog = useCallback(async () => {
+    const file = await open({ title: "Abrir solución", filters: [{ name: "Solución de Raxorin Studio", extensions: ["rxsln"] }] });
+    if (typeof file === "string") await openSolution(file).catch((e) => log(String(e), "error"));
+  }, [openSolution, log]);
+
+  const askOpenSolution = useCallback(
+    async (file: string) => {
+      const yes = await ask(`¿Abrir “${basename(file)}” como solución?`, {
+        title: "Solución de Raxorin Studio",
+        okLabel: "Abrir solución",
+        cancelLabel: "Editar como texto",
+      });
+      if (yes) await openSolution(file).catch((e) => log(String(e), "error"));
+      else await openFile(file);
+    },
+    [openSolution, openFile, log],
+  );
+
+  const onSolutionAction = useCallback(
+    async (action: SolutionAction, path?: string) => {
+      const sol = solutionRef.current;
+      try {
+        if (action === "new-project") {
+          setShowNew(true);
+        } else if (action === "add-existing" && sol) {
+          const dir = await open({ directory: true, title: "Agregar proyecto existente (carpeta con Cargo.toml)" });
+          if (typeof dir !== "string") return;
+          await applySolution(await api.solutionAddProject(sol.file, dir));
+          log(`Proyecto agregado a la solución: ${basename(dir)}`, "success");
+        } else if (action === "remove" && sol && path) {
+          const yes = await ask(`¿Quitar “${basename(path)}” de la solución? Sus archivos no se borran.`, {
+            title: "Quitar de la solución",
+            kind: "warning",
+            okLabel: "Quitar",
+            cancelLabel: "Cancelar",
+          });
+          if (!yes) return;
+          // Cerrar sus pestañas (sin borrar nada en disco).
+          const remaining = tabsRef.current.filter((t) => !isInside(t.path, path));
+          tabsRef.current = remaining;
+          setTabs(remaining);
+          setActive((a) => (a && isInside(a, path) ? remaining[remaining.length - 1]?.path ?? null : a));
+          await applySolution(await api.solutionRemoveProject(sol.file, path));
+          log(`Proyecto quitado de la solución: ${basename(path)}`, "muted");
+        } else if (action === "edit-file" && sol) {
+          await openFile(sol.file);
+        } else if (action === "save-as" && project) {
+          // Convertir la carpeta abierta en una solución con sus proyectos.
+          const file = await save({
+            title: "Guardar como solución",
+            defaultPath: await join(project, `${basename(project)}.rxsln`),
+            filters: [{ name: "Solución de Raxorin Studio", extensions: ["rxsln"] }],
+          });
+          if (!file) return;
+          const name = basename(file).replace(/\.rxsln$/, "");
+          // Un proyecto por workspace de Cargo (sus miembros se detectan solos).
+          const dirs = [...new Set(projectsRef.current.map((p) => dirname(p.workspaceManifest)))];
+          const created = await api.solutionCreate(dirname(file), name, dirs);
+          if (startupRef.current) await api.solutionSetStartup(created, startupRef.current);
+          log(`Solución creada: ${created}`, "success");
+          await openSolution(created);
+        }
+      } catch (e) {
+        log(String(e), "error");
+      }
+    },
+    [applySolution, openFile, openSolution, project, log],
+  );
 
   // ---------- Compilar / ejecutar ----------
   const runTask = useCallback(
@@ -940,7 +1124,7 @@ export default function App() {
     } catch {
       /* sin almacenamiento */
     }
-    if (last) openProject(last).catch(() => {});
+    if (last) (last.endsWith(".rxsln") ? openSolution(last) : openProject(last)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -973,12 +1157,12 @@ export default function App() {
           if (loc && isRust()) actions.current.openBreakpointDialog(loc.path, loc.line, kind);
         },
       });
-    addBp("oxide.bp.add", "Agregar punto de interrupción…", 1);
-    addBp("oxide.bp.cond", "Agregar punto de interrupción condicional…", 2, "condition");
-    addBp("oxide.bp.log", "Agregar punto de registro (mensaje sin detenerse)…", 3, "log");
+    addBp("raxorin.bp.add", "Agregar punto de interrupción…", 1);
+    addBp("raxorin.bp.cond", "Agregar punto de interrupción condicional…", 2, "condition");
+    addBp("raxorin.bp.log", "Agregar punto de registro (mensaje sin detenerse)…", 3, "log");
     // Como "Agregar inspección" de Visual Studio: la selección o la variable bajo el cursor.
     editor.addAction({
-      id: "oxide.addWatch",
+      id: "raxorin.addWatch",
       label: "Agregar a Inspección",
       contextMenuGroupId: "0_debug",
       contextMenuOrder: 0,
@@ -1005,7 +1189,7 @@ export default function App() {
       },
     });
     editor.addAction({
-      id: "oxide.runToCursor",
+      id: "raxorin.runToCursor",
       label: "Ejecutar hasta el cursor",
       contextMenuGroupId: "0_debug",
       contextMenuOrder: 4,
@@ -1055,6 +1239,7 @@ export default function App() {
         canFormat={!!activeTab && lspReady && activeTab.path.endsWith(".rs")}
         onNew={() => setShowNew(true)}
         onOpen={openFolder}
+        onOpenSolution={openSolutionDialog}
         onSave={saveActive}
         onFormat={format}
         onPackages={() => startupDir && setPackagesFor(startupDir)}
@@ -1083,10 +1268,13 @@ export default function App() {
       <div className="main">
         <aside className="sidebar">
           <Explorer
-            root={project}
+            roots={roots}
+            solution={solution ? { name: solution.name, file: solution.file } : null}
+            storageKey={workspaceKey}
+            onSolution={onSolutionAction}
             activePath={active}
             problems={problems}
-            onOpenFile={openFile}
+            onOpenFile={(path) => (path.endsWith(".rxsln") && path !== solution?.file ? askOpenSolution(path) : openFile(path))}
             onCreated={onCreated}
             onRenamed={onRenamed}
             onDeleted={onDeleted}
@@ -1109,7 +1297,7 @@ export default function App() {
               designer={designerHost}
             />
           ) : (
-            <Welcome onNew={() => setShowNew(true)} onOpen={openFolder} />
+            <Welcome onNew={() => setShowNew(true)} onOpen={openFolder} onOpenSolution={openSolutionDialog} />
           )}
           <BottomPanel
             tab={bottomTab}
@@ -1199,7 +1387,12 @@ export default function App() {
         />
       )}
       {showNew && (
-        <NewProjectDialog currentRoot={project} onCancel={() => setShowNew(false)} onCreate={createProject} />
+        <NewProjectDialog
+          currentRoot={project}
+          solutionName={solution?.name ?? null}
+          onCancel={() => setShowNew(false)}
+          onCreate={createProject}
+        />
       )}
       {packagesFor && (
         <PackagesDialog
@@ -1225,12 +1418,12 @@ export default function App() {
   );
 }
 
-function Welcome({ onNew, onOpen }: { onNew: () => void; onOpen: () => void }) {
+function Welcome({ onNew, onOpen, onOpenSolution }: { onNew: () => void; onOpen: () => void; onOpenSolution: () => void }) {
   return (
     <div className="welcome">
-      <img className="welcome-logo" src={oxideMark} height={96} alt="" />
+      <img className="welcome-logo" src={raxorinMark} height={96} alt="" />
       <h1 className="wordmark">
-        <span className="brand-oxide">Oxide</span> Studio
+        <span className="brand-accent">Raxorin</span> Studio
       </h1>
       <p className="muted">Crea programas en Rust de forma fácil.</p>
       <div className="welcome-actions">
@@ -1243,6 +1436,11 @@ function Welcome({ onNew, onOpen }: { onNew: () => void; onOpen: () => void }) {
           <Codicon name="folder-opened" className="welcome-icon" />
           <strong>Abrir proyecto</strong>
           <small>Una carpeta con Cargo.toml</small>
+        </button>
+        <button className="welcome-card" onClick={onOpenSolution}>
+          <Codicon name="layers" className="welcome-icon" />
+          <strong>Abrir solución</strong>
+          <small>Varios proyectos (.rxsln)</small>
         </button>
       </div>
       <div className="shortcuts muted">

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 26 424 460" width="424" height="460">
+  <!-- Raxorin Studio — marca sin fondo (barra de herramientas, bienvenida, favicon) -->
+  <defs>
+    <linearGradient id="brand" x1="0.08" y1="0.08" x2="0.92" y2="0.92">
+      <stop offset="0%" stop-color="#FF9A00"/>
+      <stop offset="34%" stop-color="#FF641C"/>
+      <stop offset="62%" stop-color="#F02D58"/>
+      <stop offset="100%" stop-color="#791BFF"/>
+    </linearGradient>
+  </defs><path d="M256 38
+           Q267 38 278 44
+           L438 137
+           Q454 146 454 165
+           L454 347
+           Q454 366 438 375
+           L278 468
+           Q256 481 234 468
+           L74 375
+           Q58 366 58 347
+           L58 165
+           Q58 146 74 137
+           L234 44
+           Q245 38 256 38 Z"
+        fill="none" stroke="url(#brand)" stroke-width="22"
+        stroke-linejoin="round" stroke-linecap="round"/><path d="M132 143
+           H270
+           C328 143 363 176 363 224
+           C363 265 337 294 295 302
+           L374 377
+           H306
+           L229 305
+           V377
+           L132 321
+           V278
+           L184 309
+           V267
+           H270
+           C295 267 310 252 310 228
+           C310 205 295 190 270 190
+           H132 Z"
+        fill="url(#brand)"/>
+</svg>

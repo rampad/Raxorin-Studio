@@ -17,25 +17,25 @@ pub struct WatchState(Mutex<Option<RecommendedWatcher>>);
 
 const IGNORED: &[&str] = &["target", ".git", "node_modules"];
 
-fn ignored(root: &Path, path: &Path) -> bool {
-    path.strip_prefix(root)
-        .map(|rel| {
-            rel.components()
-                .any(|c| IGNORED.contains(&c.as_os_str().to_string_lossy().as_ref()))
-        })
-        .unwrap_or(true)
+fn ignored(roots: &[PathBuf], path: &Path) -> bool {
+    // Se ignora si no está en ninguna raíz o si pasa por target/.git/node_modules.
+    !roots.iter().any(|root| {
+        path.strip_prefix(root)
+            .map(|rel| !rel.components().any(|c| IGNORED.contains(&c.as_os_str().to_string_lossy().as_ref())))
+            .unwrap_or(false)
+    })
 }
 
 #[tauri::command]
 pub fn watch_project(
     app: AppHandle,
     state: State<'_, WatchState>,
-    root: String,
+    roots: Vec<String>,
 ) -> Result<(), String> {
     // Al soltar el watcher anterior se cierra su canal y termina su hilo.
     state.0.lock().unwrap().take();
 
-    let root = PathBuf::from(root);
+    let roots: Vec<PathBuf> = roots.into_iter().map(PathBuf::from).collect();
     let (tx, rx) = mpsc::channel::<Event>();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
         if let Ok(ev) = res {
@@ -43,9 +43,11 @@ pub fn watch_project(
         }
     })
     .map_err(|e| format!("No se pudo vigilar la carpeta: {e}"))?;
-    watcher
-        .watch(&root, RecursiveMode::Recursive)
-        .map_err(|e| format!("No se pudo vigilar la carpeta: {e}"))?;
+    for root in &roots {
+        watcher
+            .watch(root, RecursiveMode::Recursive)
+            .map_err(|e| format!("No se pudo vigilar {}: {e}", root.display()))?;
+    }
 
     // Agrupar ráfagas de eventos: emitir cuando haya 150 ms de calma.
     thread::spawn(move || {
@@ -53,7 +55,7 @@ pub fn watch_project(
         loop {
             match rx.recv_timeout(Duration::from_millis(150)) {
                 Ok(ev) => {
-                    for p in ev.paths.iter().filter(|p| !ignored(&root, p)) {
+                    for p in ev.paths.iter().filter(|p| !ignored(&roots, p)) {
                         if let Some(parent) = p.parent() {
                             dirs.insert(parent.to_string_lossy().into_owned());
                         }

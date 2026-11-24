@@ -8,7 +8,7 @@ export function languageFor(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase();
   switch (ext) {
     case "rs": return "rust";
-    case "toml": return "ini";
+    case "toml": case "rxsln": return "ini";
     case "md": return "markdown";
     case "json": return "json";
     case "html": return "html";

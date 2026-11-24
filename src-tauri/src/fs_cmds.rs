@@ -62,7 +62,7 @@ pub fn write_file(path: String, contents: String) -> Result<(), String> {
 const CONSOLE_TEMPLATE: &str = r#"use std::io::{self, Write};
 
 fn main() {
-    println!("¡Hola desde Oxide Studio!");
+    println!("¡Hola desde Raxorin Studio!");
 
     print!("¿Cómo te llamas? ");
     io::stdout().flush().unwrap();
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn crea_proyecto_de_ventana() {
-        let parent = std::env::temp_dir().join(format!("oxide-tpl-{}", std::process::id()));
+        let parent = std::env::temp_dir().join(format!("raxorin-tpl-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&parent);
         let path = create_project(parent.to_string_lossy().into(), "mi_ventana".into(), "slint".into()).unwrap();
         let p = Path::new(&path);

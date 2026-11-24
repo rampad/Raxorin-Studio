@@ -1,4 +1,4 @@
-"""Oxide Studio: límite de profundidad para los formateadores de Rust en LLDB.
+"""Raxorin Studio: límite de profundidad para los formateadores de Rust en LLDB.
 
 Los resúmenes genéricos de structs/tuplas de Rust (lldb_providers.py) se llaman
 entre sí sin límite. Con tipos recursivos (p. ej. los de Slint) eso agota la pila
@@ -12,7 +12,7 @@ _state = {"depth": 0}
 
 
 def _guard(fn):
-    if getattr(fn, "_oxide_guarded", False):
+    if getattr(fn, "_raxorin_guarded", False):
         return fn
 
     def wrapper(valobj, _dict):
@@ -26,7 +26,7 @@ def _guard(fn):
         finally:
             _state["depth"] -= 1
 
-    wrapper._oxide_guarded = True
+    wrapper._raxorin_guarded = True
     wrapper.__name__ = fn.__name__
     return wrapper
 

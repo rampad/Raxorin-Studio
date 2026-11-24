@@ -51,7 +51,7 @@ export interface StartOptions {
   runTo?: { path: string; line: number };
 }
 
-const WATCH_KEY = "oxidestudio.watches";
+const WATCH_KEY = "raxorinstudio.watches";
 const IGNORED_OUTPUT = /no plugin for the language "rust"|^Running initCommands|^Running preRunCommands|^\(lldb\) (command script import|settings set|breakpoint set)/;
 
 export class DebugController {
@@ -137,8 +137,8 @@ export class DebugController {
 
     try {
       await client.request("initialize", {
-        clientID: "oxide-studio",
-        clientName: "Oxide Studio",
+        clientID: "raxorin-studio",
+        clientName: "Raxorin Studio",
         adapterID: "lldb-dap",
         locale: "es",
         linesStartAt1: true,

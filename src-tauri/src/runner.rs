@@ -418,7 +418,7 @@ fn launch_in_terminal(project: &Path, exe: &Path) -> Result<(), String> {
         .file_stem()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "programa".into());
-    let dir = std::env::temp_dir().join("oxide-studio");
+    let dir = std::env::temp_dir().join("raxorin-studio");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let err = |e: std::io::Error| format!("No se pudo abrir una terminal: {e}");
 

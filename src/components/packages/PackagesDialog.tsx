@@ -326,7 +326,7 @@ export default function PackagesDialog(p: Props) {
         return (
           <div className="essentials">
             <p className="muted small">
-              Estas herramientas no se agregan a tu proyecto: las usa Oxide Studio para el autocompletado, revisar y formatear tu código.
+              Estas herramientas no se agregan a tu proyecto: las usa Raxorin Studio para el autocompletado, revisar y formatear tu código.
             </p>
             {COMPONENTS.map((c) => {
               const ok = !!p.toolchain?.[c.key];

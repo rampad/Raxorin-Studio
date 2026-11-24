@@ -37,7 +37,7 @@ struct DapEvent {
     msg: Option<String>,
 }
 
-/// Registro del tráfico con el depurador (carpeta temporal/oxide-studio/dap-trace.log).
+/// Registro del tráfico con el depurador (carpeta temporal/raxorin-studio/dap-trace.log).
 type Trace = Arc<Mutex<Option<File>>>;
 
 fn trace(t: &Trace, dir: &str, msg: &str) {
@@ -157,12 +157,12 @@ fn find_adapter() -> Option<PathBuf> {
 
 /// Protección para los formateadores de Rust: sin ella, tipos recursivos (como los de
 /// Slint) agotan la pila de Python al mostrar variables y matan a lldb-dap.
-const FORMATTER_GUARD: &str = include_str!("oxide_lldb_guard.py");
+const FORMATTER_GUARD: &str = include_str!("raxorin_lldb_guard.py");
 
 fn formatter_guard() -> Option<PathBuf> {
-    let dir = std::env::temp_dir().join("oxide-studio");
+    let dir = std::env::temp_dir().join("raxorin-studio");
     std::fs::create_dir_all(&dir).ok()?;
-    let path = dir.join("oxide_lldb_guard.py");
+    let path = dir.join("raxorin_lldb_guard.py");
     std::fs::write(&path, FORMATTER_GUARD).ok()?;
     Some(path)
 }
@@ -217,7 +217,7 @@ pub fn dap_start(app: AppHandle, state: State<'_, DapState>) -> Result<u64, Stri
     let stderr = child.stderr.take().ok_or("lldb-dap sin stderr")?;
 
     let session = state.session.fetch_add(1, Ordering::SeqCst) + 1;
-    let log_dir = std::env::temp_dir().join("oxide-studio");
+    let log_dir = std::env::temp_dir().join("raxorin-studio");
     let _ = std::fs::create_dir_all(&log_dir);
     let trace_file: Trace = Arc::new(Mutex::new(File::create(log_dir.join("dap-trace.log")).ok()));
     trace(&trace_file, "##", &format!("sesión {session} · {}", adapter.display()));
@@ -311,7 +311,7 @@ fn create_stdin_fifo(state: &DapState) -> Result<Option<String>, String> {
     if !cfg!(unix) {
         return Ok(None);
     }
-    let dir = std::env::temp_dir().join("oxide-studio");
+    let dir = std::env::temp_dir().join("raxorin-studio");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("stdin-{}.fifo", std::process::id()));
     let _ = std::fs::remove_file(&path);
@@ -357,12 +357,12 @@ mod tests {
 
     /// Secuencia completa como la hace la app: FIFO → limpiar depurador previo → lanzar con
     /// la configuración del controlador → escribir entrada → leer salida → cerrar.
-    /// `OXIDE_DBG_STDIN_PROGRAM=/ruta/binario_que_lee_una_linea cargo test -- --ignored`
+    /// `RAXORIN_DBG_STDIN_PROGRAM=/ruta/binario_que_lee_una_linea cargo test -- --ignored`
     #[test]
     #[ignore]
     fn secuencia_de_la_app_con_entrada() {
-        let Ok(program) = std::env::var("OXIDE_DBG_STDIN_PROGRAM") else {
-            eprintln!("falta OXIDE_DBG_STDIN_PROGRAM; se omite");
+        let Ok(program) = std::env::var("RAXORIN_DBG_STDIN_PROGRAM") else {
+            eprintln!("falta RAXORIN_DBG_STDIN_PROGRAM; se omite");
             return;
         };
         let state = DapState::default();
@@ -420,16 +420,16 @@ mod tests {
     }
 
     /// Con tipos recursivos (Slint), mostrar variables no debe matar a lldb-dap.
-    /// `OXIDE_DBG_SLINT_PROGRAM=… OXIDE_DBG_SLINT_SOURCE=…/main.rs OXIDE_DBG_SLINT_LINE=9 cargo test -- --ignored`
+    /// `RAXORIN_DBG_SLINT_PROGRAM=… RAXORIN_DBG_SLINT_SOURCE=…/main.rs RAXORIN_DBG_SLINT_LINE=9 cargo test -- --ignored`
     #[test]
     #[ignore]
     fn variables_de_slint_no_matan_al_depurador() {
         let (Ok(program), Ok(source), Ok(line)) = (
-            std::env::var("OXIDE_DBG_SLINT_PROGRAM"),
-            std::env::var("OXIDE_DBG_SLINT_SOURCE"),
-            std::env::var("OXIDE_DBG_SLINT_LINE"),
+            std::env::var("RAXORIN_DBG_SLINT_PROGRAM"),
+            std::env::var("RAXORIN_DBG_SLINT_SOURCE"),
+            std::env::var("RAXORIN_DBG_SLINT_LINE"),
         ) else {
-            eprintln!("faltan variables OXIDE_DBG_SLINT_*; se omite");
+            eprintln!("faltan variables RAXORIN_DBG_SLINT_*; se omite");
             return;
         };
         let (fmt, guard) = (rust_formatters().expect("lldb_lookup.py"), formatter_guard().expect("guard"));
@@ -479,16 +479,16 @@ mod tests {
 
     /// Reproduce el fallo SIGTRAP: cerrar la sesión con el programa detenido en un
     /// breakpoint no debe dejarlo huérfano. Requiere lldb-dap y un programa que no termine:
-    /// `OXIDE_DBG_PROGRAM=/ruta/binario OXIDE_DBG_SOURCE=/ruta/main.rs OXIDE_DBG_LINE=4 cargo test -- --ignored`
+    /// `RAXORIN_DBG_PROGRAM=/ruta/binario RAXORIN_DBG_SOURCE=/ruta/main.rs RAXORIN_DBG_LINE=4 cargo test -- --ignored`
     #[test]
     #[ignore]
     fn cerrar_sesion_no_deja_huerfanos() {
         let (Ok(program), Ok(source), Ok(line)) = (
-            std::env::var("OXIDE_DBG_PROGRAM"),
-            std::env::var("OXIDE_DBG_SOURCE"),
-            std::env::var("OXIDE_DBG_LINE"),
+            std::env::var("RAXORIN_DBG_PROGRAM"),
+            std::env::var("RAXORIN_DBG_SOURCE"),
+            std::env::var("RAXORIN_DBG_LINE"),
         ) else {
-            eprintln!("faltan variables OXIDE_DBG_*; se omite");
+            eprintln!("faltan variables RAXORIN_DBG_*; se omite");
             return;
         };
         let adapter = find_adapter().expect("lldb-dap");
@@ -519,7 +519,7 @@ mod tests {
         let pid = pid.expect("PID del programa");
         assert!(alive(pid), "el programa debería estar vivo y detenido");
         // Peor caso (sesión recién iniciada): el backend aún no conoce el PID.
-        let known_pid = if std::env::var("OXIDE_DBG_UNKNOWN_PID").is_ok() { None } else { Some(pid) };
+        let known_pid = if std::env::var("RAXORIN_DBG_UNKNOWN_PID").is_ok() { None } else { Some(pid) };
         // Lo que hace dap_stop / dap_start / salir de la app:
         let reader_thread = thread::spawn(move || while read_message(&mut reader).is_some() {});
         drop(DapProc { child, stdin: Some(stdin), trace: Arc::new(Mutex::new(None)), debuggee: Arc::new(Mutex::new(known_pid)) });

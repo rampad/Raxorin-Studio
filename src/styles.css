@@ -467,15 +467,15 @@ code { font-family: var(--mono); font-size: 12px; background: var(--bg); padding
 .chip.cat { color: var(--info); }
 .readme-frame { width: 100%; border: none; min-height: 200px; background: transparent; }
 
-/* ---------- Marca Oxide Studio ---------- */
+/* ---------- Marca Raxorin Studio ---------- */
 .brand-name { font-weight: 600; color: var(--text-strong); letter-spacing: 0.2px; }
-.brand-oxide {
-  background: linear-gradient(120deg, #ffc07a 0%, #f26b2a 50%, #d2441f 100%);
+.brand-accent {
+  background: linear-gradient(120deg, #ff9a00 0%, #ff641c 34%, #f02d58 62%, #791bff 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.welcome-logo { filter: drop-shadow(0 6px 24px rgba(242, 107, 42, 0.35)); margin-bottom: 8px; }
+.welcome-logo { filter: drop-shadow(0 6px 24px rgba(240, 45, 88, 0.35)); margin-bottom: 8px; }
 .wordmark { font-weight: 300 !important; letter-spacing: 0.5px; }
-.wordmark .brand-oxide { font-weight: 600; }
+.wordmark .brand-accent { font-weight: 600; }
 
 /* =================== Diseñador Slint =================== */
 .view-switch { display: flex; align-items: center; gap: 12px; padding: 4px 10px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -785,3 +785,11 @@ textarea.prop-input { resize: vertical; min-height: 44px; font-family: var(--mon
 .var-edit { background: var(--input); color: var(--text-strong); border: 1px solid var(--accent); font: 12px var(--mono); padding: 0 4px; width: 120px; outline: none; user-select: text; -webkit-user-select: text; }
 .var-error .codicon { color: var(--error); font-size: 12px; }
 .thread-select { margin-left: auto; max-width: 160px; background: var(--input); color: var(--text); border: 1px solid var(--border); border-radius: 3px; font-size: 11px; padding: 1px 4px; text-transform: none; letter-spacing: 0; }
+
+/* Soluciones (.rxsln) */
+.tree-row.solution-row { font-weight: 600; color: var(--text-strong); }
+.tree-row.solution-row .codicon-layers { color: #f02d58; }
+.solution-row .solution-count { font-weight: normal; margin-left: 6px; }
+.solution-row .icon-btn { margin-left: auto; opacity: 0; padding: 0 3px; }
+.solution-row .icon-btn + .icon-btn { margin-left: 0; }
+.solution-row:hover .icon-btn { opacity: 1; }

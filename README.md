@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src/assets/brand/oxide-icon.svg" width="128" alt="Oxide Studio" />
+  <img src="src/assets/brand/raxorin-mark.svg" width="120" alt="Raxorin Studio" />
 </p>
 
-# Oxide Studio
+# Raxorin Studio
 
 IDE para crear programas en Rust de forma fácil, inspirada en Visual Studio.
 

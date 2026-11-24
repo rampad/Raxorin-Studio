@@ -54,7 +54,7 @@ export const CATEGORIES: Category[] = [
     title: "Ventanas e interfaces gráficas",
     icon: "window",
     items: [
-      { name: "slint", why: "Interfaces declarativas tipo XAML/WPF (lo usará el diseñador de Oxide Studio)." },
+      { name: "slint", why: "Interfaces declarativas tipo XAML/WPF (lo usará el diseñador de Raxorin Studio)." },
       { name: "eframe", why: "egui: interfaces inmediatas, muy fáciles para herramientas y prototipos." },
       { name: "rfd", why: "Diálogos nativos para abrir/guardar archivos." },
     ],

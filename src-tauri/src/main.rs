@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    oxide_studio_lib::run()
+    raxorin_studio_lib::run()
 }

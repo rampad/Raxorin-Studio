@@ -20,7 +20,7 @@ export interface BreakpointInfo {
 
 type Listener = () => void;
 
-const keyFor = (root: string) => `oxidestudio.breakpoints:${root}`;
+const keyFor = (root: string) => `raxorinstudio.breakpoints:${root}`;
 
 export class BreakpointStore {
   private files = new Map<string, BreakpointInfo[]>();

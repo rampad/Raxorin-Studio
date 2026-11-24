@@ -32,7 +32,7 @@ type Rect = { x: number; y: number; w: number; h: number };
 type DragKind = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 interface Drag { path: Path; kind: DragKind; startX: number; startY: number; start: Rect; rect: Rect; moved: boolean }
 
-const DRAG_TYPE = "application/x-oxide-widget";
+const DRAG_TYPE = "application/x-raxorin-widget";
 const GRID = 8;
 const samePath = (a: Path | null, b: Path | null) => !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]);
 const RESERVED = new Set(["root", "parent", "self", "true", "false"]);

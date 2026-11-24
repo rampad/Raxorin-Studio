@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ProjectInfo, Task } from "../api";
 import { relative } from "../util";
 import { Codicon, FileIcon } from "./Icon";
-import oxideMark from "../assets/brand/oxide-mark.svg";
+import raxorinMark from "../assets/brand/raxorin-mark.svg";
 
 interface Props {
   hasProject: boolean;
@@ -11,6 +11,7 @@ interface Props {
   canFormat: boolean;
   onNew: () => void;
   onOpen: () => void;
+  onOpenSolution: () => void;
   onSave: () => void;
   onFormat: () => void;
   onPackages: () => void;
@@ -81,11 +82,12 @@ export default function Toolbar(p: Props) {
   return (
     <div className="toolbar">
       <span className="brand">
-        <img src={oxideMark} height={18} alt="" />
-        <span className="brand-name"><span className="brand-oxide">Oxide</span> Studio</span>
+        <img src={raxorinMark} height={18} alt="" />
+        <span className="brand-name"><span className="brand-accent">Raxorin</span> Studio</span>
       </span>
       <Btn icon="new-file" label="Nuevo" title="Nuevo proyecto" onClick={p.onNew} />
       <Btn icon="folder-opened" label="Abrir" title="Abrir carpeta" onClick={p.onOpen} />
+      <Btn icon="layers" title="Abrir solución (.rxsln)" onClick={p.onOpenSolution} />
       <Btn icon="save" title="Guardar (Ctrl/⌘+S)" onClick={p.onSave} disabled={!p.canSave} />
       <Btn icon="wand" title="Formatear documento (Shift+Alt+F)" onClick={p.onFormat} disabled={!p.canFormat} />
       <Btn icon="package" label="Paquetes" title="Administrar paquetes (crates)" onClick={p.onPackages} disabled={!p.startup} />
