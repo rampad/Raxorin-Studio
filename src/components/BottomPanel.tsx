@@ -22,6 +22,8 @@ interface Props {
   consoleContent: ReactNode;
   breakpointsContent: ReactNode;
   breakpointCount: number;
+  height?: number;
+  onHide?: () => void;
 }
 
 export default function BottomPanel(p: Props) {
@@ -45,7 +47,7 @@ export default function BottomPanel(p: Props) {
   const warnings = p.diagnostics.filter((d) => d.level === "warning").length;
 
   return (
-    <div className="bottom-panel">
+    <div className="bottom-panel" style={{ height: p.height }}>
       <div className="panel-tabs">
         <button className={p.tab === "output" ? "active" : ""} onClick={() => p.setTab("output")}>
           <Codicon name="output" />
@@ -77,6 +79,9 @@ export default function BottomPanel(p: Props) {
         <div className="spacer" />
         {p.tab === "output" && (
           <button className="icon-btn" onClick={p.onClear} title="Limpiar salida"><Codicon name="clear-all" /></button>
+        )}
+        {p.onHide && (
+          <button className="icon-btn" onClick={p.onHide} title="Ocultar panel (Ctrl/⌘+J)"><Codicon name="chevron-down" /></button>
         )}
       </div>
 

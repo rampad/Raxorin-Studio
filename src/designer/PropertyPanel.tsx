@@ -20,6 +20,8 @@ interface Props {
   exposedName: (b: Bindable) => string | null;
   toggleExpose: (b: Bindable) => void;
   onDelete: () => void;
+  /** Contenido adicional al inicio de las propiedades (p. ej. "Agregar pestaña"). */
+  extra?: React.ReactNode;
 }
 
 const GROUPS = ["Diseño", "Contenido", "Apariencia", "Comportamiento"] as const;
@@ -55,6 +57,7 @@ export default function PropertyPanel(p: Props) {
 
         {def && tab === "props" && (
           <>
+            {p.extra}
             {GROUPS.map((g) => {
               const props = def.props.filter((x) => x.group === g);
               if (!props.length) return null;

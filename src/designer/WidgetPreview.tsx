@@ -127,6 +127,27 @@ export default function WidgetPreview({ el }: { el: Element }) {
           }}
         />
       );
+    case "Spinner": {
+      const indeterminate = bool(el, "indeterminate");
+      const pct = Math.min(1, Math.max(0, num(el, "progress", 0)));
+      return (
+        <div className="w-spinner" style={base}>
+          <svg viewBox="0 0 32 32" width="100%" height="100%">
+            <circle cx="16" cy="16" r="12" fill="none" stroke="#d6d6d6" strokeWidth="3" />
+            <circle cx="16" cy="16" r="12" fill="none" stroke="#0067c0" strokeWidth="3" strokeLinecap="round"
+              strokeDasharray={`${(indeterminate ? 0.3 : pct) * 75.4} 75.4`} transform="rotate(-90 16 16)" />
+          </svg>
+        </div>
+      );
+    }
+    case "ScrollView":
+      return (
+        <div className="w-scrollview">
+          <span className="w-scrollbar" />
+        </div>
+      );
+    case "Tab":
+      return <div />;
     case "Image": {
       const src = parseImage(getProp(el, "source"));
       return (

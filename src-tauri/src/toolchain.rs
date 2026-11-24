@@ -24,6 +24,15 @@ fn path_with_cargo() -> Option<std::ffi::OsString> {
     std::env::join_paths(std::iter::once(bin).chain(std::env::split_paths(&current))).ok()
 }
 
+/// Busca un programa en el PATH y en las carpetas habituales de Homebrew (que una app
+/// abierta desde Finder no tiene en su PATH).
+pub fn find_tool(name: &str) -> Option<PathBuf> {
+    let exe = if cfg!(windows) { format!("{name}.exe") } else { name.to_string() };
+    let mut dirs: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+    dirs.extend(["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"].map(PathBuf::from));
+    dirs.into_iter().map(|d| d.join(&exe)).find(|p| p.is_file())
+}
+
 /// Crea un `Command` sin ventana de consola extra en Windows y con `~/.cargo/bin` en el PATH.
 pub fn new_command(program: impl AsRef<OsStr>) -> Command {
     #[allow(unused_mut)]

@@ -413,6 +413,7 @@ mod tests {
             }
         }
         let _ = child.kill();
+        let _ = child.wait();
         state.shutdown();
         assert!(launched, "no se lanzó el programa");
         assert!(out.contains("Ana"), "el programa no recibió la entrada; salida: {out:?}");

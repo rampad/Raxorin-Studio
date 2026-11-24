@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "node tests/designer.test.ts"
+    "test": "node tests/designer.test.ts && node tests/layouts.test.ts && node tests/toolbar.test.ts && node tests/settings.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
@@ -27,5 +27,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.6.3",
     "vite": "^6.0.3"
-  }
+  },
+  "license": "MIT"
 }

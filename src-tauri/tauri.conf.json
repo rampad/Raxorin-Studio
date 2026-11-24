@@ -16,7 +16,8 @@
         "width": 1400,
         "height": 900,
         "minWidth": 900,
-        "minHeight": 600
+        "minHeight": 600,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -36,7 +37,7 @@
     "category": "DeveloperTool",
     "shortDescription": "IDE para crear programas en Rust de forma fácil",
     "longDescription": "Raxorin Studio es un entorno de desarrollo para Rust inspirado en Visual Studio: editor con autocompletado (rust-analyzer), diseñador visual de ventanas (Slint), depurador, gestor de paquetes y soluciones con varios proyectos.",
-    "copyright": "© 2026 Raxorin Studio",
+    "copyright": "© 2026 Benjamin · Licencia MIT",
     "fileAssociations": [
       {
         "ext": [
@@ -56,6 +57,8 @@
     ],
     "macOS": {
       "minimumSystemVersion": "11.0"
-    }
+    },
+    "license": "MIT",
+    "licenseFile": "../LICENSE"
   }
 }

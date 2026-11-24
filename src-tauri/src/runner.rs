@@ -7,7 +7,7 @@
 //! - `task-finished` TaskFinished      la tarea terminó
 
 use crate::toolchain::{cargo_bin, clippy_available, new_command};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -73,7 +73,21 @@ fn out(app: &AppHandle, text: impl Into<String>, kind: &'static str) {
     );
 }
 
-/// Inicia una tarea: "build", "check", "test" o "run".
+/// Opciones de "Publicar": compilar en Release y dejar el ejecutable listo para distribuir.
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishOptions {
+    /// Carpeta donde se crea `<nombre>-<versión>-<plataforma>/`.
+    pub out_dir: String,
+    /// Plataforma de destino (`--target`); None = la de esta computadora.
+    pub target: Option<String>,
+    /// Crear además un .zip de la carpeta.
+    pub zip: bool,
+    /// Mostrar el resultado en Finder/Explorador al terminar.
+    pub open: bool,
+}
+
+/// Inicia una tarea: "build", "check", "test", "run", "debug" o "publish".
 #[tauri::command]
 pub fn start_task(
     app: AppHandle,
@@ -81,6 +95,8 @@ pub fn start_task(
     project: String,
     task: String,
     external: Option<bool>,
+    release: Option<bool>,
+    publish: Option<PublishOptions>,
 ) -> Result<(), String> {
     let inner = state.0.clone();
     if inner.running.swap(true, SeqCst) {
@@ -89,13 +105,13 @@ pub fn start_task(
     inner.cancelled.store(false, SeqCst);
 
     thread::spawn(move || {
-        let result = run_task(
-            &app,
-            &inner,
-            Path::new(&project),
-            &task,
-            external.unwrap_or(false),
-        );
+        let opts = TaskOptions {
+            external: external.unwrap_or(false),
+            // Depurar siempre usa Debug (con símbolos); publicar siempre Release.
+            release: task == "publish" || (task != "debug" && release.unwrap_or(false)),
+            publish,
+        };
+        let result = run_task(&app, &inner, Path::new(&project), &task, &opts);
         let cancelled = inner.cancelled.load(SeqCst);
         let (success, code) = result.unwrap_or_else(|e| {
             out(&app, format!("✖ {e}\n"), "error");
@@ -140,15 +156,26 @@ pub fn send_stdin(state: State<'_, ProcState>, text: String) -> Result<(), Strin
         .map_err(|e| format!("No se pudo enviar la entrada: {e}"))
 }
 
+struct TaskOptions {
+    external: bool,
+    release: bool,
+    publish: Option<PublishOptions>,
+}
+
 fn run_task(
     app: &AppHandle,
     inner: &Arc<Inner>,
     project: &Path,
     task: &str,
-    external: bool,
+    opts: &TaskOptions,
 ) -> Result<(bool, Option<i32>), String> {
+    let external = opts.external;
+    if task == "setup-target" {
+        let target = opts.publish.as_ref().and_then(|p| p.target.clone()).ok_or("Falta la plataforma")?;
+        return setup_target(app, inner, &target);
+    }
     let sub = match task {
-        "build" | "run" | "debug" => "build",
+        "build" | "run" | "debug" | "publish" => "build",
         // "Revisar" usa Clippy (más sugerencias) si está instalado.
         "check" if clippy_available() => "clippy",
         "check" => "check",
@@ -157,13 +184,18 @@ fn run_task(
     };
 
     // 1) Compilar con salida JSON para obtener errores estructurados.
-    out(app, format!("> cargo {sub}\n"), "info");
+    let mut extra: Vec<String> = Vec::new();
+    if opts.release {
+        extra.push("--release".into());
+    }
+    let target = opts.publish.as_ref().and_then(|p| p.target.clone()).filter(|t| !t.is_empty());
+    if let Some(t) = &target {
+        extra.push("--target".into());
+        extra.push(t.clone());
+    }
+    out(app, format!("> cargo {sub}{}{}\n", if extra.is_empty() { "" } else { " " }, extra.join(" ")), "info");
     let start = Instant::now();
-    let mut cmd = new_command(cargo_bin());
-    cmd.arg(sub)
-        .arg("--message-format=json")
-        .current_dir(project)
-        .env("CARGO_TERM_COLOR", "never");
+    let cmd = cargo_command(project, sub, &extra, target.as_deref());
 
     let mut executable: Option<PathBuf> = None;
     let (mut errors, mut warnings) = (0u32, 0u32);
@@ -199,6 +231,17 @@ fn run_task(
         format!("✔ Compilación correcta: 0 errores, {warnings} advertencia(s) ({secs:.1}s)\n")
     };
     out(app, msg, "success");
+    if task == "publish" {
+        let opts = opts.publish.as_ref().ok_or("Faltan las opciones de publicación")?;
+        let exe = executable.ok_or(
+            "Este proyecto no genera un ejecutable (¿es una biblioteca?). Elige un proyecto de consola o de ventana.",
+        )?;
+        let result = publish_output(&|t, k| out(app, t, k), project, &exe, opts, target.as_deref())?;
+        if opts.open {
+            let _ = crate::fs_cmds::reveal_path(result.to_string_lossy().into_owned());
+        }
+        return Ok((true, Some(0)));
+    }
     if task != "run" && task != "debug" {
         return Ok((true, Some(0)));
     }
@@ -490,5 +533,332 @@ fn launch_in_terminal(project: &Path, exe: &Path) -> Result<(), String> {
             }
         }
         Err("No se encontró ninguna terminal (gnome-terminal, konsole, xterm…).".into())
+    }
+}
+
+/// Comando de cargo para compilar. Si se compila para otra plataforma, le indica el
+/// enlazador y pone sus herramientas en el PATH (una app abierta desde Finder no las ve).
+fn cargo_command(project: &Path, sub: &str, extra: &[String], target: Option<&str>) -> Command {
+    let mut cmd = new_command(cargo_bin());
+    cmd.arg(sub)
+        .args(extra)
+        .arg("--message-format=json")
+        .current_dir(project)
+        .env("CARGO_TERM_COLOR", "never");
+    if let Some(t) = target {
+        // Indicar a cargo el enlazador por ruta completa: una app abierta desde Finder no
+        // tiene /opt/homebrew/bin en el PATH.
+        if let Some(linker) = cross_linker(t).and_then(crate::toolchain::find_tool) {
+            cmd.env(format!("CARGO_TARGET_{}_LINKER", t.to_uppercase().replace(['-', '.'], "_")), &linker);
+            // rustc también usa otras herramientas de MinGW (dlltool) y las busca en el PATH.
+            if let Some(dir) = linker.parent() {
+                // Partir del PATH que ya tiene el comando (incluye ~/.cargo/bin).
+                let current = cmd
+                    .get_envs()
+                    .find(|(k, _)| *k == "PATH")
+                    .and_then(|(_, v)| v.map(|v| v.to_os_string()))
+                    .or_else(|| std::env::var_os("PATH"))
+                    .unwrap_or_default();
+                let paths = std::iter::once(dir.to_path_buf()).chain(std::env::split_paths(&current));
+                if let Ok(joined) = std::env::join_paths(paths) {
+                    cmd.env("PATH", joined);
+                }
+            }
+        }
+    }
+    cmd
+}
+
+// ---------- Publicar ----------
+
+/// Nombre y versión del paquete (de su Cargo.toml).
+fn package_info(project: &Path, exe: &Path) -> (String, Option<String>) {
+    let fallback = exe.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "programa".into());
+    let Ok(text) = std::fs::read_to_string(project.join("Cargo.toml")) else { return (fallback, None) };
+    let Ok(doc) = text.parse::<toml::Table>() else { return (fallback, None) };
+    let pkg = doc.get("package").and_then(|p| p.as_table());
+    let name = pkg.and_then(|p| p.get("name")).and_then(|v| v.as_str()).map(String::from).unwrap_or(fallback);
+    let version = pkg.and_then(|p| p.get("version")).and_then(|v| v.as_str()).map(String::from);
+    (name, version)
+}
+
+/// Etiqueta de la plataforma: el `--target` elegido o la de esta computadora.
+pub fn platform_label(target: Option<&str>) -> String {
+    match target {
+        Some(t) if t.contains("windows") => format!("windows-{}", t.split('-').next().unwrap_or("x86_64")),
+        Some(t) if t.contains("apple-darwin") => format!("macos-{}", t.split('-').next().unwrap_or("")),
+        Some(t) if t.contains("linux") => format!("linux-{}", t.split('-').next().unwrap_or("")),
+        Some(t) => t.to_string(),
+        None => {
+            format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
+        }
+    }
+}
+
+fn human_size(bytes: u64) -> String {
+    if bytes >= 1024 * 1024 {
+        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    } else {
+        format!("{} KB", (bytes / 1024).max(1))
+    }
+}
+
+/// Copia el ejecutable (y README/LICENSE si existen) a una carpeta lista para distribuir
+/// y, si se pidió, la comprime en .zip. Devuelve la ruta del resultado.
+fn publish_output(
+    log: &dyn Fn(String, &'static str),
+    project: &Path,
+    exe: &Path,
+    opts: &PublishOptions,
+    target: Option<&str>,
+) -> Result<PathBuf, String> {
+    let (name, version) = package_info(project, exe);
+    let folder_name = match &version {
+        Some(v) => format!("{name}-{v}-{}", platform_label(target)),
+        None => format!("{name}-{}", platform_label(target)),
+    };
+    let out_dir = PathBuf::from(&opts.out_dir);
+    let folder = out_dir.join(&folder_name);
+    if folder.exists() {
+        std::fs::remove_dir_all(&folder).map_err(|e| format!("No se pudo limpiar {}: {e}", folder.display()))?;
+    }
+    std::fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear {}: {e}", folder.display()))?;
+
+    let exe_name = exe.file_name().ok_or("Ejecutable sin nombre")?;
+    let dest = folder.join(exe_name);
+    std::fs::copy(exe, &dest).map_err(|e| format!("No se pudo copiar el ejecutable: {e}"))?;
+    let size = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+    log(format!("  {} ({})\n", exe_name.to_string_lossy(), human_size(size)), "muted");
+
+    // Archivos que conviene acompañar al ejecutable.
+    if let Ok(entries) = std::fs::read_dir(project) {
+        for e in entries.flatten() {
+            let n = e.file_name().to_string_lossy().to_uppercase();
+            let wanted = n.starts_with("README") || n.starts_with("LICENSE") || n.starts_with("LICENCIA");
+            if wanted && e.path().is_file() && std::fs::copy(e.path(), folder.join(e.file_name())).is_ok() {
+                log(format!("  {}\n", e.file_name().to_string_lossy()), "muted");
+            }
+        }
+    }
+
+    let mut result = folder.clone();
+    if opts.zip {
+        let zip = out_dir.join(format!("{folder_name}.zip"));
+        let _ = std::fs::remove_file(&zip);
+        make_zip(&out_dir, &folder_name, &zip)?;
+        let zsize = std::fs::metadata(&zip).map(|m| m.len()).unwrap_or(0);
+        log(format!("  {} ({})\n", zip.file_name().unwrap().to_string_lossy(), human_size(zsize)), "muted");
+        result = zip;
+    }
+    log(format!("✔ Publicado en {}\n", result.display()), "success");
+    Ok(result)
+}
+
+/// Comprime `dir/name` en `zip` con las herramientas del sistema
+/// (bsdtar en macOS y Windows 10+, `zip` en Linux).
+fn make_zip(dir: &Path, name: &str, zip: &Path) -> Result<(), String> {
+    let status = if cfg!(target_os = "linux") {
+        Command::new("zip").arg("-rq").arg(zip).arg(name).current_dir(dir).status()
+    } else {
+        Command::new("tar").arg("-a").arg("-c").arg("-f").arg(zip).arg(name).current_dir(dir).status()
+    };
+    match status {
+        Ok(s) if s.success() => Ok(()),
+        Ok(s) => Err(format!("No se pudo crear el .zip (código {:?})", s.code())),
+        Err(e) => Err(format!("No se pudo crear el .zip: {e}")),
+    }
+}
+
+/// Plataformas para las que se puede compilar: la de esta computadora y las instaladas con rustup.
+#[derive(Serialize)]
+pub struct RustTargets {
+    host: String,
+    installed: Vec<String>,
+}
+
+#[tauri::command]
+pub fn rust_targets() -> RustTargets {
+    let host = new_command(crate::toolchain::rustup_tool("rustc"))
+        .arg("-vV")
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .and_then(|s| s.lines().find_map(|l| l.strip_prefix("host: ").map(String::from)))
+        .unwrap_or_default();
+    let installed = new_command(crate::toolchain::rustup_tool("rustup"))
+        .args(["target", "list", "--installed"])
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect())
+        .unwrap_or_default();
+    RustTargets { host, installed }
+}
+
+// ---------- Compilar para otras plataformas ----------
+
+/// Enlazador que necesita una plataforma ajena (None = el de Rust alcanza).
+fn cross_linker(target: &str) -> Option<&'static str> {
+    match target {
+        "x86_64-pc-windows-gnu" => Some("x86_64-w64-mingw32-gcc"),
+        "i686-pc-windows-gnu" => Some("i686-w64-mingw32-gcc"),
+        _ => None,
+    }
+}
+
+fn target_installed(target: &str) -> bool {
+    new_command(crate::toolchain::rustup_tool("rustup"))
+        .args(["target", "list", "--installed"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).lines().any(|l| l.trim() == target))
+        .unwrap_or(false)
+}
+
+/// Qué tiene y qué le falta a esta computadora para compilar para `target`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CrossStatus {
+    target: String,
+    rust_target: bool,
+    linker: Option<String>,
+    linker_found: bool,
+    /// Se puede instalar lo que falta con un clic (rustup + Homebrew en macOS).
+    can_install: bool,
+    /// Instrucciones si hay que instalar algo a mano.
+    manual: Option<String>,
+}
+
+#[tauri::command]
+pub fn cross_status(target: String) -> CrossStatus {
+    let linker = cross_linker(&target);
+    let linker_found = linker.map(|l| crate::toolchain::find_tool(l).is_some()).unwrap_or(true);
+    let brew = crate::toolchain::find_tool("brew").is_some();
+    let manual = if linker_found {
+        None
+    } else if cfg!(target_os = "macos") && !brew {
+        Some("Instala Homebrew (https://brew.sh) y luego: brew install mingw-w64".into())
+    } else if cfg!(target_os = "linux") {
+        Some("Instala MinGW-w64 con tu gestor de paquetes, por ejemplo: sudo apt install mingw-w64".into())
+    } else {
+        None
+    };
+    CrossStatus {
+        rust_target: target_installed(&target),
+        linker: linker.map(String::from),
+        linker_found,
+        can_install: linker_found || (cfg!(target_os = "macos") && brew),
+        manual,
+        target,
+    }
+}
+
+/// Instala lo necesario para compilar para `target`: la plataforma de Rust y, en macOS, el enlazador.
+fn setup_target(app: &AppHandle, inner: &Arc<Inner>, target: &str) -> Result<(bool, Option<i32>), String> {
+    if !target_installed(target) {
+        out(app, format!("> rustup target add {target}\n"), "info");
+        let mut cmd = new_command(crate::toolchain::rustup_tool("rustup"));
+        cmd.args(["target", "add", target]);
+        let ok = run_child(app, inner, cmd, false, "muted", None, None)?.map(|s| s.success()).unwrap_or(false);
+        if !ok || inner.cancelled.load(SeqCst) {
+            out(app, "✖ No se pudo instalar la plataforma de Rust.\n", "error");
+            return Ok((false, None));
+        }
+    } else {
+        out(app, format!("✔ La plataforma {target} ya está instalada.\n"), "muted");
+    }
+    if let Some(linker) = cross_linker(target) {
+        if crate::toolchain::find_tool(linker).is_some() {
+            out(app, format!("✔ El enlazador {linker} ya está instalado.\n"), "muted");
+        } else if cfg!(target_os = "macos") {
+            let brew = crate::toolchain::find_tool("brew").ok_or("Falta Homebrew: instálalo desde https://brew.sh")?;
+            out(app, "> brew install mingw-w64   (puede tardar unos minutos)\n", "info");
+            let mut cmd = new_command(brew);
+            cmd.args(["install", "mingw-w64"]).env("HOMEBREW_NO_AUTO_UPDATE", "1");
+            let ok = run_child(app, inner, cmd, false, "muted", None, None)?.map(|s| s.success()).unwrap_or(false);
+            if !ok || inner.cancelled.load(SeqCst) {
+                out(app, "✖ No se pudo instalar MinGW-w64.\n", "error");
+                return Ok((false, None));
+            }
+        } else {
+            return Err("Instala MinGW-w64 con tu gestor de paquetes (por ejemplo: sudo apt install mingw-w64).".into());
+        }
+    }
+    out(app, "✔ Listo: ya puedes publicar para esta plataforma.\n", "success");
+    Ok((true, Some(0)))
+}
+
+#[cfg(test)]
+mod publish_tests {
+    use super::*;
+
+    #[test]
+    fn nombre_y_version_del_paquete() {
+        let dir = std::env::temp_dir().join(format!("raxorin-pub-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"mi_app\"\nversion = \"1.2.3\"\n").unwrap();
+        let (n, v) = package_info(&dir, Path::new("/x/mi_app"));
+        assert_eq!((n.as_str(), v.as_deref()), ("mi_app", Some("1.2.3")));
+        // version.workspace = true: sin versión, pero con nombre.
+        std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"otra\"\nversion.workspace = true\n").unwrap();
+        assert_eq!(package_info(&dir, Path::new("/x/otra")), ("otra".into(), None));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn etiqueta_de_plataforma() {
+        assert_eq!(platform_label(Some("x86_64-pc-windows-gnu")), "windows-x86_64");
+        assert_eq!(platform_label(Some("wasm32-unknown-unknown")), "wasm32-unknown-unknown");
+        assert!(platform_label(None).contains(std::env::consts::ARCH));
+    }
+
+    #[test]
+    fn publica_carpeta_y_zip() {
+        let dir = std::env::temp_dir().join(format!("raxorin-pubfull-{}", std::process::id()));
+        let proj = dir.join("proyecto");
+        std::fs::create_dir_all(proj.join("target/release")).unwrap();
+        std::fs::write(proj.join("Cargo.toml"), "[package]\nname = \"mi_app\"\nversion = \"0.3.0\"\n").unwrap();
+        std::fs::write(proj.join("README.md"), "# Mi app").unwrap();
+        std::fs::write(proj.join("notas.txt"), "no se copia").unwrap();
+        let exe = proj.join("target/release/mi_app");
+        std::fs::write(&exe, b"binario").unwrap();
+        let opts = PublishOptions { out_dir: dir.join("salida").to_string_lossy().into(), target: None, zip: true, open: false };
+        let lines = std::cell::RefCell::new(Vec::new());
+        let res = publish_output(&|t, _| lines.borrow_mut().push(t), &proj, &exe, &opts, None).unwrap();
+        let folder = dir.join("salida").join(format!("mi_app-0.3.0-{}", platform_label(None)));
+        assert_eq!(std::fs::read(folder.join("mi_app")).unwrap(), b"binario");
+        assert!(folder.join("README.md").exists(), "copia el README");
+        assert!(!folder.join("notas.txt").exists(), "no copia otros archivos");
+        assert_eq!(res.extension().unwrap(), "zip");
+        assert_eq!(&std::fs::read(&res).unwrap()[..2], b"PK");
+        assert!(lines.borrow().last().unwrap().contains("Publicado"));
+        // Publicar de nuevo reemplaza la carpeta anterior sin fallar.
+        publish_output(&|_, _| {}, &proj, &exe, &opts, None).unwrap();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Compila de verdad para Windows (necesita la plataforma y MinGW-w64 instalados):
+    /// RAXORIN_WIN_PROJECT=/ruta/a/proyecto cargo test --lib -- --ignored compila_para_windows
+    #[test]
+    #[ignore]
+    fn compila_para_windows() {
+        let project = std::env::var("RAXORIN_WIN_PROJECT").expect("RAXORIN_WIN_PROJECT");
+        let mut cmd = cargo_command(Path::new(&project), "build", &["--release".into(), "--target".into(), "x86_64-pc-windows-gnu".into()], Some("x86_64-pc-windows-gnu"));
+        // Simular una app abierta desde Finder: sin Homebrew en el PATH del proceso.
+        let path = cmd.get_envs().find(|(k, _)| *k == "PATH").and_then(|(_, v)| v.map(|v| v.to_string_lossy().into_owned())).unwrap_or_default();
+        assert!(path.starts_with("/opt/homebrew/bin") || path.contains("mingw"), "PATH sin MinGW: {path}");
+        let status = cmd.env("CARGO_TERM_COLOR", "never").stdout(Stdio::null()).status().unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn crea_zip() {
+        let dir = std::env::temp_dir().join(format!("raxorin-zip-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("app-1.0")).unwrap();
+        std::fs::write(dir.join("app-1.0/app"), b"hola").unwrap();
+        let zip = dir.join("app-1.0.zip");
+        make_zip(&dir, "app-1.0", &zip).unwrap();
+        let bytes = std::fs::read(&zip).unwrap();
+        assert_eq!(&bytes[..2], b"PK", "debe ser un .zip");
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

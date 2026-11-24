@@ -14,6 +14,7 @@ import {
   type ToolchainStatus,
   type DebuggerInfo,
   type SolutionInfo,
+  type PublishOptions,
 } from "./api";
 import Toolbar from "./components/Toolbar";
 import Explorer, { type FileProblems, type SolutionAction } from "./components/Explorer";
@@ -37,9 +38,37 @@ import DebugConsole, { type ConsoleEntry } from "./debug/DebugConsole";
 import type * as L from "./lsp/types";
 import { basename, dirname, isInside, joinPath, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
+import Splitter from "./components/Splitter";
+import ToolbarCustomize from "./components/ToolbarCustomize";
+import PublishDialog from "./components/PublishDialog";
+import { useGit } from "./git/useGit";
+import GitPanel, { githubUrl, type GitIntent } from "./git/GitPanel";
+import DiffView, { type DiffRequest } from "./git/DiffView";
+import { CloneDialog, PublishGitHubDialog } from "./git/GitDialogs";
+import { homeDir } from "@tauri-apps/api/path";
+import MenuBar, { type Menu } from "./components/MenuBar";
+import SettingsDialog from "./components/SettingsDialog";
+import AboutDialog, { GITHUB_URL } from "./components/AboutDialog";
+import { getSettings, useSettings } from "./settings";
+import { resetLayout } from "./layout";
+import { setThemePref, useTheme } from "./theme";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { PANELS, usePanelSize, usePanelVisible } from "./layout";
 import raxorinMark from "./assets/brand/raxorin-mark.svg";
 
 const LAST_PROJECT_KEY = "raxorinstudio.lastProject";
+const RECENT_KEY = "raxorinstudio.recent";
+
+/** Carpetas y soluciones abiertas recientemente (la más nueva primero). */
+function readRecent(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, 10) : [];
+  } catch {
+    return [];
+  }
+}
 const RUN_EXTERNAL_KEY = "raxorinstudio.runExternal";
 const startupKey = (root: string) => `raxorinstudio.startup:${root}`;
 const MAX_CHUNKS = 5000;
@@ -50,6 +79,8 @@ const TASK_LABEL: Record<Task, string> = {
   test: "Ejecutando pruebas…",
   run: "Ejecutando…",
   debug: "Compilando para depurar…",
+  publish: "Publicando (Release)…",
+  "setup-target": "Instalando soporte de plataforma…",
 };
 
 const uriOf = (path: string) => monaco.Uri.file(path).toString();
@@ -99,6 +130,35 @@ export default function App() {
   const [lspDiagnostics, setLspDiagnostics] = useState<Record<string, Diagnostic[]>>({});
   const [running, setRunning] = useState<Task | null>(null);
   const [bottomTab, setBottomTab] = useState<BottomTab>("output");
+  // Paneles redimensionables y que se pueden ocultar (se recuerdan entre sesiones).
+  const sidebarSize = usePanelSize(PANELS.sidebar);
+  const bottomSize = usePanelSize(PANELS.bottom);
+  const diagSize = usePanelSize(PANELS.diagnostics);
+  const [sidebarVisible, setSidebarVisible] = usePanelVisible("sidebar");
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  // Configuración de compilación (como Debug/Release de Visual Studio). Depurar siempre usa Debug.
+  const [buildConfig, setBuildConfigState] = useState<"debug" | "release">(() => {
+    try {
+      return localStorage.getItem("raxorinstudio.buildConfig") === "release" ? "release" : "debug";
+    } catch {
+      return "debug";
+    }
+  });
+  const setBuildConfig = useCallback((c: "debug" | "release") => {
+    setBuildConfigState(c);
+    try {
+      localStorage.setItem("raxorinstudio.buildConfig", c);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [recent, setRecent] = useState<string[]>(readRecent);
+  const settings = useSettings();
+  const { pref: themePref } = useTheme();
+  const [bottomVisible, setBottomVisible] = usePanelVisible("bottom");
   const [showNew, setShowNew] = useState(false);
   const [packagesFor, setPackagesFor] = useState<string | null>(null);
   const [referenceFor, setReferenceFor] = useState<string | null>(null);
@@ -195,6 +255,42 @@ export default function App() {
   const log = useCallback(
     (text: string, kind: OutputChunk["kind"] = "info") => append({ text: text + "\n", kind }),
     [append],
+  );
+
+  // ---------- Git ----------
+  const git = useGit(roots, log, solution?.dir ?? project, !!solution);
+  const [sideView, setSideViewState] = useState<"explorer" | "git">(() => {
+    try {
+      return localStorage.getItem("raxorinstudio.sideView") === "git" ? "git" : "explorer";
+    } catch {
+      return "explorer";
+    }
+  });
+  const setSideView = useCallback((v: "explorer" | "git") => {
+    setSideViewState(v);
+    try {
+      localStorage.setItem("raxorinstudio.sideView", v);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, []);
+  const [gitIntent, setGitIntent] = useState<GitIntent>(null);
+  const [diffReq, setDiffReq] = useState<DiffRequest | null>(null);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [ghPublishOpen, setGhPublishOpen] = useState(false);
+  const [homeProjects, setHomeProjects] = useState("");
+  useEffect(() => {
+    homeDir().then((h) => join(h, "RustProjects")).then(setHomeProjects).catch(() => {});
+  }, []);
+  /** Abre el panel Git (y una acción en él: escribir el commit, crear rama…). */
+  const showGit = useCallback(
+    (intent: GitIntent = null) => {
+      setSidebarVisible(true);
+      setSideView("git");
+      setGitIntent(intent);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setSideView],
   );
 
   // ---------- Eventos del backend (compilación) ----------
@@ -344,6 +440,15 @@ export default function App() {
     } catch {
       /* almacenamiento no disponible */
     }
+    setRecent((r) => {
+      const next = [key, ...r.filter((x) => x !== key)].slice(0, 10);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch {
+        /* almacenamiento no disponible */
+      }
+      return next;
+    });
   }, []);
 
   /** Abre una solución .rxsln con todos sus proyectos. */
@@ -999,7 +1104,7 @@ export default function App() {
 
   // ---------- Compilar / ejecutar ----------
   const runTask = useCallback(
-    async (task: Task) => {
+    async (task: Task, publish?: { dir: string; opts: PublishOptions }) => {
       if (!project) {
         log("Abre o crea un proyecto primero.", "warning");
         return;
@@ -1022,20 +1127,23 @@ export default function App() {
       setBuildDiagnostics([]);
       setBottomTab("output");
       setRunning(task);
-      if (projects.length > 1) log(`Proyecto: ${startupProject.name}`, "muted");
+      const target = publish ? projects.find((p) => p.dir === publish.dir) ?? startupProject : startupProject;
+      if (projects.length > 1 || publish) log(`Proyecto: ${target.name}`, "muted");
+      if (task === "publish") log("Publicando en modo Release (optimizado)…", "muted");
+      else if (buildConfig === "release" && task !== "debug") log("Configuración: Release (optimizado)", "muted");
       // Como en Visual Studio, "sin depurar" no se detiene en los puntos: avisarlo.
       const bps = bpStore.all().filter((b) => b.enabled && isInside(b.path, startupProject.dir)).length;
       if (task === "run" && bps > 0) {
         log(`Aviso: tienes ${bps} punto(s) de interrupción, pero “Sin depurar” los ignora. Para que se detenga usa ▶ Depurar (F5).`, "warning");
       }
       try {
-        await api.startTask(startupProject.dir, task, task === "run" && runExternal);
+        await api.startTask(target.dir, task, task === "run" && runExternal, buildConfig === "release", publish?.opts ?? null);
       } catch (err) {
         setRunning(null);
         log(String(err), "error");
       }
     },
-    [project, startupProject, projects.length, running, saveAll, log, runExternal, debugActive, bpStore],
+    [project, startupProject, projects, running, saveAll, log, runExternal, debugActive, bpStore, buildConfig],
   );
 
   const changeRunMode = useCallback((external: boolean) => {
@@ -1084,9 +1192,341 @@ export default function App() {
     editorRef.current?.getAction("editor.action.formatDocument")?.run();
   }, []);
 
+  // Al compilar, ejecutar o depurar, mostrar el panel inferior si estaba oculto.
+  useEffect(() => {
+    if (running || debugActive) setBottomVisible(true);
+  }, [running, debugActive, setBottomVisible]);
+
+  // ---------- Archivo: nuevo, abrir, guardar como, cerrar ----------
+
+  const curTab = tabs.find((t) => t.path === active) ?? null;
+
+  /** Si hay cambios sin guardar, ofrece guardarlos antes de cerrar o cambiar de carpeta. */
+  const offerSaveAll = useCallback(async () => {
+    const dirty = tabsRef.current.filter((t) => t.content !== t.saved);
+    if (!dirty.length) return;
+    const yes = await ask(
+      dirty.length === 1
+        ? `“${dirty[0].name}” tiene cambios sin guardar. ¿Guardarlos?`
+        : `Hay ${dirty.length} archivos con cambios sin guardar. ¿Guardarlos?`,
+      { title: "Cambios sin guardar", kind: "warning", okLabel: "Guardar", cancelLabel: "No guardar" },
+    );
+    if (yes) await saveAll();
+  }, [saveAll]);
+
+  /** Carpeta donde proponer un archivo nuevo: la del archivo activo o src del proyecto de inicio. */
+  const suggestDir = useCallback(async () => {
+    if (active) return dirname(active);
+    if (startupProject) return join(startupProject.dir, "src");
+    return project ?? undefined;
+  }, [active, startupProject, project]);
+
+  const newFile = useCallback(async () => {
+    const dir = await suggestDir();
+    const path = await save({ title: "Nuevo archivo", defaultPath: dir ? await join(dir, "nuevo.rs") : "nuevo.rs" });
+    if (!path) return;
+    try {
+      await api.createFile(path);
+      await openFile(path);
+      log(`Archivo creado: ${path}`, "success");
+    } catch (e) {
+      log(String(e), "error");
+    }
+  }, [suggestDir, openFile, log]);
+
+  const openFileDialog = useCallback(async () => {
+    const picked = await open({ title: "Abrir archivo", multiple: true, defaultPath: (await suggestDir()) ?? undefined });
+    const files = Array.isArray(picked) ? picked : picked ? [picked] : [];
+    for (const f of files) {
+      if (f.endsWith(".rxsln")) await askOpenSolution(f);
+      else await openFile(f);
+    }
+  }, [suggestDir, openFile, askOpenSolution]);
+
+  /** Guardar como: escribe el archivo nuevo y la pestaña pasa a ser la del archivo nuevo (como en Visual Studio). */
+  const saveAs = useCallback(async () => {
+    const tab = tabsRef.current.find((t) => t.path === active);
+    if (!tab) return;
+    const target = await save({ title: "Guardar como", defaultPath: tab.path });
+    if (!target) return;
+    if (target === tab.path) return saveTab(tab).catch(() => {});
+    const content = monaco.editor.getModel(monaco.Uri.file(tab.path))?.getValue() ?? tab.content;
+    try {
+      await api.writeFile(target, content);
+    } catch (e) {
+      return log(String(e), "error");
+    }
+    // Si el destino ya estaba abierto, se reemplaza por el contenido nuevo.
+    const drop = [tab.path, target];
+    const remaining = tabsRef.current.filter((t) => !drop.includes(t.path));
+    tabsRef.current = remaining;
+    setTabs(remaining);
+    for (const p of drop) monaco.editor.getModel(monaco.Uri.file(p))?.dispose();
+    await openFile(target);
+    log(`Guardado como: ${target}`, "success");
+  }, [active, saveTab, openFile, log]);
+
+  const closeAllTabs = useCallback(async () => {
+    await offerSaveAll();
+    for (const t of tabsRef.current) monaco.editor.getModel(monaco.Uri.file(t.path))?.dispose();
+    tabsRef.current = [];
+    setTabs([]);
+    setActive(null);
+  }, [offerSaveAll]);
+
+  /** Cierra la carpeta o solución y vuelve a la pantalla de bienvenida. */
+  const closeWorkspace = useCallback(async () => {
+    if (!project) return;
+    await offerSaveAll();
+    resetWorkspace("");
+    try {
+      localStorage.removeItem(LAST_PROJECT_KEY);
+    } catch {
+      /* sin almacenamiento */
+    }
+    solutionRef.current = null;
+    setSolution(null);
+    setProject(null);
+    setProjects([]);
+    setStartupDir(null);
+    log("Carpeta cerrada.", "muted");
+  }, [project, offerSaveAll, resetWorkspace, log]);
+
+  const openRecent = useCallback(
+    async (path: string) => {
+      await offerSaveAll();
+      (path.endsWith(".rxsln") ? openSolution(path) : openProject(path)).catch((e) => {
+        log(`No se pudo abrir ${path}: ${e}`, "error");
+        setRecent((r) => r.filter((x) => x !== path));
+      });
+    },
+    [offerSaveAll, openSolution, openProject, log],
+  );
+
+  const clearRecent = useCallback(() => {
+    setRecent([]);
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, []);
+
+  /** Ejecuta una acción del editor de Monaco (deshacer, buscar…). */
+  const editorAction = (id: string) => () => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.focus();
+    if (id === "undo" || id === "redo") ed.trigger("menu", id, null);
+    else ed.getAction(id)?.run();
+  };
+
+  // Guardar: si está activado, formatear antes con rustfmt.
+  const saveCurrent = useCallback(async () => {
+    const t = tabsRef.current.find((x) => x.path === active);
+    if (!t) return;
+    const ed = editorRef.current;
+    if (getSettings().formatOnSave && lspReady && t.path.endsWith(".rs") && ed?.getModel()?.uri.toString() === monaco.Uri.file(t.path).toString()) {
+      await ed.getAction("editor.action.formatDocument")?.run().catch(() => {});
+      const content = ed.getModel()!.getValue();
+      return saveTab({ ...t, content }).catch(() => {});
+    }
+    if (t.content !== t.saved) await saveTab(t).catch(() => {});
+  }, [active, lspReady, saveTab]);
+
+  // Guardado automático: un segundo después del último cambio.
+  useEffect(() => {
+    if (!settings.autoSave || !tabs.some((t) => t.content !== t.saved)) return;
+    const id = setTimeout(() => {
+      for (const t of tabsRef.current) if (t.content !== t.saved) saveTab(t).catch(() => {});
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [tabs, settings.autoSave, saveTab]);
+
+  // Avisar al cerrar la ventana con archivos sin guardar.
+  useEffect(() => {
+    const un = getCurrentWindow().onCloseRequested(async (e) => {
+      const dirty = tabsRef.current.filter((t) => t.content !== t.saved);
+      if (!dirty.length || !getSettings().confirmUnsaved) return;
+      e.preventDefault();
+      const yes = await ask(
+        `Hay ${dirty.length === 1 ? `cambios sin guardar en “${dirty[0].name}”` : `${dirty.length} archivos sin guardar`}. ¿Guardar antes de salir?`,
+        { title: "Salir de Raxorin Studio", kind: "warning", okLabel: "Guardar y salir", cancelLabel: "Salir sin guardar" },
+      );
+      if (yes) {
+        for (const t of tabsRef.current) if (t.content !== t.saved) await saveTab(t).catch(() => {});
+      }
+      await getCurrentWindow().destroy();
+    });
+    return () => {
+      un.then((f) => f());
+    };
+  }, [saveTab]);
+
+  const recentLabel = (p: string) => (p.endsWith(".rxsln") ? basename(p).replace(/\.rxsln$/, "") : basename(p));
+  const noTask = !project || running !== null || !startupProject;
+  const hasEditor = !!curTab;
+
+  const menus: Menu[] = [
+    {
+      label: "Archivo",
+      items: [
+        { label: "Nuevo proyecto o solución…", icon: "new-folder", shortcut: "Mod+Shift+N", onClick: () => setShowNew(true) },
+        { label: "Nuevo archivo…", icon: "new-file", shortcut: "Mod+N", onClick: newFile, disabled: !project },
+        "sep",
+        { label: "Abrir archivo…", icon: "go-to-file", shortcut: "Mod+O", onClick: openFileDialog },
+        { label: "Abrir carpeta…", icon: "folder-opened", onClick: () => void offerSaveAll().then(openFolder) },
+        { label: "Abrir solución…", icon: "layers", onClick: () => void offerSaveAll().then(openSolutionDialog) },
+        {
+          label: "Abrir reciente",
+          icon: "history",
+          submenu: recent.length
+            ? [
+                ...recent.map((p) => ({
+                  label: recentLabel(p),
+                  icon: p.endsWith(".rxsln") ? "layers" : "folder",
+                  hint: dirname(p),
+                  onClick: () => void openRecent(p),
+                })),
+                "sep" as const,
+                { label: "Borrar la lista", icon: "clear-all", onClick: clearRecent },
+              ]
+            : [],
+        },
+        "sep",
+        { label: "Guardar", icon: "save", shortcut: "Mod+S", onClick: saveCurrent, disabled: !curTab || (curTab.content === curTab.saved && !settings.formatOnSave) },
+        { label: "Guardar como…", icon: "save-as", shortcut: "Mod+Shift+S", onClick: saveAs, disabled: !curTab },
+        { label: "Guardar todo", icon: "save-all", shortcut: "Mod+Alt+S", onClick: () => void saveAll(), disabled: !tabs.some((t) => t.content !== t.saved) },
+        "sep",
+        { label: "Cerrar pestaña", icon: "close", onClick: () => active && void closeTab(active), disabled: !curTab },
+        { label: "Cerrar todas las pestañas", icon: "close-all", onClick: () => void closeAllTabs(), disabled: !tabs.length },
+        { label: solution ? "Cerrar solución" : "Cerrar carpeta", icon: "folder", onClick: () => void closeWorkspace(), disabled: !project },
+        "sep",
+        { label: "Configuración…", icon: "settings-gear", shortcut: "Mod+,", onClick: () => setSettingsOpen(true) },
+        { label: "Salir", icon: "sign-out", onClick: () => void getCurrentWindow().close() },
+      ],
+    },
+    {
+      label: "Editar",
+      items: [
+        { label: "Deshacer", icon: "discard", shortcut: "Mod+Z", onClick: editorAction("undo"), disabled: !hasEditor },
+        { label: "Rehacer", icon: "redo", shortcut: "Mod+Shift+Z", onClick: editorAction("redo"), disabled: !hasEditor },
+        "sep",
+        { label: "Buscar", icon: "search", shortcut: "Mod+F", onClick: editorAction("actions.find"), disabled: !hasEditor },
+        { label: "Reemplazar", icon: "replace", onClick: editorAction("editor.action.startFindReplaceAction"), disabled: !hasEditor },
+        { label: "Ir a la línea…", icon: "go-to-file", shortcut: "Ctrl+G", onClick: editorAction("editor.action.gotoLine"), disabled: !hasEditor },
+        "sep",
+        { label: "Comentar / descomentar línea", icon: "comment", shortcut: "Mod+/", onClick: editorAction("editor.action.commentLine"), disabled: !hasEditor },
+        { label: "Formatear documento", icon: "wand", shortcut: "Shift+Alt+F", onClick: format, disabled: !curTab || !lspReady || !curTab.path.endsWith(".rs") },
+      ],
+    },
+    {
+      label: "Ver",
+      items: [
+        { label: "Explorador", checked: sidebarVisible, shortcut: "Mod+B", onClick: () => setSidebarVisible((v) => !v) },
+        { label: "Panel inferior", checked: bottomVisible, shortcut: "Mod+J", onClick: () => setBottomVisible((v) => !v) },
+        { label: "Herramientas de diagnóstico", checked: diagOpen, onClick: () => setDiagOpen((o) => !o) },
+        "sep",
+        { label: "Salida", icon: "output", onClick: () => { setBottomVisible(true); setBottomTab("output"); } },
+        { label: "Lista de errores", icon: "list-unordered", onClick: () => { setBottomVisible(true); setBottomTab("errors"); } },
+        { label: "Puntos de interrupción", icon: "circle-filled", onClick: () => { setBottomVisible(true); setBottomTab("breakpoints"); } },
+        "sep",
+        {
+          label: "Tema",
+          icon: "color-mode",
+          submenu: [
+            { label: "Oscuro", checked: themePref === "dark", onClick: () => setThemePref("dark") },
+            { label: "Claro", checked: themePref === "light", onClick: () => setThemePref("light") },
+            { label: "Según el sistema", checked: themePref === "system", onClick: () => setThemePref("system") },
+          ],
+        },
+        { label: "Personalizar barra de herramientas…", icon: "settings", onClick: () => setCustomizeOpen(true) },
+        { label: "Restablecer tamaños de los paneles", icon: "discard", onClick: resetLayout },
+      ],
+    },
+    {
+      label: "Proyecto",
+      items: [
+        { label: "Compilar", icon: "tools", shortcut: "Mod+Shift+B", onClick: () => runTask("build"), disabled: noTask },
+        { label: "Revisar con Clippy", icon: "check-all", onClick: () => runTask("check"), disabled: noTask },
+        { label: "Ejecutar pruebas", icon: "beaker", onClick: () => runTask("test"), disabled: noTask },
+        { label: "Ejecutar sin depurar", icon: "play-circle", shortcut: "Mod+F5", onClick: () => runTask("run"), disabled: noTask },
+        { label: "Detener", icon: "debug-stop", shortcut: "Shift+F5", onClick: stop, disabled: running === null },
+        "sep",
+        {
+          label: "Configuración",
+          icon: "settings",
+          submenu: [
+            { label: "Debug (rápido de compilar, para probar)", checked: buildConfig === "debug", onClick: () => setBuildConfig("debug") },
+            { label: "Release (optimizado, para entregar)", checked: buildConfig === "release", onClick: () => setBuildConfig("release") },
+          ],
+        },
+        { label: "Publicar…", icon: "package", onClick: () => setPublishOpen(true), disabled: !project || running !== null || !projects.some((p) => p.kind === "bin") },
+        "sep",
+        { label: "Administrar paquetes…", icon: "package", onClick: () => startupDir && setPackagesFor(startupDir), disabled: !startupProject },
+        {
+          label: "Proyecto de inicio",
+          icon: "rocket",
+          submenu: projects.map((p) => ({ label: p.name, checked: p.dir === startupDir, onClick: () => setStartup(p.dir) })),
+        },
+      ],
+    },
+    {
+      label: "Depurar",
+      items: [
+        { label: debugActive ? "Continuar" : "Iniciar depuración", icon: "debug-start", shortcut: "F5", onClick: () => (debugActive ? debug.continue() : void startDebug()), disabled: !debugActive && (noTask || startupProject?.kind !== "bin") },
+        { label: "Detener depuración", icon: "debug-stop", shortcut: "Shift+F5", onClick: () => void debug.stop(), disabled: !debugActive },
+        { label: "Reiniciar", icon: "debug-restart", shortcut: "Mod+Shift+F5", onClick: () => void debug.restart(), disabled: !debugActive },
+        "sep",
+        { label: "Paso a paso por procedimientos", icon: "debug-step-over", shortcut: "F10", onClick: debug.stepOver, disabled: debugSnap.status !== "stopped" },
+        { label: "Paso a paso por instrucciones", icon: "debug-step-into", shortcut: "F11", onClick: debug.stepInto, disabled: debugSnap.status !== "stopped" },
+        { label: "Paso a paso para salir", icon: "debug-step-out", shortcut: "Shift+F11", onClick: debug.stepOut, disabled: debugSnap.status !== "stopped" },
+        "sep",
+        { label: "Alternar punto de interrupción", icon: "circle-filled", shortcut: "F9", onClick: toggleBreakpointAtCursor, disabled: !curTab?.path.endsWith(".rs") },
+        { label: "Nuevo punto de interrupción…", icon: "add", onClick: () => { const loc = cursorLocation(); setBpDraft({ path: loc?.path ?? "", line: loc?.line ?? 1 }); }, disabled: !project },
+      ],
+    },
+    {
+      label: "Git",
+      items: git.status?.repo
+        ? [
+            { label: "Confirmar cambios (commit)…", icon: "check", shortcut: "Mod+Shift+G", onClick: () => showGit("commit") },
+            "sep",
+            { label: "Pull (bajar cambios)", icon: "arrow-down", onClick: () => void git.ops.pull(), disabled: !git.status.remotes.length || !!git.busy },
+            { label: "Push (subir commits)", icon: "arrow-up", onClick: () => void git.ops.push(), disabled: !git.status.remotes.length || !git.status.hasCommits || !!git.busy },
+            { label: "Fetch (traer sin combinar)", icon: "cloud-download", onClick: () => void git.ops.fetch(), disabled: !git.status.remotes.length || !!git.busy },
+            "sep",
+            { label: "Nueva rama…", icon: "git-branch", onClick: () => showGit("new-branch"), disabled: !git.status.hasCommits },
+            { label: "Cambiar de rama…", icon: "git-compare", onClick: () => showGit("branches") },
+            "sep",
+            { label: "Guardar cambios temporalmente (stash)", icon: "archive", onClick: () => void git.ops.stash(false), disabled: !git.status.files.length },
+            { label: "Recuperar cambios guardados", icon: "unarchive", onClick: () => void git.ops.stash(true) },
+            "sep",
+            githubUrl(git.status.remotes[0]?.url)
+              ? { label: "Abrir en GitHub", icon: "github", onClick: () => void openUrl(githubUrl(git.status!.remotes.find((r) => r.name === "origin")?.url ?? git.status!.remotes[0].url)!) }
+              : { label: "Publicar en GitHub…", icon: "cloud-upload", onClick: () => setGhPublishOpen(true), disabled: !git.status.hasCommits || git.status.remotes.length > 0 },
+            { label: "Clonar repositorio…", icon: "repo-clone", onClick: () => setCloneOpen(true) },
+          ]
+        : [
+            { label: "Inicializar repositorio", icon: "repo", onClick: () => git.untrackedRoots[0] && void git.ops.init(git.untrackedRoots[0]), disabled: !git.untrackedRoots.length },
+            { label: "Clonar repositorio…", icon: "repo-clone", onClick: () => setCloneOpen(true) },
+          ],
+    },
+    {
+      label: "Ayuda",
+      items: [
+        { label: "Repositorio en GitHub", icon: "github", onClick: () => void openUrl(GITHUB_URL) },
+        { label: "Reportar un problema", icon: "bug", onClick: () => void openUrl(GITHUB_URL + "/issues/new") },
+        { label: "Licencia (MIT)", icon: "law", onClick: () => setAboutOpen(true) },
+        "sep",
+        { label: "Acerca de Raxorin Studio", icon: "info", onClick: () => setAboutOpen(true) },
+      ],
+    },
+  ];
+
   // ---------- Atajos de teclado ----------
-  const actions = useRef({ runTask, saveActive, stop, startDebug, toggleBreakpointAtCursor, cursorLocation, openBreakpointDialog });
-  actions.current = { runTask, saveActive, stop, startDebug, toggleBreakpointAtCursor, cursorLocation, openBreakpointDialog };
+  const actions = useRef({ runTask, saveActive: saveCurrent, stop, startDebug, toggleBreakpointAtCursor, cursorLocation, openBreakpointDialog, newFile, openFileDialog, saveAs, saveAll, showGit: () => showGit(), showExplorer: () => { setSidebarVisible(true); setSideView("explorer"); } });
+  actions.current = { runTask, saveActive: saveCurrent, stop, startDebug, toggleBreakpointAtCursor, cursorLocation, openBreakpointDialog, newFile, openFileDialog, saveAs, saveAll, showGit: () => showGit(), showExplorer: () => { setSidebarVisible(true); setSideView("explorer"); } };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -1107,12 +1547,23 @@ export default function App() {
       else if (e.key === "F11" && e.shiftKey && dbg === "stopped") debug.stepOut();
       else if (e.key === "F11" && dbg === "stopped") debug.stepInto();
       else if (mod && e.shiftKey && key === "b") actions.current.runTask("build");
+      else if (mod && e.altKey && !e.shiftKey && (key === "s" || e.code === "KeyS")) void actions.current.saveAll();
+      else if (mod && e.shiftKey && !e.altKey && key === "s") void actions.current.saveAs();
       else if (mod && !e.shiftKey && key === "s") actions.current.saveActive();
+      else if (mod && e.shiftKey && !e.altKey && key === "n") setShowNew(true);
+      else if (mod && !e.shiftKey && !e.altKey && key === "n") void actions.current.newFile();
+      else if (mod && !e.shiftKey && !e.altKey && key === "o") void actions.current.openFileDialog();
+      else if (mod && !e.shiftKey && !e.altKey && key === ",") setSettingsOpen(true);
+      else if (mod && e.shiftKey && !e.altKey && key === "g") actions.current.showGit();
+      else if (mod && e.shiftKey && !e.altKey && key === "e") actions.current.showExplorer();
+      else if (mod && !e.shiftKey && !e.altKey && key === "b") setSidebarVisible((v) => !v);
+      else if (mod && !e.shiftKey && !e.altKey && key === "j") setBottomVisible((v) => !v);
       else handled = false;
       if (handled) e.preventDefault();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug]);
 
   // Doble clic en un .rxsln con la app ya abierta (macOS).
@@ -1142,7 +1593,7 @@ export default function App() {
       .takePendingOpen()
       .catch(() => null)
       .then((pending) => {
-        const target = pending ?? last;
+        const target = pending ?? (getSettings().reopenLast ? last : null);
         if (target) (target.endsWith(".rxsln") ? openSolution(target) : openProject(target)).catch((e) => log(String(e), "error"));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1157,6 +1608,29 @@ export default function App() {
       const line = e.target.position?.lineNumber;
       if (model && line && model.uri.scheme === "file") bpStore.toggle(model.uri.fsPath, line);
     });
+    // Al pasar el mouse por el margen se ve un punto tenue: ahí se pone el punto de interrupción.
+    const hint = editor.createDecorationsCollection();
+    editor.onMouseMove((e) => {
+      const model = editor.getModel();
+      const line = e.target.position?.lineNumber;
+      const inGutter =
+        e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+        e.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
+      if (!inGutter || !model || !line || model.uri.scheme !== "file" || !model.uri.path.endsWith(".rs") || bpStore.get(model.uri.fsPath, line)) {
+        hint.clear();
+        return;
+      }
+      hint.set([
+        {
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            glyphMarginClassName: "bp-glyph hint",
+            glyphMarginHoverMessage: { value: "Clic: agregar punto de interrupción · Clic derecho: condicional o mensaje" },
+          },
+        },
+      ]);
+    });
+    editor.onMouseLeave(() => hint.clear());
     // Clic derecho en el margen = elegir el tipo de punto (condicional, por vuelta, mensaje).
     editor.onContextMenu((e) => {
       if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
@@ -1252,15 +1726,22 @@ export default function App() {
 
   return (
     <div className="app">
+      <MenuBar menus={menus} />
       <Toolbar
         hasProject={!!project}
         running={running}
         canSave={!!activeTab && activeTab.content !== activeTab.saved}
+        canSaveAll={tabs.some((t) => t.content !== t.saved)}
+        onSaveAll={() => void saveAll()}
+        onSettings={() => setSettingsOpen(true)}
+        buildConfig={buildConfig}
+        onBuildConfig={setBuildConfig}
+        onPublish={() => setPublishOpen(true)}
         canFormat={!!activeTab && lspReady && activeTab.path.endsWith(".rs")}
         onNew={() => setShowNew(true)}
         onOpen={openFolder}
         onOpenSolution={openSolutionDialog}
-        onSave={saveActive}
+        onSave={() => void saveCurrent()}
         onFormat={format}
         onPackages={() => startupDir && setPackagesFor(startupDir)}
         onTask={runTask}
@@ -1283,11 +1764,85 @@ export default function App() {
         onDebugStop={() => void debug.stop()}
         diagOpen={diagOpen}
         onToggleDiag={() => setDiagOpen((o) => !o)}
+        sidebarVisible={sidebarVisible}
+        onToggleSidebar={() => setSidebarVisible((v) => !v)}
+        bottomVisible={bottomVisible}
+        onToggleBottom={() => setBottomVisible((v) => !v)}
+        onCustomize={() => setCustomizeOpen(true)}
       />
+      {customizeOpen && <ToolbarCustomize onClose={() => setCustomizeOpen(false)} />}
+      {settingsOpen && (
+        <SettingsDialog
+          runExternal={runExternal}
+          onRunExternal={changeRunMode}
+          onCustomizeToolbar={() => {
+            setSettingsOpen(false);
+            setCustomizeOpen(true);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
+      {cloneOpen && (
+        <CloneDialog
+          defaultParent={homeProjects}
+          onCloned={(dir) => {
+            log(`Repositorio clonado en ${dir}`, "success");
+            void offerSaveAll().then(() => openProject(dir));
+          }}
+          onClose={() => setCloneOpen(false)}
+        />
+      )}
+      {ghPublishOpen && (
+        <PublishGitHubDialog
+          defaultName={solution?.name ?? basename(git.repo ?? project ?? "proyecto")}
+          onPublish={(name, priv, desc) => git.ops.publishGitHub(name, priv, desc)}
+          onClose={() => setGhPublishOpen(false)}
+        />
+      )}
+      {publishOpen && (
+        <PublishDialog
+          projects={projects}
+          startup={startupProject}
+          solution={solution ? { name: solution.name, dir: solution.dir } : null}
+          workspace={project}
+          onShowGit={() => {
+            setPublishOpen(false);
+            showGit();
+          }}
+          log={log}
+          onPublish={(dir, opts) => void runTask("publish", { dir, opts })}
+          onSetupTarget={(dir, target) => void runTask("setup-target", { dir, opts: { outDir: "", target, zip: false, open: false } })}
+          onClose={() => setPublishOpen(false)}
+        />
+      )}
       <ToolchainBanner status={toolchain} onInstall={installComponents} />
       <div className="main">
-        <aside className="sidebar">
+        {sidebarVisible && (
+        <>
+        <aside className="sidebar" style={{ width: sidebarSize.size }}>
+          <div className="side-tabs" role="tablist">
+            <button role="tab" aria-selected={sideView === "explorer"} className={sideView === "explorer" ? "active" : ""} onClick={() => setSideView("explorer")} title="Explorador (Ctrl/⌘+Shift+E)">
+              <Codicon name="files" /> Explorador
+            </button>
+            <button role="tab" aria-selected={sideView === "git"} className={sideView === "git" ? "active" : ""} onClick={() => setSideView("git")} title="Git: cambios, commits y ramas (Ctrl/⌘+Shift+G)">
+              <Codicon name="source-control" /> Git
+              {!!git.status?.files.length && <span className="count">{git.status.files.length}</span>}
+            </button>
+          </div>
+          {sideView === "git" ? (
+            <GitPanel
+              git={git}
+              onOpenFile={(p) => void openFile(p)}
+              onDiff={(repo, file, staged) => setDiffReq({ repo, file, staged })}
+              onClone={() => setCloneOpen(true)}
+              onPublishGitHub={() => setGhPublishOpen(true)}
+              intent={gitIntent}
+              onIntentDone={() => setGitIntent(null)}
+            />
+          ) : (
           <Explorer
+            gitDecorations={git.decorations}
             roots={roots}
             solution={solution ? { name: solution.name, file: solution.file } : null}
             storageKey={workspaceKey}
@@ -1305,21 +1860,47 @@ export default function App() {
             onAddReference={setReferenceFor}
             onManagePackages={setPackagesFor}
           />
+          )}
         </aside>
+        <Splitter spec={PANELS.sidebar} panel="before" size={sidebarSize.size} onResize={sidebarSize.set} onReset={sidebarSize.reset} />
+        </>
+        )}
         <div className="center">
-          {project ? (
+          {diffReq ? (
+            <DiffView
+              req={diffReq}
+              onClose={() => setDiffReq(null)}
+              onOpenFile={(p) => {
+                setDiffReq(null);
+                void openFile(p);
+              }}
+            />
+          ) : project ? (
             <EditorArea
               tabs={tabs}
               active={active}
               onSelect={setActive}
               onClose={closeTab}
+              onReorder={(from, to) => {
+                const next = [...tabsRef.current];
+                const [moved] = next.splice(from, 1);
+                next.splice(to, 0, moved);
+                tabsRef.current = next;
+                setTabs(next);
+              }}
+              onNewFile={() => void newFile()}
               onMount={onEditorMount}
               designer={designerHost}
             />
           ) : (
             <Welcome onNew={() => setShowNew(true)} onOpen={openFolder} onOpenSolution={openSolutionDialog} />
           )}
+          {bottomVisible && (
+          <>
+          <Splitter spec={PANELS.bottom} panel="after" size={bottomSize.size} onResize={bottomSize.set} onReset={bottomSize.reset} />
           <BottomPanel
+            height={bottomSize.size}
+            onHide={() => setBottomVisible(false)}
             tab={bottomTab}
             setTab={setBottomTab}
             output={output}
@@ -1351,8 +1932,15 @@ export default function App() {
             }
             breakpointCount={bpStore.all().length}
           />
+          </>
+          )}
         </div>
-        {diagOpen && <DiagnosticsPanel state={diag} onClose={() => setDiagOpen(false)} />}
+        {diagOpen && (
+          <>
+            <Splitter spec={PANELS.diagnostics} panel="after" size={diagSize.size} onResize={diagSize.set} onReset={diagSize.reset} />
+            <DiagnosticsPanel width={diagSize.size} state={diag} onClose={() => setDiagOpen(false)} />
+          </>
+        )}
       </div>
       <footer className={"statusbar" + (debugActive ? " debugging" : running ? " running" : "")}>
         <span className="status-item">
@@ -1370,6 +1958,18 @@ export default function App() {
             </>
           )}
         </span>
+        {git.status?.repo && (
+          <button className="status-btn" title="Git: ramas y cambios" onClick={() => showGit("branches")}>
+            <Codicon name={git.busy ? "sync" : "git-branch"} spin={!!git.busy} />
+            {git.status.detached ? "(sin rama)" : git.status.branch}
+            {git.status.files.length > 0 && "*"}
+            {(git.status.behind > 0 || git.status.ahead > 0) && (
+              <span className="status-sync">
+                {git.status.behind > 0 && <>↓{git.status.behind}</>} {git.status.ahead > 0 && <>↑{git.status.ahead}</>}
+              </span>
+            )}
+          </button>
+        )}
         <span className="status-path">{project ?? "Sin proyecto"}</span>
         <span className="spacer" />
         {project && lspStatus && (

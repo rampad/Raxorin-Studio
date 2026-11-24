@@ -19,6 +19,8 @@ interface Props {
   onSolution: (action: SolutionAction, path?: string) => void;
   activePath: string | null;
   problems: Map<string, FileProblems>;
+  /** Ruta absoluta → letra de Git (M, U, A, D, C…). */
+  gitDecorations?: Map<string, string>;
   onOpenFile: (path: string) => void;
   onCreated: (path: string, isDir: boolean) => void;
   onRenamed: (from: string, to: string) => void;
@@ -301,6 +303,15 @@ export default function Explorer(p: Props) {
     return errors || warnings ? { errors, warnings } : null;
   };
 
+  /** Letra de Git de un archivo; en carpetas, un punto si algo adentro cambió. */
+  const gitOf = (path: string, isDir: boolean): string | null => {
+    const m = p.gitDecorations;
+    if (!m?.size) return null;
+    if (!isDir) return m.get(path) ?? null;
+    for (const [file, letter] of m) if (letter !== "D" && isInside(file, path)) return "•";
+    return null;
+  };
+
   // ---------- Render ----------
 
   if (!roots.length && !p.solution) {
@@ -316,6 +327,7 @@ export default function Explorer(p: Props) {
     const isOpen = expanded.has(entry.path);
     const renaming = editing?.mode === "rename" && editing.path === entry.path;
     const prob = problemsIn(entry.path, entry.isDir);
+    const gitLetter = isRoot ? null : gitOf(entry.path, entry.isDir);
     const dropDir = entry.isDir ? entry.path : dirname(entry.path);
     const proj = entry.isDir ? projectByDir.get(entry.path) : undefined;
     const isStartup = !!proj && proj.dir === p.startupDir;
@@ -328,6 +340,7 @@ export default function Explorer(p: Props) {
       prob?.errors ? "has-errors" : prob?.warnings ? "has-warnings" : "",
       proj && "project",
       isStartup && "startup",
+      gitLetter && "git-" + (gitLetter === "•" ? "dir" : gitLetter),
     ].filter(Boolean).join(" ");
 
     return (
@@ -381,6 +394,7 @@ export default function Explorer(p: Props) {
               </span>
             )}
             {prob && entry.isDir && !isOpen && <Codicon name="circle-filled" className={"problem-dot " + (prob.errors ? "err" : "warn")} />}
+            {gitLetter && !prob && <span className="git-deco">{gitLetter}</span>}
           </>
         )}
       </div>

@@ -17,7 +17,19 @@ export interface Diagnostic {
   endColumn: number;
 }
 
-export type Task = "build" | "run" | "check" | "test" | "debug";
+export type Task = "build" | "run" | "check" | "test" | "debug" | "publish" | "setup-target";
+
+/** Opciones de "Publicar" (ver runner.rs). */
+export interface PublishOptions { outDir: string; target: string | null; zip: boolean; open: boolean }
+export interface RustTargets { host: string; installed: string[] }
+export interface CrossStatus {
+  target: string;
+  rustTarget: boolean;
+  linker: string | null;
+  linkerFound: boolean;
+  canInstall: boolean;
+  manual: string | null;
+}
 export interface DebuggerInfo {
   adapter: string | null;
   formatters: string | null;
@@ -51,6 +63,33 @@ export interface SolutionInfo {
   startup: string | null;
   projects: SolutionProject[];
 }
+
+// ---------- Git ----------
+export interface GitFile { path: string; orig: string | null; index: string; worktree: string; conflict: boolean }
+export interface GitStatus {
+  repo: string | null;
+  branch: string | null;
+  detached: boolean;
+  upstream: string | null;
+  ahead: number;
+  behind: number;
+  hasCommits: boolean;
+  files: GitFile[];
+  remotes: { name: string; url: string }[];
+  inProgress: string | null;
+}
+export interface GitBranch { name: string; current: boolean; remote: boolean; upstream: string | null }
+export interface GithubPublishInfo {
+  repo: string | null;
+  githubUrl: string | null;
+  version: string;
+  workflow: string;
+  workflowExists: boolean;
+  tags: string[];
+  programs: string[];
+  problem: string | null;
+}
+export interface GitCommit { hash: string; short: string; author: string; date: string; subject: string; refs: string }
 
 export interface CrateSummary {
   name: string;
@@ -99,8 +138,44 @@ export const api = {
   writeFile: (path: string, contents: string) => invoke<void>("write_file", { path, contents }),
   createProject: (parent: string, name: string, kind: "bin" | "lib" | "slint") =>
     invoke<string>("create_project", { parent, name, kind }),
-  startTask: (project: string, task: Task, external = false) =>
-    invoke<void>("start_task", { project, task, external }),
+  startTask: (project: string, task: Task, external = false, release = false, publish: PublishOptions | null = null) =>
+    invoke<void>("start_task", { project, task, external, release, publish }),
+  rustTargets: () => invoke<RustTargets>("rust_targets"),
+  crossStatus: (target: string) => invoke<CrossStatus>("cross_status", { target }),
+  gitStatus: (dir: string) => invoke<GitStatus>("git_status", { dir }),
+  gitInit: (dir: string) => invoke<void>("git_init", { dir }),
+  gitNestedRepos: (base: string, projects: string[]) =>
+    invoke<{ path: string; commits: number; dirty: boolean }[]>("git_nested_repos", { base, projects }),
+  gitInitSolution: (base: string, projects: string[]) => invoke<void>("git_init_solution", { base, projects }),
+  gitStage: (repo: string, paths: string[]) => invoke<void>("git_stage", { repo, paths }),
+  gitUnstage: (repo: string, paths: string[]) => invoke<void>("git_unstage", { repo, paths }),
+  gitDiscard: (repo: string, paths: string[], untracked: string[]) => invoke<void>("git_discard", { repo, paths, untracked }),
+  gitCommit: (repo: string, message: string, amend: boolean, all: boolean) =>
+    invoke<string>("git_commit", { repo, message, amend, all }),
+  gitShowFile: (repo: string, rev: string, path: string) => invoke<string>("git_show_file", { repo, rev, path }),
+  gitBranches: (repo: string) => invoke<GitBranch[]>("git_branches", { repo }),
+  gitCheckout: (repo: string, name: string, create = false, remote = false) =>
+    invoke<void>("git_checkout", { repo, name, create, remote }),
+  gitDeleteBranch: (repo: string, name: string, force = false) => invoke<void>("git_delete_branch", { repo, name, force }),
+  gitMerge: (repo: string, name: string) => invoke<string>("git_merge", { repo, name }),
+  gitFetch: (repo: string) => invoke<void>("git_fetch", { repo }),
+  gitPull: (repo: string) => invoke<string>("git_pull", { repo }),
+  gitPush: (repo: string) => invoke<string>("git_push", { repo }),
+  gitStash: (repo: string, pop: boolean) => invoke<string>("git_stash", { repo, pop }),
+  gitStashCount: (repo: string) => invoke<number>("git_stash_count", { repo }),
+  gitLog: (repo: string, limit = 50) => invoke<GitCommit[]>("git_log", { repo, limit }),
+  gitRemoteAdd: (repo: string, name: string, url: string) => invoke<void>("git_remote_add", { repo, name, url }),
+  gitClone: (url: string, parent: string) => invoke<string>("git_clone", { url, parent }),
+  gitIdentity: (repo: string) => invoke<{ name: string; email: string }>("git_identity", { repo }),
+  gitSetIdentity: (repo: string, name: string, email: string) => invoke<void>("git_set_identity", { repo, name, email }),
+  ghStatus: () => invoke<{ installed: boolean; user: string | null }>("gh_status"),
+  ghRepoCreate: (repo: string, name: string, priv: boolean, description: string) =>
+    invoke<string>("gh_repo_create", { repo, name, private: priv, description }),
+  ghLogin: () => invoke<void>("gh_login"),
+  githubPublishInfo: (base: string, name: string, projects: string[]) =>
+    invoke<GithubPublishInfo>("github_publish_info", { base, name, projects }),
+  githubPublish: (base: string, name: string, projects: string[], tag: string | null) =>
+    invoke<string>("github_publish", { base, name, projects, tag }),
   createFile: (path: string) => invoke<void>("create_file", { path }),
   createDir: (path: string) => invoke<void>("create_dir", { path }),
   renamePath: (from: string, to: string) => invoke<void>("rename_path", { from, to }),

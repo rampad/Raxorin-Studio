@@ -174,7 +174,7 @@ function LineChart({ title, points, window: [t0, t1], yMax, format, colorVar, ma
 
 // ---------- Panel ----------
 
-export default function DiagnosticsPanel({ state, onClose }: { state: DiagState; onClose: () => void }) {
+export default function DiagnosticsPanel({ state, onClose, width }: { state: DiagState; onClose: () => void; width?: number }) {
   const [range, setRange] = useState<"60" | "all">("60");
   const [table, setTable] = useState(false);
   const s = state.samples;
@@ -189,7 +189,7 @@ export default function DiagnosticsPanel({ state, onClose }: { state: DiagState;
   const peakMem = s.length ? Math.max(...s.map((p) => p.mem)) : 0;
 
   return (
-    <aside className="diag-panel">
+    <aside className="diag-panel" style={{ width }}>
       <div className="panel-title">
         <span>HERRAMIENTAS DE DIAGNÓSTICO</span>
         <button className="icon-btn" title="Cerrar" onClick={onClose}><Codicon name="close" /></button>

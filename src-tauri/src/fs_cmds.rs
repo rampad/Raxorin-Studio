@@ -119,6 +119,9 @@ export component AppWindow inherits Window {
 const SLINT_MAIN: &str = r##"// Código de la ventana (como el "code-behind" de WPF).
 // La interfaz está en ui/app-window.slint: ábrela para editarla con el diseñador.
 
+// En Windows, la versión Release no abre una consola detrás de la ventana.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 slint::include_modules!();
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -169,7 +172,8 @@ pub fn create_project(parent: String, name: String, kind: String) -> Result<Stri
 
     let flag = if kind == "lib" { "--lib" } else { "--bin" };
     let out = new_command(cargo_bin())
-        .args(["new", flag, &name])
+        // Sin repositorio propio: Git se maneja desde el panel Git (y una solución usa uno solo).
+        .args(["new", flag, "--vcs", "none", &name])
         .current_dir(parent_path)
         .output()
         .map_err(|e| format!("No se pudo ejecutar cargo: {e}"))?;

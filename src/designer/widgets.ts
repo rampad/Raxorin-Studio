@@ -23,6 +23,24 @@ export interface EventDef { name: string; label: string; params: EventParam[] }
 
 export interface Bindable { prop: string; slint: "string" | "bool" | "float" | "int" }
 
+/**
+ * Cómo acomoda un contenedor a sus hijos:
+ * - sin `layout` (y `container`): posiciones fijas con x/y (Rectangle, ScrollView, Tab, ventana).
+ * - "vertical"/"horizontal"/"grid": layouts automáticos de Slint (VerticalBox…).
+ * - "group": GroupBox (título + cuadrícula).
+ * - "tabs": TabWidget; sus hijos son `Tab { title: … }`.
+ */
+export type LayoutKind = "vertical" | "horizontal" | "grid" | "group" | "tabs";
+
+/** Hijos que se crean junto con el control (p. ej. las pestañas de un TabWidget). */
+export interface ChildTemplate {
+  type: string;
+  props?: Record<string, string>;
+  children?: ChildTemplate[];
+  /** Sin las propiedades por defecto del control (p. ej. un panel transparente). */
+  bare?: boolean;
+}
+
 export interface WidgetDef {
   type: string;
   label: string;
@@ -35,6 +53,12 @@ export interface WidgetDef {
   events: EventDef[];
   bindable?: Bindable[];
   container?: boolean;
+  layout?: LayoutKind;
+  /** Grupo de la caja de herramientas; los ocultos (Tab) no aparecen. */
+  category?: "common" | "containers" | "hidden";
+  /** Cuánto crece dentro de un layout [horizontal, vertical], como en los widgets de Slint. */
+  stretch?: [number, number];
+  children?: ChildTemplate[];
 }
 
 const LAYOUT: PropDef[] = [
@@ -43,12 +67,36 @@ const LAYOUT: PropDef[] = [
   { name: "width", label: "Ancho", kind: "length", group: "Diseño" },
   { name: "height", label: "Alto", kind: "length", group: "Diseño" },
 ];
+/** Propiedades de un control dentro de un layout (no tiene x/y: el layout lo acomoda). */
+export const LAYOUT_CHILD: PropDef[] = [
+  { name: "width", label: "Ancho fijo", kind: "length", group: "Diseño" },
+  { name: "height", label: "Alto fijo", kind: "length", group: "Diseño" },
+  { name: "horizontal-stretch", label: "Crecer a lo ancho", kind: "number", group: "Diseño" },
+  { name: "vertical-stretch", label: "Crecer a lo alto", kind: "number", group: "Diseño" },
+];
+/** Además, dentro de una cuadrícula. */
+export const GRID_CHILD: PropDef[] = [
+  { name: "row", label: "Fila", kind: "int", group: "Diseño", fallback: "0" },
+  { name: "col", label: "Columna", kind: "int", group: "Diseño", fallback: "0" },
+  { name: "colspan", label: "Columnas que ocupa", kind: "int", group: "Diseño", fallback: "1" },
+  { name: "rowspan", label: "Filas que ocupa", kind: "int", group: "Diseño", fallback: "1" },
+];
+
+const BOX: PropDef[] = [
+  { name: "padding", label: "Margen interior", kind: "length", group: "Diseño", fallback: "8px" },
+  { name: "spacing", label: "Separación", kind: "length", group: "Diseño", fallback: "8px" },
+];
+const ALIGNMENT: PropDef = {
+  name: "alignment", label: "Distribución", kind: "enum", group: "Diseño",
+  options: ["stretch", "start", "center", "end", "space-between", "space-around", "space-evenly"], fallback: "stretch",
+};
+
 const VISIBLE: PropDef = { name: "visible", label: "Visible", kind: "bool", group: "Comportamiento", fallback: "true" };
 const ENABLED: PropDef = { name: "enabled", label: "Habilitado", kind: "bool", group: "Comportamiento", fallback: "true" };
 
 export const WIDGETS: WidgetDef[] = [
   {
-    type: "Text", label: "Etiqueta (Text)", icon: "text-size", idBase: "texto", size: [160, 24],
+    type: "Text", stretch: [1, 0], category: "common", label: "Etiqueta (Text)", icon: "text-size", idBase: "texto", size: [160, 24],
     defaults: { text: '"Texto"' },
     props: [
       ...LAYOUT,
@@ -65,7 +113,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "text", slint: "string" }],
   },
   {
-    type: "Button", label: "Botón (Button)", icon: "record", idBase: "boton", size: [110, 32],
+    type: "Button", stretch: [0, 0], category: "common", label: "Botón (Button)", icon: "record", idBase: "boton", size: [110, 32],
     defaults: { text: '"Botón"' },
     props: [
       ...LAYOUT,
@@ -78,7 +126,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "text", slint: "string" }, { prop: "enabled", slint: "bool" }],
   },
   {
-    type: "LineEdit", label: "Cuadro de texto (LineEdit)", icon: "symbol-string", idBase: "entrada", size: [200, 32],
+    type: "LineEdit", stretch: [1, 0], category: "common", label: "Cuadro de texto (LineEdit)", icon: "symbol-string", idBase: "entrada", size: [200, 32],
     defaults: { "placeholder-text": '"Escribe aquí"' },
     props: [
       ...LAYOUT,
@@ -96,7 +144,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "text", slint: "string" }],
   },
   {
-    type: "TextEdit", label: "Área de texto (TextEdit)", icon: "note", idBase: "area_texto", size: [260, 120],
+    type: "TextEdit", stretch: [1, 1], category: "common", label: "Área de texto (TextEdit)", icon: "note", idBase: "area_texto", size: [260, 120],
     defaults: {},
     props: [
       ...LAYOUT,
@@ -111,7 +159,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "text", slint: "string" }],
   },
   {
-    type: "CheckBox", label: "Casilla (CheckBox)", icon: "pass", idBase: "casilla", size: [160, 24],
+    type: "CheckBox", stretch: [0, 0], category: "common", label: "Casilla (CheckBox)", icon: "pass", idBase: "casilla", size: [160, 24],
     defaults: { text: '"Opción"' },
     props: [
       ...LAYOUT,
@@ -123,7 +171,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "checked", slint: "bool" }],
   },
   {
-    type: "Switch", label: "Interruptor (Switch)", icon: "settings", idBase: "interruptor", size: [160, 24],
+    type: "Switch", stretch: [0, 0], category: "common", label: "Interruptor (Switch)", icon: "settings", idBase: "interruptor", size: [160, 24],
     defaults: { text: '"Activar"' },
     props: [
       ...LAYOUT,
@@ -135,7 +183,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "checked", slint: "bool" }],
   },
   {
-    type: "Slider", label: "Deslizador (Slider)", icon: "settings-gear", idBase: "deslizador", size: [200, 24],
+    type: "Slider", stretch: [1, 0], category: "common", label: "Deslizador (Slider)", icon: "settings-gear", idBase: "deslizador", size: [200, 24],
     defaults: { minimum: "0", maximum: "100", value: "50" },
     props: [
       ...LAYOUT,
@@ -149,7 +197,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "value", slint: "float" }],
   },
   {
-    type: "SpinBox", label: "Número (SpinBox)", icon: "symbol-numeric", idBase: "numero", size: [120, 32],
+    type: "SpinBox", stretch: [0, 0], category: "common", label: "Número (SpinBox)", icon: "symbol-numeric", idBase: "numero", size: [120, 32],
     defaults: { minimum: "0", maximum: "100", value: "0" },
     props: [
       ...LAYOUT,
@@ -162,7 +210,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "value", slint: "int" }],
   },
   {
-    type: "ComboBox", label: "Lista desplegable (ComboBox)", icon: "list-selection", idBase: "lista", size: [180, 32],
+    type: "ComboBox", stretch: [1, 0], category: "common", label: "Lista desplegable (ComboBox)", icon: "list-selection", idBase: "lista", size: [180, 32],
     defaults: { model: '["Opción 1", "Opción 2", "Opción 3"]' },
     props: [
       ...LAYOUT,
@@ -174,7 +222,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "current-index", slint: "int" }, { prop: "current-value", slint: "string" }],
   },
   {
-    type: "ProgressIndicator", label: "Barra de progreso", icon: "loading", idBase: "progreso", size: [200, 6],
+    type: "ProgressIndicator", stretch: [1, 0], category: "common", label: "Barra de progreso", icon: "loading", idBase: "progreso", size: [200, 6],
     defaults: { progress: "0.4" },
     props: [
       ...LAYOUT,
@@ -186,7 +234,7 @@ export const WIDGETS: WidgetDef[] = [
     bindable: [{ prop: "progress", slint: "float" }],
   },
   {
-    type: "Rectangle", label: "Panel (Rectangle)", icon: "primitive-square", idBase: "panel", size: [200, 120],
+    type: "Rectangle", stretch: [1, 1], category: "containers", label: "Panel (Rectangle)", icon: "primitive-square", idBase: "panel", size: [200, 120],
     defaults: { background: "#e6e6e6", "border-radius": "6px" },
     container: true,
     props: [
@@ -200,12 +248,102 @@ export const WIDGETS: WidgetDef[] = [
     events: [],
   },
   {
-    type: "Image", label: "Imagen (Image)", icon: "file-media", idBase: "imagen", size: [120, 120],
+    type: "Image", stretch: [1, 1], category: "common", label: "Imagen (Image)", icon: "file-media", idBase: "imagen", size: [120, 120],
     defaults: {},
     props: [
       ...LAYOUT,
       { name: "source", label: "Archivo", kind: "image", group: "Contenido" },
       { name: "image-fit", label: "Ajuste", kind: "enum", group: "Apariencia", options: ["fill", "contain", "cover", "preserve"], fallback: "fill" },
+      VISIBLE,
+    ],
+    events: [],
+  },
+  {
+    type: "Spinner", stretch: [0, 0], category: "common", label: "Indicador de carga (Spinner)", icon: "loading", idBase: "cargando", size: [32, 32],
+    defaults: { indeterminate: "true" },
+    props: [
+      ...LAYOUT,
+      { name: "indeterminate", label: "Girando sin parar", kind: "bool", group: "Apariencia", fallback: "false" },
+      { name: "progress", label: "Progreso", kind: "percent", group: "Contenido" },
+      VISIBLE,
+    ],
+    events: [],
+    bindable: [{ prop: "progress", slint: "float" }],
+  },
+  // ----- Contenedores y layouts automáticos -----
+  {
+    type: "VerticalBox", stretch: [1, 1], category: "containers", layout: "vertical",
+    label: "Columna (VerticalBox)", icon: "split-vertical", idBase: "columna", size: [240, 180],
+    defaults: {},
+    container: true,
+    props: [...LAYOUT, ...BOX, ALIGNMENT, VISIBLE],
+    events: [],
+  },
+  {
+    type: "HorizontalBox", stretch: [1, 1], category: "containers", layout: "horizontal",
+    label: "Fila (HorizontalBox)", icon: "split-horizontal", idBase: "fila", size: [320, 56],
+    defaults: {},
+    container: true,
+    props: [...LAYOUT, ...BOX, ALIGNMENT, VISIBLE],
+    events: [],
+  },
+  {
+    type: "GridBox", stretch: [1, 1], category: "containers", layout: "grid",
+    label: "Cuadrícula (GridBox)", icon: "table", idBase: "cuadricula", size: [300, 120],
+    defaults: {},
+    container: true,
+    props: [...LAYOUT, ...BOX, VISIBLE],
+    events: [],
+  },
+  {
+    type: "GroupBox", stretch: [1, 1], category: "containers", layout: "group",
+    label: "Grupo con título (GroupBox)", icon: "group-by-ref-type", idBase: "grupo", size: [260, 180],
+    defaults: { title: '"Grupo"' },
+    container: true,
+    // Panel interno transparente: los controles del grupo se mueven libremente.
+    children: [{ type: "Rectangle", bare: true }],
+    props: [
+      ...LAYOUT,
+      { name: "title", label: "Título", kind: "string", group: "Contenido" },
+      { name: "content-padding", label: "Margen del contenido", kind: "length", group: "Diseño", fallback: "0px" },
+      ENABLED,
+      VISIBLE,
+    ],
+    events: [],
+  },
+  {
+    type: "TabWidget", stretch: [1, 1], category: "containers", layout: "tabs",
+    label: "Pestañas (TabWidget)", icon: "browser", idBase: "pestanas", size: [340, 240],
+    defaults: {},
+    container: true,
+    children: [
+      { type: "Tab", props: { title: '"Pestaña 1"' } },
+      { type: "Tab", props: { title: '"Pestaña 2"' } },
+    ],
+    props: [
+      ...LAYOUT,
+      { name: "current-index", label: "Pestaña inicial (0 = primera)", kind: "int", group: "Contenido", fallback: "0" },
+      VISIBLE,
+    ],
+    events: [],
+    bindable: [{ prop: "current-index", slint: "int" }],
+  },
+  {
+    type: "Tab", category: "hidden", label: "Pestaña (Tab)", icon: "window", idBase: "pestana", size: [0, 0],
+    defaults: {},
+    container: true,
+    props: [{ name: "title", label: "Título", kind: "string", group: "Contenido" }],
+    events: [],
+  },
+  {
+    type: "ScrollView", stretch: [1, 1], category: "containers",
+    label: "Área con desplazamiento (ScrollView)", icon: "list-flat", idBase: "desplazable", size: [240, 160],
+    defaults: { "content-height": "400px" },
+    container: true,
+    props: [
+      ...LAYOUT,
+      { name: "content-width", label: "Ancho del contenido", kind: "length", group: "Contenido" },
+      { name: "content-height", label: "Alto del contenido", kind: "length", group: "Contenido" },
       VISIBLE,
     ],
     events: [],

@@ -1,6 +1,7 @@
 mod crates;
 mod dap;
 mod fs_cmds;
+mod git;
 mod lsp;
 mod monitor;
 mod projects;
@@ -40,6 +41,36 @@ pub fn run() {
             solution::solution_set_startup,
             solution::solution_find,
             solution::take_pending_open,
+            runner::rust_targets,
+            runner::cross_status,
+            git::git_status,
+            git::git_init,
+            git::git_nested_repos,
+            git::git_init_solution,
+            git::git_stage,
+            git::git_unstage,
+            git::git_discard,
+            git::git_commit,
+            git::git_show_file,
+            git::git_branches,
+            git::git_checkout,
+            git::git_delete_branch,
+            git::git_merge,
+            git::git_fetch,
+            git::git_pull,
+            git::git_push,
+            git::git_stash,
+            git::git_stash_count,
+            git::git_log,
+            git::git_remote_add,
+            git::git_clone,
+            git::git_identity,
+            git::git_set_identity,
+            git::gh_status,
+            git::gh_repo_create,
+            git::gh_login,
+            git::github_publish_info,
+            git::github_publish,
             dap::debugger_info,
             dap::dap_start,
             dap::dap_send,
