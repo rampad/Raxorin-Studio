@@ -6,7 +6,7 @@
 
 IDE para crear programas en Rust de forma fácil, inspirada en Visual Studio.
 
-**Stack:** Tauri 2 (backend Rust) · React + TypeScript · Monaco Editor · cargo · rust-analyzer (LSP)
+**Stack:** Tauri 2 (backend Rust) · React + TypeScript · Monaco Editor · cargo · rust-analyzer (LSP) · lldb-dap (DAP)
 
 ## Ejecutar en desarrollo
 
@@ -32,8 +32,13 @@ npm run tauri build
 
 | Tecla | Acción |
 |---|---|
-| F5 | Ejecutar |
+| F5 | Depurar (o continuar si está detenido) |
+| Ctrl/⌘+F5 | Ejecutar sin depurar |
 | Shift+F5 | Detener |
+| Ctrl/⌘+Shift+F5 | Reiniciar la depuración |
+| F9 | Poner/quitar punto de interrupción |
+| F10 / F11 / Shift+F11 | Paso por procedimientos / por instrucciones / salir |
+| F6 | Pausar |
 | Ctrl/⌘+Shift+B | Compilar |
 | Ctrl/⌘+S | Guardar |
 | F12 / Ctrl/⌘+clic | Ir a definición |
@@ -51,13 +56,15 @@ src/                    Frontend (React)
   lsp/client.ts         Cliente LSP: JSON-RPC, sincronización de documentos, diagnósticos
   lsp/providers.ts      Autocompletado, hover, definición, renombrar, etc. → Monaco
   designer/             Diseñador visual de Slint: parser/generador .slint, lienzo, propiedades
+  debug/                Depurador: cliente DAP, puntos de interrupción, sesión, paneles
   components/           Toolbar, Explorer, EditorArea, BottomPanel, diálogos
 src-tauri/src/          Backend (Rust)
   fs_cmds.rs            Archivos y creación de proyectos (cargo new)
   runner.rs             Compilar / ejecutar / detener, errores de cargo en JSON, stdin
   lsp.rs                Transporte stdio con rust-analyzer
   toolchain.rs          Detectar e instalar rust-analyzer, clippy, rustfmt
-  crates.rs             Gestor de paquetes (cargo search/add/remove/metadata)
+  crates.rs             Gestor de paquetes (API de crates.io + cargo add/remove/metadata)
+  dap.rs                Transporte con lldb-dap y entrada del programa depurado (FIFO)
 ```
 
 ## Hoja de ruta
@@ -65,7 +72,8 @@ src-tauri/src/          Backend (Rust)
 - [x] **Fase 1**: proyectos de consola, editor, compilar/ejecutar, lista de errores, stdin
 - [x] **Fase 2**: rust-analyzer (autocompletado, ir a definición), cargo fmt/clippy, gestor de crates
 - [x] **Fase 3**: diseñador visual drag & drop con Slint (`.slint` ↔ diseñador, eventos → `main.rs`)
-- [ ] **Fase 4**: depurador (DAP + CodeLLDB), temas, instaladores
+- [x] **Fase 4**: depurador (lldb-dap): puntos de interrupción, paso a paso, variables, pila, inspección, pánicos
+- [ ] Próximo: temas, instaladores, depuración en Windows
 
 ## Créditos
 

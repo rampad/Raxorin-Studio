@@ -17,7 +17,8 @@ export interface Diagnostic {
   endColumn: number;
 }
 
-export type Task = "build" | "run" | "check" | "test";
+export type Task = "build" | "run" | "check" | "test" | "debug";
+export interface DebuggerInfo { adapter: string | null; formatters: string | null; stdinSupported: boolean }
 export interface TaskFinished { task: Task; success: boolean; code: number | null; cancelled: boolean }
 
 export interface ToolchainStatus {
@@ -93,6 +94,8 @@ export const api = {
   findProjects: (root: string) => invoke<ProjectInfo[]>("find_projects", { root }),
   addProjectReference: (project: string, dependency: string) =>
     invoke<string>("add_project_reference", { project, dependency }),
+  debuggerInfo: () => invoke<DebuggerInfo>("debugger_info"),
+  debugStdinWrite: (text: string) => invoke<void>("debug_stdin_write", { text }),
   watchProject: (root: string) => invoke<void>("watch_project", { root }),
   stopTask: () => invoke<void>("stop_task"),
   sendStdin: (text: string) => invoke<void>("send_stdin", { text }),

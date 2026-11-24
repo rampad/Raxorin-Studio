@@ -22,6 +22,16 @@ interface Props {
   projects: ProjectInfo[];
   startup: ProjectInfo | null;
   onSetStartup: (dir: string) => void;
+  debugStatus: "idle" | "starting" | "running" | "stopped";
+  debugAvailable: boolean;
+  onDebug: () => void;
+  onContinue: () => void;
+  onPause: () => void;
+  onStepOver: () => void;
+  onStepInto: () => void;
+  onStepOut: () => void;
+  onRestart: () => void;
+  onDebugStop: () => void;
 }
 
 function Btn(props: {
@@ -112,12 +122,35 @@ export default function Toolbar(p: Props) {
       <Btn icon="check-all" label="Revisar" title="Revisar el código con Clippy, sin generar ejecutable" onClick={() => p.onTask("check")} disabled={noTask} />
       <Btn icon="beaker" label="Probar" title="Ejecutar pruebas (cargo test)" onClick={() => p.onTask("test")} disabled={noTask} />
 
+      {p.debugStatus !== "idle" ? (
+        <div className="debug-bar">
+          {p.debugStatus === "stopped" ? (
+            <Btn icon="debug-continue" title="Continuar (F5)" onClick={p.onContinue} className="dbg-continue" />
+          ) : (
+            <Btn icon="debug-pause" title="Pausar (F6)" onClick={p.onPause} disabled={p.debugStatus !== "running"} />
+          )}
+          <Btn icon="debug-step-over" title="Paso a paso por procedimientos (F10)" onClick={p.onStepOver} disabled={p.debugStatus !== "stopped"} />
+          <Btn icon="debug-step-into" title="Paso a paso por instrucciones (F11)" onClick={p.onStepInto} disabled={p.debugStatus !== "stopped"} />
+          <Btn icon="debug-step-out" title="Paso a paso para salir (Shift+F11)" onClick={p.onStepOut} disabled={p.debugStatus !== "stopped"} />
+          <Btn icon="debug-restart" title="Reiniciar (Ctrl/⌘+Shift+F5)" onClick={p.onRestart} className="dbg-restart" />
+          <Btn icon="debug-stop" label="Detener" title="Detener la depuración (Shift+F5)" onClick={p.onDebugStop} className="stop" />
+        </div>
+      ) : (
+      <>
+      <Btn
+        icon="debug-alt"
+        label="Depurar"
+        title={p.debugAvailable ? "Iniciar depuración (F5)" : "Depurador no disponible (falta lldb-dap)"}
+        onClick={p.onDebug}
+        disabled={noTask || p.startup?.kind !== "bin"}
+        className="debug"
+      />
       <div className="split-btn" onMouseDown={(e) => e.stopPropagation()}>
         <button
           className="tb-btn run"
           onClick={() => p.onTask("run")}
           disabled={noTask}
-          title={p.runExternal ? "Ejecutar en una terminal externa (F5)" : "Ejecutar en el panel de salida (F5)"}
+          title={p.runExternal ? "Ejecutar sin depurar, en una terminal externa (Ctrl/⌘+F5)" : "Ejecutar sin depurar (Ctrl/⌘+F5)"}
         >
           <Codicon name="play" />
           <span>Ejecutar</span>
@@ -147,6 +180,8 @@ export default function Toolbar(p: Props) {
         )}
       </div>
       <Btn icon="debug-stop" label="Detener" title="Detener (Shift+F5)" onClick={p.onStop} disabled={!busy} className="stop" />
+      </>
+      )}
     </div>
   );
 }

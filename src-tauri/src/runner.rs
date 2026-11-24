@@ -57,6 +57,12 @@ struct TaskFinished {
     cancelled: bool,
 }
 
+#[derive(Clone, Serialize)]
+struct DebugReady {
+    program: String,
+    cwd: String,
+}
+
 fn out(app: &AppHandle, text: impl Into<String>, kind: &'static str) {
     let _ = app.emit(
         "output",
@@ -142,7 +148,7 @@ fn run_task(
     external: bool,
 ) -> Result<(bool, Option<i32>), String> {
     let sub = match task {
-        "build" | "run" => "build",
+        "build" | "run" | "debug" => "build",
         // "Revisar" usa Clippy (más sugerencias) si está instalado.
         "check" if clippy_available() => "clippy",
         "check" => "check",
@@ -193,7 +199,7 @@ fn run_task(
         format!("✔ Compilación correcta: 0 errores, {warnings} advertencia(s) ({secs:.1}s)\n")
     };
     out(app, msg, "success");
-    if task != "run" {
+    if task != "run" && task != "debug" {
         return Ok((true, Some(0)));
     }
 
@@ -205,6 +211,15 @@ fn run_task(
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
+
+    if task == "debug" {
+        out(app, "> Iniciando el depurador…\n", "info");
+        let _ = app.emit(
+            "debug-ready",
+            DebugReady { program: exe.to_string_lossy().into_owned(), cwd: project.to_string_lossy().into_owned() },
+        );
+        return Ok((true, Some(0)));
+    }
 
     if external {
         launch_in_terminal(project, &exe)?;

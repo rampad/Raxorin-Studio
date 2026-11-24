@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Diagnostic, OutputChunk, Task } from "../api";
 import { relative } from "../util";
 import { Codicon } from "./Icon";
 
-export type BottomTab = "output" | "errors";
+export type BottomTab = "output" | "errors" | "debug" | "breakpoints";
 
 interface Props {
   tab: BottomTab;
@@ -15,13 +15,19 @@ interface Props {
   onClear: () => void;
   onStdin: (text: string) => void;
   onGoto: (d: Diagnostic) => void;
+  /** El programa acepta entrada (ejecución normal o depuración con stdin). */
+  acceptsInput: boolean;
+  debugActive: boolean;
+  debugContent: ReactNode;
+  breakpointsContent: ReactNode;
+  breakpointCount: number;
 }
 
 export default function BottomPanel(p: Props) {
   const outRef = useRef<HTMLPreElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
-  const programRunning = p.running === "run";
+  const programRunning = p.acceptsInput;
 
   // Desplazar al final cuando llega salida nueva.
   useEffect(() => {
@@ -50,13 +56,28 @@ export default function BottomPanel(p: Props) {
           <span className="badge err"><Codicon name="error" /> {errors}</span>
           <span className="badge warn"><Codicon name="warning" /> {warnings}</span>
         </button>
+        {p.debugActive && (
+          <button className={p.tab === "debug" ? "active" : ""} onClick={() => p.setTab("debug")}>
+            <Codicon name="debug-alt" />
+            Depuración
+          </button>
+        )}
+        <button className={p.tab === "breakpoints" ? "active" : ""} onClick={() => p.setTab("breakpoints")}>
+          <Codicon name="circle-filled" className="bp-tab-icon" />
+          Puntos de interrupción
+          {p.breakpointCount > 0 && <span className="count">{p.breakpointCount}</span>}
+        </button>
         <div className="spacer" />
         {p.tab === "output" && (
           <button className="icon-btn" onClick={p.onClear} title="Limpiar salida"><Codicon name="clear-all" /></button>
         )}
       </div>
 
-      {p.tab === "output" ? (
+      {p.tab === "debug" ? (
+        p.debugContent
+      ) : p.tab === "breakpoints" ? (
+        <div className="errors">{p.breakpointsContent}</div>
+      ) : p.tab === "output" ? (
         <div className="output-wrap">
           <pre className="output" ref={outRef} onClick={() => programRunning && inputRef.current?.focus()}>
             {p.output.map((c, i) => (

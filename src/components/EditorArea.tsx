@@ -97,6 +97,7 @@ export default function EditorArea({ tabs, active, onSelect, onClose, onMount, d
               renderWhitespace: "selection",
               bracketPairColorization: { enabled: true },
               inlayHints: { enabled: "on" },
+              glyphMargin: true, // para los puntos de interrupción
               "semanticHighlighting.enabled": false,
               quickSuggestions: { other: true, comments: false, strings: false },
             }}

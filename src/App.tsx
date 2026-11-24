@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { join } from "@tauri-apps/api/path";
 import { ask, open } from "@tauri-apps/plugin-dialog";
@@ -12,6 +12,7 @@ import {
   type Task,
   type TaskFinished,
   type ToolchainStatus,
+  type DebuggerInfo,
 } from "./api";
 import Toolbar from "./components/Toolbar";
 import Explorer, { type FileProblems } from "./components/Explorer";
@@ -25,8 +26,13 @@ import { LspClient } from "./lsp/client";
 import { registerRustProviders } from "./lsp/providers";
 import type { DesignerHost } from "./designer/SlintDesigner";
 import type { EventParam } from "./designer/widgets";
+import { BreakpointStore } from "./debug/breakpoints";
+import { DebugController, type DebugHost } from "./debug/controller";
+import { registerDebugHover } from "./debug/hover";
+import { BreakpointsPanel, DebugPanel } from "./debug/DebugPanels";
+import BreakpointDialog, { type BreakpointDraft } from "./debug/BreakpointDialog";
 import type * as L from "./lsp/types";
-import { basename, dirname, isInside, languageFor } from "./util";
+import { basename, dirname, isInside, joinPath, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
 import oxideMark from "./assets/brand/oxide-mark.svg";
 
@@ -40,6 +46,7 @@ const TASK_LABEL: Record<Task, string> = {
   check: "Revisando…",
   test: "Ejecutando pruebas…",
   run: "Ejecutando…",
+  debug: "Compilando para depurar…",
 };
 
 const uriOf = (path: string) => monaco.Uri.file(path).toString();
@@ -96,6 +103,33 @@ export default function App() {
   startupRef.current = startupDir;
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
+
+  // ---------- Depuración ----------
+  const bpStore = useMemo(() => new BreakpointStore(), []);
+  const bpVersion = useSyncExternalStore(bpStore.subscribe, bpStore.getVersion);
+  const [debuggerInfo, setDebuggerInfo] = useState<DebuggerInfo | null>(null);
+  const [bpDraft, setBpDraft] = useState<BreakpointDraft | null>(null);
+  // El controlador llama a la interfaz a través de este objeto (siempre con las funciones más recientes).
+  const debugHostRef = useRef<DebugHost>({
+    output: () => {},
+    showLocation: () => {},
+    isUserCode: () => false,
+    onStopped: () => {},
+    onEnded: () => {},
+  });
+  const debug = useMemo(
+    () =>
+      new DebugController(bpStore, {
+        output: (t, k) => debugHostRef.current.output(t, k),
+        showLocation: (p, l) => debugHostRef.current.showLocation(p, l),
+        isUserCode: (p) => debugHostRef.current.isUserCode(p),
+        onStopped: () => debugHostRef.current.onStopped(),
+        onEnded: () => debugHostRef.current.onEnded(),
+      }),
+    [bpStore],
+  );
+  const debugSnap = useSyncExternalStore(debug.subscribe, debug.getSnapshot);
+  const debugActive = debugSnap.status !== "idle";
 
   // La lista de errores combina el análisis en vivo (rust-analyzer) con la última compilación.
   const diagnostics = useMemo(() => {
@@ -504,6 +538,74 @@ export default function App() {
     [project, log],
   );
 
+  debugHostRef.current = {
+    output: (text, kind) => {
+      if (text) append({ text, kind });
+    },
+    showLocation: (path, line) => {
+      openFile(path).then(() => setReveal({ path, line, column: 1 }));
+    },
+    isUserCode: (path) => !!projectRef.current && isInside(path, projectRef.current),
+    onStopped: () => setBottomTab("debug"),
+    onEnded: () => setBottomTab((t) => (t === "debug" ? "output" : t)),
+  };
+
+  useEffect(() => {
+    registerDebugHover(() => debug);
+    api.debuggerInfo().then(setDebuggerInfo).catch(() => {});
+  }, [debug]);
+
+  useEffect(() => bpStore.load(project), [bpStore, project]);
+
+  // Si cambian los puntos durante la sesión, avisar al depurador.
+  useEffect(() => {
+    if (debug.active) debug.sendAllBreakpoints();
+  }, [bpVersion, debug]);
+
+  // La compilación para depurar terminó: lanzar lldb-dap.
+  useEffect(() => {
+    const un = listen<{ program: string; cwd: string }>("debug-ready", (e) => {
+      const info = debuggerInfoRef.current;
+      debug.start({
+        program: e.payload.program,
+        cwd: e.payload.cwd,
+        formatters: info?.formatters ?? null,
+        stdinSupported: info?.stdinSupported ?? false,
+        runTo: pendingRunTo.current ?? undefined,
+      });
+      pendingRunTo.current = null;
+    });
+    return () => {
+      un.then((f) => f());
+    };
+  }, [debug]);
+  const pendingRunTo = useRef<{ path: string; line: number } | null>(null);
+  const debuggerInfoRef = useRef(debuggerInfo);
+  debuggerInfoRef.current = debuggerInfo;
+
+  const toggleBreakpointAtCursor = useCallback(() => {
+    const ed = editorRef.current;
+    const model = ed?.getModel();
+    const pos = ed?.getPosition();
+    if (!model || !pos || model.uri.scheme !== "file") return;
+    bpStore.toggle(model.uri.fsPath, pos.lineNumber);
+  }, [bpStore]);
+
+  /** Abre el diálogo de punto de interrupción para una línea (editando el existente si hay). */
+  const openBreakpointDialog = useCallback(
+    (path: string, line: number, kind?: BreakpointDraft["kind"]) => {
+      setBpDraft({ path, line, existing: bpStore.get(path, line), kind });
+    },
+    [bpStore],
+  );
+
+  const cursorLocation = () => {
+    const model = editorRef.current?.getModel();
+    const pos = editorRef.current?.getPosition();
+    if (!model || !pos || model.uri.scheme !== "file") return null;
+    return { path: model.uri.fsPath, line: pos.lineNumber };
+  };
+
   // ---------- Diseñador Slint ↔ main.rs (el "code-behind") ----------
 
   /** Abre el main.rs del proyecto que contiene el .slint. */
@@ -701,6 +803,10 @@ export default function App() {
         return;
       }
       if (running) return;
+      if (debugActive) {
+        log("Hay una sesión de depuración en curso. Detenla primero (Shift+F5).", "warning");
+        return;
+      }
       try {
         await saveAll(); // como VS: guardar todo antes de compilar
       } catch {
@@ -718,7 +824,7 @@ export default function App() {
         log(String(err), "error");
       }
     },
-    [project, startupProject, projects.length, running, saveAll, log, runExternal],
+    [project, startupProject, projects.length, running, saveAll, log, runExternal, debugActive],
   );
 
   const changeRunMode = useCallback((external: boolean) => {
@@ -737,25 +843,56 @@ export default function App() {
   const sendStdin = useCallback(
     (text: string) => {
       append({ text: text + "\n", kind: "input" });
-      api.sendStdin(text).catch((e) => log(String(e), "error"));
+      const send = debugActive ? api.debugStdinWrite(text) : api.sendStdin(text);
+      send.catch((e) => log(String(e), "error"));
     },
-    [append, log],
+    [append, log, debugActive],
   );
+
+  /** F5: iniciar depuración (o continuar si está detenido), como en Visual Studio. */
+  const startDebug = useCallback(async (runTo?: { path: string; line: number }) => {
+    if (debugSnap.status === "stopped") return runTo ? debug.runToCursor(runTo.path, runTo.line) : debug.continue();
+    if (debugActive || running) return;
+    if (!startupProject) return log("No hay un proyecto de inicio para depurar.", "warning");
+    if (startupProject.kind !== "bin") return log("Solo se pueden depurar aplicaciones, no bibliotecas.", "warning");
+    const info = debuggerInfo ?? (await api.debuggerInfo().catch(() => null));
+    setDebuggerInfo(info);
+    if (!info?.adapter) {
+      log("No se encontró el depurador (lldb-dap).", "warning");
+      log("  macOS: ejecuta `xcode-select --install` · Linux: instala `lldb` (sudo apt install lldb) · Windows: instala LLVM.", "muted");
+      return;
+    }
+    if (runExternal) log("Al depurar, el programa usa el panel de salida (la entrada se escribe abajo).", "muted");
+    pendingRunTo.current = runTo ?? null;
+    await runTask("debug");
+  }, [debugSnap.status, debug, debugActive, running, startupProject, debuggerInfo, runExternal, runTask, log]);
 
   const format = useCallback(() => {
     editorRef.current?.getAction("editor.action.formatDocument")?.run();
   }, []);
 
   // ---------- Atajos de teclado ----------
-  const actions = useRef({ runTask, saveActive, stop });
-  actions.current = { runTask, saveActive, stop };
+  const actions = useRef({ runTask, saveActive, stop, startDebug, toggleBreakpointAtCursor, cursorLocation, openBreakpointDialog });
+  actions.current = { runTask, saveActive, stop, startDebug, toggleBreakpointAtCursor, cursorLocation, openBreakpointDialog };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       let handled = true;
-      if (e.key === "F5" && e.shiftKey) actions.current.stop();
-      else if (e.key === "F5") actions.current.runTask("run");
+      const dbg = debug.getSnapshot().status;
+      if (e.key === "F5" && mod && e.shiftKey) dbg !== "idle" ? debug.restart() : (handled = false);
+      else if (e.key === "F5" && e.shiftKey) dbg !== "idle" ? debug.stop() : actions.current.stop();
+      else if (e.key === "F5" && mod) actions.current.runTask("run");
+      else if (e.key === "F5") actions.current.startDebug();
+      else if (e.key === "F10" && mod) {
+        const loc = actions.current.cursorLocation();
+        if (loc) actions.current.startDebug(loc);
+      }
+      else if (e.key === "F9") actions.current.toggleBreakpointAtCursor();
+      else if (e.key === "F6" && dbg === "running") debug.pause();
+      else if (e.key === "F10" && dbg === "stopped") debug.stepOver();
+      else if (e.key === "F11" && e.shiftKey && dbg === "stopped") debug.stepOut();
+      else if (e.key === "F11" && dbg === "stopped") debug.stepInto();
       else if (mod && e.shiftKey && key === "b") actions.current.runTask("build");
       else if (mod && !e.shiftKey && key === "s") actions.current.saveActive();
       else handled = false;
@@ -763,7 +900,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, []);
+  }, [debug]);
 
   // ---------- Inicio ----------
   useEffect(() => {
@@ -780,6 +917,75 @@ export default function App() {
 
   const onEditorMount: OnMount = (editor) => {
     editorRef.current = editor;
+    // Clic en el margen izquierdo = poner/quitar punto de interrupción.
+    editor.onMouseDown((e) => {
+      if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+      const model = editor.getModel();
+      const line = e.target.position?.lineNumber;
+      if (model && line && model.uri.scheme === "file") bpStore.toggle(model.uri.fsPath, line);
+    });
+    // Clic derecho en el margen = elegir el tipo de punto (condicional, por vuelta, mensaje).
+    editor.onContextMenu((e) => {
+      if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+      const model = editor.getModel();
+      const line = e.target.position?.lineNumber;
+      if (model && line && model.uri.scheme === "file") actions.current.openBreakpointDialog(model.uri.fsPath, line);
+    });
+    // Menú contextual del editor (clic derecho sobre el código).
+    const isRust = () => editor.getModel()?.uri.path.endsWith(".rs") ?? false;
+    const addBp = (id: string, label: string, order: number, kind?: BreakpointDraft["kind"]) =>
+      editor.addAction({
+        id,
+        label,
+        contextMenuGroupId: "0_debug",
+        contextMenuOrder: order,
+        run: () => {
+          const loc = actions.current.cursorLocation();
+          if (loc && isRust()) actions.current.openBreakpointDialog(loc.path, loc.line, kind);
+        },
+      });
+    addBp("oxide.bp.add", "Agregar punto de interrupción…", 1);
+    addBp("oxide.bp.cond", "Agregar punto de interrupción condicional…", 2, "condition");
+    addBp("oxide.bp.log", "Agregar punto de registro (mensaje sin detenerse)…", 3, "log");
+    // Como "Agregar inspección" de Visual Studio: la selección o la variable bajo el cursor.
+    editor.addAction({
+      id: "oxide.addWatch",
+      label: "Agregar a Inspección",
+      contextMenuGroupId: "0_debug",
+      contextMenuOrder: 0,
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.F9],
+      run: () => {
+        const model = editor.getModel();
+        const sel = editor.getSelection();
+        const pos = editor.getPosition();
+        if (!model || !pos) return;
+        let expr = sel && !sel.isEmpty() ? model.getValueInRange(sel).trim() : "";
+        if (!expr) {
+          // Variable bajo el cursor, incluyendo campos: `punto.x`
+          const line = model.getLineContent(pos.lineNumber);
+          const re = /[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*/g;
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(line))) {
+            if (pos.column >= m.index + 1 && pos.column <= m.index + 1 + m[0].length) expr = m[0];
+          }
+        }
+        if (!expr) return;
+        debug.addWatch(expr);
+        if (debug.active) setBottomTab("debug");
+        log(`Inspeccionando: ${expr}`, "muted");
+      },
+    });
+    editor.addAction({
+      id: "oxide.runToCursor",
+      label: "Ejecutar hasta el cursor",
+      contextMenuGroupId: "0_debug",
+      contextMenuOrder: 4,
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.F10],
+      run: () => {
+        const loc = actions.current.cursorLocation();
+        if (loc && isRust()) actions.current.startDebug(loc);
+      },
+    });
     editor.onDidChangeCursorPosition((e) =>
       setCursor({ line: e.position.lineNumber, column: e.position.column }),
     );
@@ -831,6 +1037,16 @@ export default function App() {
         projects={projects}
         startup={startupProject}
         onSetStartup={setStartup}
+        debugStatus={debugSnap.status}
+        debugAvailable={!!debuggerInfo?.adapter}
+        onDebug={startDebug}
+        onContinue={debug.continue}
+        onPause={debug.pause}
+        onStepOver={debug.stepOver}
+        onStepInto={debug.stepInto}
+        onStepOut={debug.stepOut}
+        onRestart={() => void debug.restart()}
+        onDebugStop={() => void debug.stop()}
       />
       <ToolchainBanner status={toolchain} onInstall={installComponents} />
       <div className="main">
@@ -874,13 +1090,42 @@ export default function App() {
             onClear={() => setOutput([])}
             onStdin={sendStdin}
             onGoto={gotoDiagnostic}
+            acceptsInput={running === "run" || (debugActive && debugSnap.stdin)}
+            debugActive={debugActive}
+            debugContent={<DebugPanel ctl={debug} snap={debugSnap} root={project} />}
+            breakpointsContent={
+              <BreakpointsPanel
+                key={bpVersion}
+                store={bpStore}
+                root={project}
+                onOpen={(b) => openFile(b.path).then(() => setReveal({ path: b.path, line: b.line, column: 1 }))}
+                onAdd={() => {
+                  const loc = cursorLocation();
+                  const fallback = startupProject ? joinPath(joinPath(startupProject.dir, "src"), "main.rs") : "";
+                  setBpDraft({ path: loc?.path.endsWith(".rs") ? loc.path : fallback, line: loc?.line ?? 1 });
+                }}
+                onEdit={(b) => setBpDraft({ path: b.path, line: b.line, existing: b })}
+              />
+            }
+            breakpointCount={bpStore.all().length}
           />
         </div>
       </div>
-      <footer className={"statusbar" + (running ? " running" : "")}>
+      <footer className={"statusbar" + (debugActive ? " debugging" : running ? " running" : "")}>
         <span className="status-item">
-          {running ? <Codicon name="loading" spin /> : <Codicon name="check" />}
-          {running ? TASK_LABEL[running] : "Listo"}
+          {debugActive ? (
+            <>
+              <Codicon name={debugSnap.status === "stopped" ? "debug-pause" : "debug-alt"} />
+              {debugSnap.status === "stopped"
+                ? `Depurando — ${debugSnap.description ?? "detenido"}`
+                : debugSnap.status === "starting" ? "Iniciando el depurador…" : "Depurando — en ejecución"}
+            </>
+          ) : (
+            <>
+              {running ? <Codicon name="loading" spin /> : <Codicon name="check" />}
+              {running ? TASK_LABEL[running] : "Listo"}
+            </>
+          )}
         </span>
         <span className="status-path">{project ?? "Sin proyecto"}</span>
         <span className="spacer" />
@@ -900,6 +1145,24 @@ export default function App() {
         {activeTab && <span>Ln {cursor.line}, Col {cursor.column}</span>}
         <span>{toolchain?.cargo ?? ""}</span>
       </footer>
+      {bpDraft && (
+        <BreakpointDialog
+          draft={bpDraft}
+          root={project}
+          srcDirs={projects.map((p) => joinPath(p.dir, "src"))}
+          onSave={(path, line, patch, oldPath, oldLine) => {
+            if (oldPath && oldLine !== undefined && (oldPath !== path || oldLine !== line)) bpStore.remove(oldPath, oldLine);
+            bpStore.upsert(path, line, patch);
+            const short = `${basename(path)}:${line}`;
+            log(
+              patch.logMessage ? `Punto de registro en ${short}` : patch.condition ? `Punto condicional en ${short} (si ${patch.condition})` : patch.hitCondition ? `Punto en ${short} (a partir de la vuelta ${patch.hitCondition})` : `Punto de interrupción en ${short}`,
+              "muted",
+            );
+          }}
+          onDelete={bpDraft.existing ? () => bpStore.remove(bpDraft.existing!.path, bpDraft.existing!.line) : undefined}
+          onClose={() => setBpDraft(null)}
+        />
+      )}
       {showNew && (
         <NewProjectDialog currentRoot={project} onCancel={() => setShowNew(false)} onCreate={createProject} />
       )}
@@ -948,7 +1211,10 @@ function Welcome({ onNew, onOpen }: { onNew: () => void; onOpen: () => void }) {
         </button>
       </div>
       <div className="shortcuts muted">
-        <div><kbd>F5</kbd> Ejecutar</div>
+        <div><kbd>F5</kbd> Depurar</div>
+        <div><kbd>Ctrl/⌘</kbd>+<kbd>F5</kbd> Ejecutar sin depurar</div>
+        <div><kbd>F9</kbd> Punto de interrupción</div>
+        <div><kbd>F10</kbd> / <kbd>F11</kbd> Paso a paso</div>
         <div><kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> Compilar</div>
         <div><kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> Guardar</div>
         <div><kbd>Shift</kbd>+<kbd>F5</kbd> Detener</div>

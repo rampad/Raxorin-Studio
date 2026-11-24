@@ -1,4 +1,5 @@
 mod crates;
+mod dap;
 mod fs_cmds;
 mod lsp;
 mod projects;
@@ -13,6 +14,7 @@ pub fn run() {
         .manage(runner::ProcState::default())
         .manage(lsp::LspState::default())
         .manage(watcher::WatchState::default())
+        .manage(dap::DapState::default())
         .invoke_handler(tauri::generate_handler![
             fs_cmds::list_dir,
             fs_cmds::read_file,
@@ -25,6 +27,12 @@ pub fn run() {
             fs_cmds::reveal_path,
             watcher::watch_project,
             projects::find_projects,
+            dap::debugger_info,
+            dap::dap_start,
+            dap::dap_send,
+            dap::dap_stop,
+            dap::debug_stdin_create,
+            dap::debug_stdin_write,
             projects::add_project_reference,
             runner::start_task,
             runner::stop_task,

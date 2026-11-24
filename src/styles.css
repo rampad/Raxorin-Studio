@@ -629,3 +629,93 @@ textarea.prop-input { resize: vertical; min-height: 44px; font-family: var(--mon
 .designer-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; padding: 40px; text-align: center; }
 .designer-error > .codicon { font-size: 36px !important; color: var(--warning); }
 .designer-error h3 { margin: 0; font-weight: 500; color: var(--text-strong); }
+
+/* =================== Depurador =================== */
+/* Puntos de interrupción en el margen del editor */
+.monaco-editor .bp-glyph { display: flex !important; align-items: center; justify-content: center; cursor: pointer; }
+.monaco-editor .bp-glyph::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #e51400; display: block; }
+.monaco-editor .bp-glyph.unverified::before { background: transparent; border: 1.5px solid #8b8b8b; width: 8px; height: 8px; }
+.monaco-editor .bp-glyph.disabled::before { background: #6e6e6e; }
+.monaco-editor .bp-line { background: rgba(229, 20, 0, 0.08); }
+.monaco-editor .debug-current-line { background: rgba(255, 204, 0, 0.18) !important; outline: 1px solid rgba(255, 204, 0, 0.35); }
+.monaco-editor .debug-current-glyph { display: flex !important; align-items: center; justify-content: center; }
+.monaco-editor .debug-current-glyph::after { content: "➜"; color: #ffcc00; font-size: 14px; font-weight: bold; margin-left: 2px; }
+.monaco-editor .margin-view-overlays .cgmr { cursor: pointer; }
+
+/* Barra de controles durante la depuración */
+.tb-btn.debug:not(:disabled) .codicon { color: var(--success); }
+.debug-bar { display: flex; gap: 1px; padding: 1px 4px; border: 1px solid #c86b00; border-radius: 5px; background: rgba(200, 107, 0, 0.12); }
+.debug-bar .tb-btn { padding: 4px 7px; }
+.debug-bar .tb-btn:not(:disabled) .codicon { color: #75beff; }
+.debug-bar .dbg-continue .codicon { color: var(--success) !important; }
+.debug-bar .dbg-restart .codicon { color: var(--success) !important; }
+.debug-bar .stop .codicon { color: var(--error) !important; }
+.statusbar.debugging { background: #c86b00; }
+
+/* Panel de depuración: Variables | Inspección | Pila */
+.debug-panel { flex: 1; display: grid; grid-template-columns: 1.3fr 1fr 1fr; min-height: 0; }
+.debug-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
+.debug-col:last-child { border-right: none; }
+.debug-col-title { display: flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); border-bottom: 1px solid #2c2c2c; flex-shrink: 0; }
+.debug-col-title .codicon { font-size: 13px; }
+.debug-col-body { flex: 1; overflow: auto; padding: 2px 0; font: 12px/1.6 var(--mono); }
+.var-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; white-space: nowrap; cursor: default; min-height: 20px; }
+.var-row:hover { background: var(--hover); }
+.var-row .twisty { cursor: pointer; }
+.var-name { color: #9cdcfe; }
+.var-sep { color: var(--muted); }
+.var-value { color: var(--text); overflow: hidden; text-overflow: ellipsis; user-select: text; -webkit-user-select: text; }
+.var-value.str { color: #ce9178; }
+.var-value.num { color: #b5cea8; }
+.var-value.err { color: var(--error); font-family: -apple-system, sans-serif; font-size: 11px; }
+.var-type { margin-left: auto; padding-left: 10px; color: #4ec9b0; font-size: 11px; opacity: 0.8; }
+.var-row.watch .icon-btn { margin-left: auto; opacity: 0; }
+.var-row.watch:hover .icon-btn { opacity: 1; }
+.watch-add { display: flex; align-items: center; gap: 6px; padding: 2px 10px; }
+.watch-add .codicon { font-size: 13px; color: var(--muted); }
+.watch-add input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-strong); font: 12px var(--mono); user-select: text; -webkit-user-select: text; }
+.frame-row { display: flex; align-items: center; gap: 6px; padding: 1px 10px; cursor: pointer; white-space: nowrap; font-family: -apple-system, "Segoe UI", sans-serif; }
+.frame-row:hover { background: var(--hover); }
+.frame-row.selected { background: #04395e; }
+.frame-row.external { opacity: 0.5; }
+.frame-row .codicon { font-size: 13px; color: #ffcc00; }
+.frame-dot { width: 13px; }
+.frame-name { overflow: hidden; text-overflow: ellipsis; }
+.frame-loc { margin-left: auto; padding-left: 10px; color: var(--muted); font-size: 11px; }
+
+/* Lista de puntos de interrupción */
+.bp-list { padding: 4px 0; }
+.bp-actions { display: flex; gap: 6px; padding: 4px 12px 8px; }
+.bp-actions .btn { display: inline-flex; align-items: center; gap: 4px; }
+.bp-row { display: flex; align-items: center; gap: 8px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
+.bp-row:hover { background: var(--hover); }
+.bp-row .icon-btn { opacity: 0; }
+.bp-row:hover .icon-btn { opacity: 1; }
+.bp-dot { width: 9px; height: 9px; border-radius: 50%; background: #e51400; flex-shrink: 0; }
+.bp-dot.disabled { background: #6e6e6e; }
+.bp-dot.unverified { background: transparent; border: 1.5px solid #8b8b8b; width: 7px; height: 7px; }
+.bp-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-tab-icon { color: #e51400; font-size: 11px !important; }
+
+/* Puntos condicionales y de registro */
+.monaco-editor .bp-glyph.cond::before { background: #e51400; box-shadow: inset 0 0 0 2px #e51400, inset 0 0 0 3.5px #fff; }
+.monaco-editor .bp-glyph.log::before { border-radius: 2px; transform: rotate(45deg); width: 8px; height: 8px; background: #e51400; }
+.monaco-editor .bp-glyph.log.disabled::before, .monaco-editor .bp-glyph.cond.disabled::before { background: #6e6e6e; box-shadow: none; }
+.bp-dot.cond { box-shadow: inset 0 0 0 1.5px #e51400, inset 0 0 0 3px #fff; }
+.bp-dot.log { border-radius: 2px; transform: rotate(45deg); width: 8px; height: 8px; }
+.bp-extra { font-size: 11px; color: #d7ba7d; }
+.bp-extra.log { color: #75beff; }
+.bp-empty { padding: 10px 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.bp-empty .btn, .bp-actions .btn { display: inline-flex; align-items: center; gap: 4px; }
+.modal.bp-dialog { width: min(600px, calc(100vw - 32px)); }
+.bp-dialog h2 { display: flex; align-items: center; gap: 8px; }
+.bp-dialog .row { align-items: flex-end; }
+.bp-dialog label.grow { flex: 1; }
+.bp-dialog .line-field { width: 90px; }
+.bp-dialog .line-field input { width: 100%; }
+.bp-dialog input.mono { font-family: var(--mono); }
+.bp-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bp-kind-icon { font-size: 18px !important; color: #e51400; }
+.bp-kind-icon.log { color: #75beff; }
+.bp-dialog .hint { margin: 2px 0 0; }
+.bp-dialog .actions { align-items: center; }
