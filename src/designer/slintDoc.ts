@@ -25,6 +25,8 @@ export interface Doc {
   root: Element;
   /** Texto después del componente. */
   after: string;
+  /** Salto de línea del archivo original ("\r\n" en archivos de Windows). */
+  eol?: "\n" | "\r\n";
 }
 
 export class SlintParseError extends Error {
@@ -233,7 +235,14 @@ function parseBody(s: string, start: number, end: number): Item[] {
 
 const STD_IMPORT_RE = /import\s*\{([^}]*)\}\s*from\s*"std-widgets\.slint"\s*;[ \t]*\n?/;
 
-export function parse(text: string): Doc {
+export function parse(source: string): Doc {
+  // Se trabaja con "\n" y al generar se restaura el salto de línea original (CRLF en Windows).
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const doc = parseLf(source.replace(/\r\n/g, "\n"));
+  return eol === "\n" ? doc : { ...doc, eol };
+}
+
+function parseLf(text: string): Doc {
   // El componente principal: el que hereda de Window, o el último exportado.
   const re = /export\s+component\s+([A-Za-z_][\w-]*)\s+inherits\s+([A-Za-z_][\w-]*)\s*\{/g;
   let match: RegExpExecArray | null;
@@ -345,7 +354,8 @@ export function generate(doc: Doc): string {
   emitItems(doc.root.items, 1, out);
   out.push("}");
   const after = doc.after.slice(1).replace(/^\s*\n/, "");
-  return out.join("\n") + "\n" + (after.trim() ? "\n" + after.replace(/\s+$/, "") + "\n" : "");
+  const text = out.join("\n") + "\n" + (after.trim() ? "\n" + after.replace(/\s+$/, "") + "\n" : "");
+  return doc.eol === "\r\n" ? text.replace(/\n/g, "\r\n") : text;
 }
 
 // ---------- Ayudantes para el diseñador ----------

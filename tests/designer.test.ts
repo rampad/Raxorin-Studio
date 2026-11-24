@@ -9,6 +9,11 @@ const d = S.parse(tpl);
 const out = S.generate(d);
 ok(out === tpl, "plantilla: parse → generate idéntico");
 if (out !== tpl) console.log(out);
+// En Windows (git con autocrlf) el archivo llega con CRLF: debe salir igual.
+const tplLf = tpl.replace(/\r\n/g, "\n");
+const tplCrlf = tplLf.replace(/\n/g, "\r\n");
+ok(S.generate(S.parse(tplCrlf)) === tplCrlf, "plantilla con CRLF (Windows): ida y vuelta idéntica");
+ok(S.generate(S.parse(tplLf)) === tplLf, "plantilla con LF: ida y vuelta idéntica");
 ok(d.root.items.filter((i) => i.kind === "element").length === 3, "3 elementos hijos");
 const btn = S.getAt(d.root, [d.root.items.findIndex((i) => i.kind === "element" && i.id === "saludar")])!;
 ok(btn.type === "Button" && S.getProp(btn, "text") === '"Saludar"', "botón con texto");
@@ -60,7 +65,7 @@ e.root.items.push({ kind: "element", type: "CheckBox", id: "casilla1", items: [{
 const g = S.generate(e);
 ok(g.includes("x: 40px;") && g.includes("color: #ff8800;"), "setProp");
 ok(g.startsWith('import { Button, CheckBox, LineEdit } from "std-widgets.slint";'), "import agregado para CheckBox");
-ok(g.includes('casilla1 := CheckBox {\n        text: "Acepto \\"todo\\"";\n    }'), "nuevo elemento generado");
+ok(g.replace(/\r\n/g, "\n").includes('casilla1 := CheckBox {\n        text: "Acepto \\"todo\\"";\n    }'), "nuevo elemento generado");
 ok(S.parseString(S.formatString('a "b" \\ {c}')) === 'a "b" \\ {c}', "texto con comillas, barra y llaves");
 
 // 4. Errores claros.
