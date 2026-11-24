@@ -5,10 +5,32 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
-/// Crea un `Command` sin ventana de consola extra en Windows.
+/// Carpeta de binarios de rustup (`~/.cargo/bin` o `$CARGO_HOME/bin`).
+fn cargo_bin_dir() -> Option<PathBuf> {
+    std::env::var_os("CARGO_HOME")
+        .map(|h| PathBuf::from(h).join("bin"))
+        .or_else(|| std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(|h| PathBuf::from(h).join(".cargo").join("bin")))
+        .filter(|d| d.is_dir())
+}
+
+/// PATH con `~/.cargo/bin` al principio. Una app abierta desde Finder/Explorer no
+/// hereda el PATH de la terminal, y cargo necesita encontrar rustc, rustfmt, etc.
+fn path_with_cargo() -> Option<std::ffi::OsString> {
+    let bin = cargo_bin_dir()?;
+    let current = std::env::var_os("PATH").unwrap_or_default();
+    if std::env::split_paths(&current).any(|p| p == bin) {
+        return None;
+    }
+    std::env::join_paths(std::iter::once(bin).chain(std::env::split_paths(&current))).ok()
+}
+
+/// Crea un `Command` sin ventana de consola extra en Windows y con `~/.cargo/bin` en el PATH.
 pub fn new_command(program: impl AsRef<OsStr>) -> Command {
     #[allow(unused_mut)]
     let mut cmd = Command::new(program);
+    if let Some(path) = path_with_cargo() {
+        cmd.env("PATH", path);
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

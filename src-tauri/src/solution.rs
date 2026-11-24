@@ -200,6 +200,24 @@ pub fn solution_set_startup(file: String, dir: Option<String>) -> Result<(), Str
     write(&file, &sol)
 }
 
+/// Archivo .rxsln (o carpeta) con el que se abrió la app: doble clic en Finder /
+/// Explorador, o argumento de línea de comandos. La interfaz lo recoge al iniciar.
+#[derive(Default)]
+pub struct PendingOpen(pub std::sync::Mutex<Option<String>>);
+
+#[tauri::command]
+pub fn take_pending_open(state: tauri::State<'_, PendingOpen>) -> Option<String> {
+    state.0.lock().unwrap().take()
+}
+
+/// Primer argumento que sea un .rxsln o una carpeta existente (Windows/Linux).
+pub fn path_from_args() -> Option<String> {
+    std::env::args().skip(1).find(|a| {
+        let p = Path::new(a);
+        (p.extension().is_some_and(|x| x == EXTENSION) && p.is_file()) || p.is_dir()
+    })
+}
+
 /// Busca un `.rxsln` en la carpeta (no en subcarpetas).
 #[tauri::command]
 pub fn solution_find(dir: String) -> Option<String> {

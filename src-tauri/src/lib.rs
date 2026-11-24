@@ -20,6 +20,7 @@ pub fn run() {
         .manage(watcher::WatchState::default())
         .manage(dap::DapState::default())
         .manage(monitor::MonitorState::default())
+        .manage(solution::PendingOpen(std::sync::Mutex::new(solution::path_from_args())))
         .invoke_handler(tauri::generate_handler![
             fs_cmds::list_dir,
             fs_cmds::read_file,
@@ -38,6 +39,7 @@ pub fn run() {
             solution::solution_remove_project,
             solution::solution_set_startup,
             solution::solution_find,
+            solution::take_pending_open,
             dap::debugger_info,
             dap::dap_start,
             dap::dap_send,
@@ -66,8 +68,22 @@ pub fn run() {
         .expect("error al iniciar Raxorin Studio")
         .run(|app, event| {
             // Al cerrar la app, no dejar programas depurados huérfanos.
-            if let tauri::RunEvent::Exit = event {
-                app.state::<dap::DapState>().shutdown();
+            match event {
+                tauri::RunEvent::Exit => app.state::<dap::DapState>().shutdown(),
+                // macOS: doble clic en un .rxsln (con la app cerrada o abierta).
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Opened { urls } => {
+                    let paths: Vec<String> = urls
+                        .iter()
+                        .filter_map(|u| u.to_file_path().ok())
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .collect();
+                    if let Some(first) = paths.first() {
+                        *app.state::<solution::PendingOpen>().0.lock().unwrap() = Some(first.clone());
+                        let _ = tauri::Emitter::emit(app, "open-path", first.clone());
+                    }
+                }
+                _ => {}
             }
         });
 }

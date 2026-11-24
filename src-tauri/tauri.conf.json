@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Raxorin Studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "dev.raxorinstudio.ide",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -19,7 +19,9 @@
         "minHeight": 600
       }
     ],
-    "security": { "csp": null }
+    "security": {
+      "csp": null
+    }
   },
   "bundle": {
     "active": true,
@@ -30,6 +32,30 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "IDE para crear programas en Rust de forma fácil",
+    "longDescription": "Raxorin Studio es un entorno de desarrollo para Rust inspirado en Visual Studio: editor con autocompletado (rust-analyzer), diseñador visual de ventanas (Slint), depurador, gestor de paquetes y soluciones con varios proyectos.",
+    "copyright": "© 2026 Raxorin Studio",
+    "fileAssociations": [
+      {
+        "ext": [
+          "rxsln"
+        ],
+        "name": "Solución de Raxorin Studio",
+        "description": "Solución de Raxorin Studio (varios proyectos de Rust)",
+        "role": "Editor",
+        "mimeType": "application/x-raxorin-solution",
+        "exportedType": {
+          "identifier": "dev.raxorinstudio.solution",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        }
+      }
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    }
   }
 }

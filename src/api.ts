@@ -119,6 +119,8 @@ export const api = {
   solutionRemoveProject: (file: string, path: string) => invoke<SolutionInfo>("solution_remove_project", { file, path }),
   solutionSetStartup: (file: string, dir: string | null) => invoke<void>("solution_set_startup", { file, dir }),
   solutionFind: (dir: string) => invoke<string | null>("solution_find", { dir }),
+  /** Archivo con el que se abrió la app (doble clic en un .rxsln o argumento). */
+  takePendingOpen: () => invoke<string | null>("take_pending_open"),
   stopTask: () => invoke<void>("stop_task"),
   sendStdin: (text: string) => invoke<void>("send_stdin", { text }),
   toolchainStatus: () => invoke<ToolchainStatus>("toolchain_status"),

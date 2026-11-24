@@ -1115,6 +1115,19 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [debug]);
 
+  // Doble clic en un .rxsln con la app ya abierta (macOS).
+  const openPathRef = useRef<(p: string) => void>(() => {});
+  openPathRef.current = (p: string) => {
+    api.takePendingOpen().catch(() => null);
+    (p.endsWith(".rxsln") ? openSolution(p) : openProject(p)).catch((e) => log(String(e), "error"));
+  };
+  useEffect(() => {
+    const un = listen<string>("open-path", (e) => openPathRef.current(e.payload));
+    return () => {
+      un.then((f) => f());
+    };
+  }, []);
+
   // ---------- Inicio ----------
   useEffect(() => {
     refreshToolchain();
@@ -1124,7 +1137,14 @@ export default function App() {
     } catch {
       /* sin almacenamiento */
     }
-    if (last) (last.endsWith(".rxsln") ? openSolution(last) : openProject(last)).catch(() => {});
+    // Si la app se abrió con un .rxsln (doble clic en Finder/Explorador), abrirlo a él.
+    api
+      .takePendingOpen()
+      .catch(() => null)
+      .then((pending) => {
+        const target = pending ?? last;
+        if (target) (target.endsWith(".rxsln") ? openSolution(target) : openProject(target)).catch((e) => log(String(e), "error"));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

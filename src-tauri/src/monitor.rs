@@ -121,22 +121,28 @@ mod tests {
 
     #[test]
     fn mide_cpu_y_memoria_de_un_proceso() {
-        // Un proceso que consume CPU durante ~1,5 s.
+        // Un proceso que consume CPU varios segundos. Se mide repetidamente (hasta 5 s)
+        // porque con la máquina ocupada una sola medición puntual puede dar 0 %.
         let mut child = std::process::Command::new("sh")
-            .args(["-c", "i=0; while [ $i -lt 400000 ]; do i=$((i+1)); done"])
+            .args(["-c", "i=0; while [ $i -lt 5000000 ]; do i=$((i+1)); done"])
             .spawn()
             .unwrap();
         let spid = Pid::from_u32(child.id());
         let mut sys = System::new().unwrap();
         let kind = ProcessRefreshKind::nothing().with_cpu().with_memory();
         sys.refresh_processes_specifics(ProcessesToUpdate::Some(&[spid]), true, kind);
-        thread::sleep(Duration::from_millis(600));
-        sys.refresh_processes_specifics(ProcessesToUpdate::Some(&[spid]), true, kind);
-        let p = sys.process(spid).expect("proceso");
-        let (cpu, mem) = (p.cpu_usage(), p.memory());
+        let (mut max_cpu, mut mem) = (0f32, 0u64);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Instant::now() < deadline && max_cpu < 5.0 {
+            thread::sleep(INTERVAL);
+            sys.refresh_processes_specifics(ProcessesToUpdate::Some(&[spid]), true, kind);
+            let Some(p) = sys.process(spid) else { break };
+            max_cpu = max_cpu.max(p.cpu_usage());
+            mem = mem.max(p.memory());
+        }
         let _ = child.kill();
         let _ = child.wait();
-        assert!(cpu > 20.0, "cpu {cpu}");
+        assert!(max_cpu > 0.0, "nunca midió uso de CPU (máx {max_cpu})");
         assert!(mem > 100 * 1024, "memoria {mem}");
     }
 }

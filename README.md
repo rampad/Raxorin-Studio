@@ -22,11 +22,44 @@ npm test                                 # parser/generador del diseñador (.sli
 cd src-tauri && cargo test               # backend
 ```
 
-## Generar instalador
+## Instalar
+
+Descarga el instalador de la página de [Releases](https://github.com/rampad/Raxorin-Studio/releases):
+
+| Sistema | Archivo |
+|---|---|
+| macOS (Apple Silicon / Intel) | `.dmg` |
+| Windows | `.msi` o `-setup.exe` |
+| Linux | `.deb`, `.rpm` o `.AppImage` |
+
+Requisito: tener Rust instalado ([rustup.rs](https://rustup.rs)). Raxorin Studio ofrece
+instalar rust-analyzer, clippy y rustfmt si faltan.
+
+Los archivos de solución `.rxsln` quedan asociados a Raxorin Studio: doble clic para abrirlos.
+
+> macOS: como la app aún no está firmada con un certificado de Apple, la primera vez
+> ábrela con clic derecho → **Abrir** (o en *Configuración → Privacidad y seguridad → Abrir de todos modos*).
+
+## Generar instaladores
+
+**En tu máquina** (genera el instalador de tu sistema operativo):
 
 ```bash
 npm run tauri build
+# macOS:   src-tauri/target/release/bundle/dmg/*.dmg
+# Windows: src-tauri/target/release/bundle/msi/*.msi
 ```
+
+**Para todos los sistemas a la vez** (GitHub Actions, `.github/workflows/instaladores.yml`):
+
+```bash
+# 1. Sube la versión en package.json y src-tauri/tauri.conf.json (p. ej. 0.2.0)
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Se crea un borrador de Release con los instaladores de macOS, Windows y Linux;
+revísalo y publícalo desde GitHub. También se puede lanzar a mano desde la pestaña *Actions*.
 
 ## Atajos
 
@@ -73,7 +106,9 @@ src-tauri/src/          Backend (Rust)
 - [x] **Fase 2**: rust-analyzer (autocompletado, ir a definición), cargo fmt/clippy, gestor de crates
 - [x] **Fase 3**: diseñador visual drag & drop con Slint (`.slint` ↔ diseñador, eventos → `main.rs`)
 - [x] **Fase 4**: depurador (lldb-dap): puntos de interrupción, paso a paso, variables, pila, inspección, pánicos
-- [ ] Próximo: temas, instaladores, depuración en Windows
+- [x] Soluciones `.rxsln` (varios proyectos en cualquier carpeta)
+- [x] Instaladores para macOS, Windows y Linux, con asociación de archivos `.rxsln`
+- [ ] Próximo: temas, paneles redimensionables, firma de código, depuración en Windows
 
 ## Créditos
 
