@@ -1049,7 +1049,9 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
   height: 26px; padding: 0 6px; margin: 0 2px; border-radius: 3px; font: inherit; font-size: 12px;
   background: var(--input); color: var(--text); border: 1px solid var(--border); cursor: pointer;
 }
-.modal.publish { width: min(560px, calc(100vw - 32px)); }
+.modal.publish { width: min(660px, calc(100vw - 32px)); }
+.canvas-bar > .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.canvas-bar .check-line { white-space: nowrap; }
 .modal.publish p { margin: -4px 0 0; }
 .modal.publish select { width: 100%; }
 .publish-projects { display: flex; flex-wrap: wrap; gap: 6px; }

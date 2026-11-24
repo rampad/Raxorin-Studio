@@ -941,7 +941,7 @@ export default function SlintDesigner(p: Props) {
       <div className="canvas-wrap">
         <div className="canvas-bar">
           <span className="muted small">
-            <Codicon name="info" /> Arrastra controles a la ventana o a un layout · Supr borra · ⌘/Ctrl+D duplica · flechas mueven (en un layout: cambian el orden)
+            <Codicon name="info" /> Arrastra controles · Supr borra · ⌘/Ctrl+D duplica · flechas mueven
           </span>
           <span className="spacer" />
           <label className="check-line small">
