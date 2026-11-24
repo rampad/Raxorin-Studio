@@ -18,7 +18,12 @@ export interface Diagnostic {
 }
 
 export type Task = "build" | "run" | "check" | "test" | "debug";
-export interface DebuggerInfo { adapter: string | null; formatters: string | null; stdinSupported: boolean }
+export interface DebuggerInfo {
+  adapter: string | null;
+  formatters: string | null;
+  formatterGuard: string | null;
+  stdinSupported: boolean;
+}
 export interface TaskFinished { task: Task; success: boolean; code: number | null; cancelled: boolean }
 
 export interface ToolchainStatus {

@@ -2,10 +2,13 @@ mod crates;
 mod dap;
 mod fs_cmds;
 mod lsp;
+mod monitor;
 mod projects;
 mod runner;
 mod toolchain;
 mod watcher;
+
+use tauri::Manager;
 
 pub fn run() {
     tauri::Builder::default()
@@ -15,6 +18,7 @@ pub fn run() {
         .manage(lsp::LspState::default())
         .manage(watcher::WatchState::default())
         .manage(dap::DapState::default())
+        .manage(monitor::MonitorState::default())
         .invoke_handler(tauri::generate_handler![
             fs_cmds::list_dir,
             fs_cmds::read_file,
@@ -51,6 +55,12 @@ pub fn run() {
             crates::crate_latest,
             crates::crate_set_features,
         ])
-        .run(tauri::generate_context!())
-        .expect("error al iniciar Oxide Studio");
+        .build(tauri::generate_context!())
+        .expect("error al iniciar Oxide Studio")
+        .run(|app, event| {
+            // Al cerrar la app, no dejar programas depurados huérfanos.
+            if let tauri::RunEvent::Exit = event {
+                app.state::<dap::DapState>().shutdown();
+            }
+        });
 }

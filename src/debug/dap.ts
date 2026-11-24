@@ -20,13 +20,16 @@ export class DapClient {
   private listeners = new Map<string, Listener[]>();
   private unlisteners: UnlistenFn[] = [];
   private closed = false;
+  /** Sesión del backend: se ignoran los eventos de adaptadores anteriores (p. ej. al reiniciar). */
+  private session = -1;
   capabilities: Record<string, unknown> = {};
 
   static async start(): Promise<DapClient> {
     const c = new DapClient();
-    c.unlisteners.push(await listen<string>("dap-message", (e) => c.receive(e.payload)));
-    c.unlisteners.push(await listen("dap-exit", () => c.emit("$exit", null)));
-    await invoke("dap_start");
+    type Ev = { session: number; msg: string | null };
+    c.unlisteners.push(await listen<Ev>("dap-message", (e) => e.payload.session === c.session && e.payload.msg && c.receive(e.payload.msg)));
+    c.unlisteners.push(await listen<Ev>("dap-exit", (e) => e.payload.session === c.session && c.emit("$exit", null)));
+    c.session = await invoke<number>("dap_start");
     return c;
   }
 

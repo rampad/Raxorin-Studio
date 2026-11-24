@@ -340,7 +340,8 @@ code { font-family: var(--mono); font-size: 12px; background: var(--bg); padding
 /* ---------- Íconos (Codicons + SVG de archivos) ---------- */
 .codicon { font-size: 16px; line-height: 1; vertical-align: middle; }
 .tb-btn .codicon { font-size: 16px; }
-.tb-btn.run .codicon-play { color: var(--success); }
+.tb-btn.run { font-weight: normal !important; color: var(--text) !important; }
+.tb-btn.run .codicon-play-circle { color: var(--success); opacity: 0.85; }
 .tb-btn.stop:not(:disabled) .codicon { color: var(--error); }
 .tb-btn .codicon-wand { color: #c586c0; }
 .tb-btn .codicon-tools { color: #75beff; }
@@ -643,6 +644,8 @@ textarea.prop-input { resize: vertical; min-height: 44px; font-family: var(--mon
 .monaco-editor .margin-view-overlays .cgmr { cursor: pointer; }
 
 /* Barra de controles durante la depuración */
+.tb-btn.debug { font-weight: 600; }
+.tb-btn.debug:not(:disabled) { color: var(--success); background: rgba(137, 209, 133, 0.08); border-color: rgba(137, 209, 133, 0.35); }
 .tb-btn.debug:not(:disabled) .codicon { color: var(--success); }
 .debug-bar { display: flex; gap: 1px; padding: 1px 4px; border: 1px solid #c86b00; border-radius: 5px; background: rgba(200, 107, 0, 0.12); }
 .debug-bar .tb-btn { padding: 4px 7px; }
@@ -719,3 +722,66 @@ textarea.prop-input { resize: vertical; min-height: 44px; font-family: var(--mon
 .bp-kind-icon.log { color: #75beff; }
 .bp-dialog .hint { margin: 2px 0 0; }
 .bp-dialog .actions { align-items: center; }
+
+/* =================== Herramientas de diagnóstico =================== */
+:root {
+  /* Colores validados contra el fondo del panel (#252526) con el validador de paleta */
+  --series-cpu: #3987e5;
+  --series-mem: #d95926;
+}
+.diag-toggle.on { background: var(--active); border-color: var(--border); }
+.diag-toggle .codicon { color: var(--series-cpu); }
+.diag-panel {
+  width: 320px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
+  background: var(--panel); border-left: 1px solid var(--border);
+}
+.diag-body { flex: 1; overflow: auto; padding: 4px 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.diag-session { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.diag-session .codicon { font-size: 14px; color: var(--success); }
+.diag-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.diag-tile { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; font-size: 11px; }
+.diag-tile strong { font-size: 15px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.diag-controls { display: flex; align-items: center; justify-content: space-between; }
+.diag-controls .icon-btn.on { color: var(--text-strong); background: var(--active); }
+.chart { position: relative; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin-bottom: 2px; }
+.chart-title { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.chart-swatch { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+.chart-value { color: var(--text-strong); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart svg { display: block; overflow: visible; }
+.chart-grid { stroke: #3a3a3a; stroke-width: 1; }
+.chart-axis { fill: var(--muted); font: 10px -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+.chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-area { opacity: 0.12; }
+.chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
+.chart-dot { stroke: var(--panel); stroke-width: 2; }
+.chart-marker { stroke: #c8c8c8; stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.6; }
+.chart-marker-head { fill: #c8c8c8; cursor: help; }
+.chart-marker-key { display: inline-block; width: 0; height: 10px; border-left: 1px dashed #c8c8c8; margin: 0 6px 0 4px; vertical-align: middle; }
+.chart-tip {
+  position: absolute; top: 18px; z-index: 5; pointer-events: none; display: flex; flex-direction: column; gap: 1px;
+  background: #1e1e1e; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 11px; color: var(--muted);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); white-space: nowrap;
+}
+.chart-tip strong { color: var(--text-strong); font-size: 12px; }
+.diag-table { max-height: 300px; overflow: auto; }
+.diag-table table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.diag-table th { text-align: left; color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--panel); padding: 3px 4px; }
+.diag-table td { padding: 2px 4px; border-bottom: 1px solid #2c2c2c; }
+
+/* Consola de depuración */
+.debug-console { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.console-out { flex: 1; overflow: auto; padding: 4px 0; font: 12px/1.6 var(--mono); user-select: text; -webkit-user-select: text; }
+.console-line { display: flex; align-items: flex-start; gap: 6px; padding: 0 12px; white-space: pre-wrap; word-break: break-word; }
+.console-line .codicon { font-size: 13px; margin-top: 2px; }
+.console-line.input { color: var(--info); }
+.console-line.result { color: var(--text-strong); }
+.console-line.error { color: var(--error); }
+.console-gap { width: 13px; flex-shrink: 0; }
+
+/* Variables editables y selector de hilos */
+.var-value.editable { cursor: text; border-bottom: 1px dotted transparent; }
+.var-value.editable:hover { border-bottom-color: var(--muted); }
+.var-edit { background: var(--input); color: var(--text-strong); border: 1px solid var(--accent); font: 12px var(--mono); padding: 0 4px; width: 120px; outline: none; user-select: text; -webkit-user-select: text; }
+.var-error .codicon { color: var(--error); font-size: 12px; }
+.thread-select { margin-left: auto; max-width: 160px; background: var(--input); color: var(--text); border: 1px solid var(--border); border-radius: 3px; font-size: 11px; padding: 1px 4px; text-transform: none; letter-spacing: 0; }

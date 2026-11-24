@@ -32,6 +32,8 @@ interface Props {
   onStepOut: () => void;
   onRestart: () => void;
   onDebugStop: () => void;
+  diagOpen: boolean;
+  onToggleDiag: () => void;
 }
 
 function Btn(props: {
@@ -138,9 +140,9 @@ export default function Toolbar(p: Props) {
       ) : (
       <>
       <Btn
-        icon="debug-alt"
+        icon="debug-start"
         label="Depurar"
-        title={p.debugAvailable ? "Iniciar depuración (F5)" : "Depurador no disponible (falta lldb-dap)"}
+        title={p.debugAvailable ? "Iniciar depuración (F5): se detiene en los puntos de interrupción" : "Depurador no disponible (falta lldb-dap)"}
         onClick={p.onDebug}
         disabled={noTask || p.startup?.kind !== "bin"}
         className="debug"
@@ -150,10 +152,10 @@ export default function Toolbar(p: Props) {
           className="tb-btn run"
           onClick={() => p.onTask("run")}
           disabled={noTask}
-          title={p.runExternal ? "Ejecutar sin depurar, en una terminal externa (Ctrl/⌘+F5)" : "Ejecutar sin depurar (Ctrl/⌘+F5)"}
+          title={(p.runExternal ? "Ejecutar sin depurar, en una terminal externa (Ctrl/⌘+F5)" : "Ejecutar sin depurar (Ctrl/⌘+F5)") + " — ignora los puntos de interrupción"}
         >
-          <Codicon name="play" />
-          <span>Ejecutar</span>
+          <Codicon name="play-circle" />
+          <span>Sin depurar</span>
           {p.runExternal && <Codicon name="link-external" className="run-mode" />}
         </button>
         <button className="tb-btn split-arrow" onClick={() => setMenuOpen((o) => !o)} title="Dónde ejecutar">
@@ -182,6 +184,13 @@ export default function Toolbar(p: Props) {
       <Btn icon="debug-stop" label="Detener" title="Detener (Shift+F5)" onClick={p.onStop} disabled={!busy} className="stop" />
       </>
       )}
+      <span className="tb-sep" />
+      <Btn
+        icon="pulse"
+        title="Herramientas de diagnóstico: CPU y memoria del programa"
+        onClick={p.onToggleDiag}
+        className={"diag-toggle" + (p.diagOpen ? " on" : "")}
+      />
     </div>
   );
 }

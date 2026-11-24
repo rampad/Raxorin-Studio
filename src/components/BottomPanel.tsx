@@ -3,7 +3,7 @@ import type { Diagnostic, OutputChunk, Task } from "../api";
 import { relative } from "../util";
 import { Codicon } from "./Icon";
 
-export type BottomTab = "output" | "errors" | "debug" | "breakpoints";
+export type BottomTab = "output" | "errors" | "debug" | "console" | "breakpoints";
 
 interface Props {
   tab: BottomTab;
@@ -19,6 +19,7 @@ interface Props {
   acceptsInput: boolean;
   debugActive: boolean;
   debugContent: ReactNode;
+  consoleContent: ReactNode;
   breakpointsContent: ReactNode;
   breakpointCount: number;
 }
@@ -62,6 +63,12 @@ export default function BottomPanel(p: Props) {
             Depuración
           </button>
         )}
+        {p.debugActive && (
+          <button className={p.tab === "console" ? "active" : ""} onClick={() => p.setTab("console")}>
+            <Codicon name="debug-console" />
+            Consola de depuración
+          </button>
+        )}
         <button className={p.tab === "breakpoints" ? "active" : ""} onClick={() => p.setTab("breakpoints")}>
           <Codicon name="circle-filled" className="bp-tab-icon" />
           Puntos de interrupción
@@ -75,6 +82,8 @@ export default function BottomPanel(p: Props) {
 
       {p.tab === "debug" ? (
         p.debugContent
+      ) : p.tab === "console" ? (
+        p.consoleContent
       ) : p.tab === "breakpoints" ? (
         <div className="errors">{p.breakpointsContent}</div>
       ) : p.tab === "output" ? (

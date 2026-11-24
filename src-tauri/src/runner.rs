@@ -177,7 +177,7 @@ fn run_task(
             &mut warnings,
         )
     };
-    let status = run_child(app, inner, cmd, false, "muted", Some(&mut on_line))?;
+    let status = run_child(app, inner, cmd, false, "muted", Some(&mut on_line), None)?;
 
     if inner.cancelled.load(SeqCst) {
         return Ok((false, None));
@@ -223,6 +223,7 @@ fn run_task(
 
     if external {
         launch_in_terminal(project, &exe)?;
+        crate::monitor::start(app, crate::monitor::Target::Exe(exe.clone()), "run");
         out(
             app,
             format!("▶ {name} se está ejecutando en una terminal externa.\n"),
@@ -235,7 +236,9 @@ fn run_task(
 
     let mut cmd = new_command(&exe);
     cmd.current_dir(project);
-    let status = run_child(app, inner, cmd, true, "stderr", None)?;
+    let status = run_child(app, inner, cmd, true, "stderr", None, Some(&|pid| {
+        crate::monitor::start(app, crate::monitor::Target::Pid(pid), "run")
+    }))?;
     if inner.cancelled.load(SeqCst) {
         return Ok((false, None));
     }
@@ -262,6 +265,7 @@ fn run_child(
     with_stdin: bool,
     stderr_kind: &'static str,
     on_line: Option<&mut dyn FnMut(&str)>,
+    on_spawn: Option<&dyn Fn(u32)>,
 ) -> Result<Option<ExitStatus>, String> {
     cmd.stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -273,6 +277,9 @@ fn run_child(
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("No se pudo iniciar {:?}: {e}", cmd.get_program()))?;
+    if let Some(f) = on_spawn {
+        f(child.id());
+    }
     let stdout = child.stdout.take().ok_or("Proceso sin stdout")?;
     let stderr = child.stderr.take().ok_or("Proceso sin stderr")?;
     *inner.stdin.lock().unwrap() = if with_stdin { child.stdin.take() } else { None };

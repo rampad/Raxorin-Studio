@@ -18,6 +18,12 @@ export interface DebugSnapshot {
   frameId?: number;
   /** Variables locales del marco seleccionado. */
   locals: Variable[];
+  /** variablesReference del ámbito de las locales (para editar valores). */
+  localsRef: number;
+  /** Hilos del programa (al estar detenido). */
+  threads: { id: number; name: string }[];
+  /** Hilo cuya pila se está mostrando. */
+  viewThreadId?: number;
   watches: WatchResult[];
   /** Aumenta en cada detención (para invalidar árboles de variables). */
   stopCount: number;
@@ -38,6 +44,8 @@ export interface StartOptions {
   program: string;
   cwd: string;
   formatters: string | null;
+  /** Limita la profundidad de los formateadores (tipos recursivos como los de Slint). */
+  formatterGuard: string | null;
   stdinSupported: boolean;
   /** "Ejecutar hasta el cursor" antes de iniciar: punto de un solo uso. */
   runTo?: { path: string; line: number };
@@ -49,7 +57,7 @@ const IGNORED_OUTPUT = /no plugin for the language "rust"|^Running initCommands|
 export class DebugController {
   private client: DapClient | null = null;
   private listeners = new Set<() => void>();
-  private snap: DebugSnapshot = { status: "idle", frames: [], locals: [], watches: [], stopCount: 0, stdin: false };
+  private snap: DebugSnapshot = { status: "idle", frames: [], locals: [], localsRef: 0, threads: [], watches: [], stopCount: 0, stdin: false };
   private watchExprs: string[] = (() => {
     try {
       return JSON.parse(localStorage.getItem(WATCH_KEY) ?? "[]");
@@ -61,6 +69,10 @@ export class DebugController {
 
   constructor(private breakpoints: BreakpointStore, private host: DebugHost) {
     this.snap.watches = this.watchExprs.map((expr) => ({ expr, ref: 0 }));
+    // Solo los cambios del usuario se reenvían al depurador (evita un bucle con "verificado").
+    breakpoints.onEdit((path) => {
+      if (this.client && this.snap.status !== "starting") void this.sendBreakpoints(path);
+    });
   }
 
   // ---------- Suscripción (useSyncExternalStore) ----------
@@ -140,7 +152,12 @@ export class DebugController {
         cwd: opts.cwd,
         stopOnEntry: false,
         // Mostrar Vec, String, Option… de forma legible.
-        initCommands: opts.formatters ? [`command script import "${opts.formatters}"`] : [],
+        initCommands: opts.formatters
+          ? [
+              `command script import "${opts.formatters}"`,
+              ...(opts.formatterGuard ? [`command script import "${opts.formatterGuard}"`] : []),
+            ]
+          : [],
         preRunCommands: [
           // Detenerse cuando el programa entra en pánico (como una excepción en C#).
           "breakpoint set --name rust_panic",
@@ -150,6 +167,14 @@ export class DebugController {
       });
       this.update({ stdin: !!stdinPath });
       this.markRunning();
+      const n = this.breakpoints.all().filter((b) => b.enabled).length;
+      this.host.output(
+        n > 0
+          ? `▶ Depurando. Se detendrá al llegar a uno de tus ${n} punto(s) de interrupción ` +
+              `(si está dentro de un evento, como el clic de un botón, primero usa ese control en la ventana).\n`
+          : "▶ Depurando. No hay puntos de interrupción: pon uno con clic en el margen o F9.\n",
+        "info",
+      );
       this.host.output(stdinPath ? "" : "(La entrada por teclado no está disponible al depurar en este sistema)\n", "muted");
     } catch (e) {
       this.host.output(`No se pudo iniciar la depuración: ${e}\n`, "error");
@@ -159,7 +184,7 @@ export class DebugController {
 
   private markRunning() {
     this.breakpoints.setCurrentLine(null);
-    this.update({ status: "running", frames: [], locals: [], reason: undefined, description: undefined });
+    this.update({ status: "running", frames: [], locals: [], localsRef: 0, threads: [], reason: undefined, description: undefined });
   }
 
   // ---------- Detenido ----------
@@ -172,6 +197,10 @@ export class DebugController {
       .request<{ stackFrames: StackFrame[] }>("stackTrace", { threadId, startFrame: 0, levels: 60 })
       .catch(() => ({ stackFrames: [] as StackFrame[] }));
 
+    const threads = await client
+      .request<{ threads: { id: number; name: string }[] }>("threads")
+      .then((r) => r.threads)
+      .catch(() => []);
     const panic = stackFrames.some((f) => /rust_panic|panic_fmt|begin_panic/.test(f.name));
     // Mostrar el primer marco que sea código del usuario (no la biblioteca estándar).
     const frame = stackFrames.find((f) => f.source?.path && this.host.isUserCode(f.source.path)) ?? stackFrames[0];
@@ -181,6 +210,8 @@ export class DebugController {
       reason,
       description: panic ? "El programa entró en pánico (panic!)" : describe(b.reason, b.description),
       threadId,
+      viewThreadId: threadId,
+      threads,
       frames: stackFrames,
       stopCount: this.snap.stopCount + 1,
     });
@@ -197,19 +228,79 @@ export class DebugController {
       this.breakpoints.setCurrentLine({ path: frame.source.path, line: frame.line });
       if (this.host.isUserCode(frame.source.path)) this.host.showLocation(frame.source.path, frame.line);
     } else this.breakpoints.setCurrentLine(null);
-    const locals = await this.localsFor(frameId);
-    const watches = await this.evaluateWatches(frameId);
-    this.update({ locals, watches });
+    await this.refreshValues();
   }
 
-  private async localsFor(frameId: number): Promise<Variable[]> {
-    if (!this.client) return [];
+  /** Vuelve a leer las variables locales y las inspecciones del marco actual. */
+  private async refreshValues() {
+    const frameId = this.snap.frameId;
+    if (frameId === undefined) return;
+    const { vars, ref } = await this.localsFor(frameId);
+    const watches = await this.evaluateWatches(frameId);
+    this.update({ locals: vars, localsRef: ref, watches });
+  }
+
+  private async localsFor(frameId: number): Promise<{ vars: Variable[]; ref: number }> {
+    if (!this.client) return { vars: [], ref: 0 };
     try {
       const { scopes } = await this.client.request<{ scopes: { name: string; variablesReference: number }[] }>("scopes", { frameId });
       const local = scopes.find((s) => /local/i.test(s.name)) ?? scopes[0];
-      return local ? await this.variables(local.variablesReference) : [];
+      return local ? { vars: await this.variables(local.variablesReference), ref: local.variablesReference } : { vars: [], ref: 0 };
     } catch {
-      return [];
+      return { vars: [], ref: 0 };
+    }
+  }
+
+  /** Cambia el valor de una variable mientras el programa está detenido. */
+  async setVariable(parentRef: number, name: string, value: string): Promise<string | null> {
+    if (!this.client || this.snap.status !== "stopped") return "El programa no está detenido";
+    try {
+      await this.client.request("setVariable", { variablesReference: parentRef, name, value });
+      // Las referencias cambian: volver a leer todo (y reiniciar los árboles expandidos).
+      this.update({ stopCount: this.snap.stopCount + 1 });
+      await this.refreshValues();
+      this.host.output(`✎ ${name} = ${value}\n`, "info");
+      return null;
+    } catch (e) {
+      return String(e).replace(/^.*?Error:\s*/, "");
+    }
+  }
+
+  /** Muestra la pila de otro hilo. */
+  async selectThread(threadId: number) {
+    if (!this.client || this.snap.status !== "stopped") return;
+    const { stackFrames } = await this.client
+      .request<{ stackFrames: StackFrame[] }>("stackTrace", { threadId, startFrame: 0, levels: 60 })
+      .catch(() => ({ stackFrames: [] as StackFrame[] }));
+    this.update({ viewThreadId: threadId, frames: stackFrames });
+    const frame = stackFrames.find((f) => f.source?.path && this.host.isUserCode(f.source.path)) ?? stackFrames[0];
+    if (frame) await this.selectFrame(frame.id);
+  }
+
+  /**
+   * Consola de depuración (como la ventana Inmediato de Visual Studio).
+   * Las líneas que empiezan con ` son comandos de LLDB.
+   */
+  async repl(input: string): Promise<{ ok: boolean; text: string }> {
+    if (!this.client || this.snap.status !== "stopped") {
+      return { ok: false, text: "Detén el programa en un punto de interrupción para evaluar expresiones." };
+    }
+    try {
+      const r = await this.client.request<{ result: string; type?: string }>("evaluate", {
+        expression: input,
+        frameId: this.snap.frameId,
+        context: "repl",
+      });
+      // "(int) $0 = 300" → "300"
+      const text = input.startsWith("`") ? r.result.trim() : r.result.replace(/^\([^)]*\)\s*\$\d+\s*=\s*/, "").trim();
+      // Si cambió algo (p. ej. `i = 5`), refrescar las variables.
+      if (/[^=!<>]=[^=]/.test(input)) {
+        this.update({ stopCount: this.snap.stopCount + 1 });
+        await this.refreshValues();
+      }
+      return { ok: true, text };
+    } catch (e) {
+      return { ok: false, text: String(e).replace(/^.*?Error:\s*/, "") };
     }
   }
 
@@ -328,7 +419,8 @@ export class DebugController {
   async stop() {
     const c = this.client;
     if (!c) return;
-    await Promise.race([c.request("disconnect", { terminateDebuggee: true }).catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
+    // Pedir que cierre el programa; si no responde, el backend igual lo cierra de forma ordenada.
+    await Promise.race([c.request("disconnect", { terminateDebuggee: true }).catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
     await this.end();
   }
 

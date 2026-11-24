@@ -31,6 +31,8 @@ import { DebugController, type DebugHost } from "./debug/controller";
 import { registerDebugHover } from "./debug/hover";
 import { BreakpointsPanel, DebugPanel } from "./debug/DebugPanels";
 import BreakpointDialog, { type BreakpointDraft } from "./debug/BreakpointDialog";
+import DiagnosticsPanel, { useDiagnostics } from "./debug/Diagnostics";
+import DebugConsole, { type ConsoleEntry } from "./debug/DebugConsole";
 import type * as L from "./lsp/types";
 import { basename, dirname, isInside, joinPath, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
@@ -50,6 +52,28 @@ const TASK_LABEL: Record<Task, string> = {
 };
 
 const uriOf = (path: string) => monaco.Uri.file(path).toString();
+
+/** Almacén de puntos y controlador de depuración: uno solo por ventana. */
+function debugSingletons() {
+  const g = globalThis as unknown as {
+    __oxideDebug?: { breakpoints: BreakpointStore; controller: DebugController; hostRef: { current: DebugHost } };
+  };
+  if (!g.__oxideDebug) {
+    const breakpoints = new BreakpointStore();
+    const hostRef: { current: DebugHost } = {
+      current: { output: () => {}, showLocation: () => {}, isUserCode: () => false, onStopped: () => {}, onEnded: () => {} },
+    };
+    const controller = new DebugController(breakpoints, {
+      output: (t, k) => hostRef.current.output(t, k),
+      showLocation: (p, l) => hostRef.current.showLocation(p, l),
+      isUserCode: (p) => hostRef.current.isUserCode(p),
+      onStopped: () => hostRef.current.onStopped(),
+      onEnded: () => hostRef.current.onEnded(),
+    });
+    g.__oxideDebug = { breakpoints, controller, hostRef };
+  }
+  return g.__oxideDebug;
+}
 
 /** Diagnóstico LSP → formato de la lista de errores. */
 function fromLsp(uri: string, d: L.Diagnostic): Diagnostic {
@@ -105,31 +129,33 @@ export default function App() {
   projectsRef.current = projects;
 
   // ---------- Depuración ----------
-  const bpStore = useMemo(() => new BreakpointStore(), []);
+  // Instancias únicas (también sobreviven a la recarga en caliente durante el desarrollo:
+  // dos controladores a la vez podían dejar una sesión de depuración sin dueño).
+  const bpStore = debugSingletons().breakpoints;
   const bpVersion = useSyncExternalStore(bpStore.subscribe, bpStore.getVersion);
   const [debuggerInfo, setDebuggerInfo] = useState<DebuggerInfo | null>(null);
   const [bpDraft, setBpDraft] = useState<BreakpointDraft | null>(null);
   // El controlador llama a la interfaz a través de este objeto (siempre con las funciones más recientes).
-  const debugHostRef = useRef<DebugHost>({
-    output: () => {},
-    showLocation: () => {},
-    isUserCode: () => false,
-    onStopped: () => {},
-    onEnded: () => {},
-  });
-  const debug = useMemo(
-    () =>
-      new DebugController(bpStore, {
-        output: (t, k) => debugHostRef.current.output(t, k),
-        showLocation: (p, l) => debugHostRef.current.showLocation(p, l),
-        isUserCode: (p) => debugHostRef.current.isUserCode(p),
-        onStopped: () => debugHostRef.current.onStopped(),
-        onEnded: () => debugHostRef.current.onEnded(),
-      }),
-    [bpStore],
-  );
+  const debugHostRef = debugSingletons().hostRef;
+  const debug = debugSingletons().controller;
   const debugSnap = useSyncExternalStore(debug.subscribe, debug.getSnapshot);
   const debugActive = debugSnap.status !== "idle";
+
+  // Herramientas de diagnóstico (CPU/memoria) y consola de depuración.
+  const stopInfo = useMemo(
+    () => (debugSnap.status === "stopped" ? { n: debugSnap.stopCount, label: debugSnap.description ?? "Detenido" } : null),
+    [debugSnap.status, debugSnap.stopCount, debugSnap.description],
+  );
+  const diag = useDiagnostics(stopInfo);
+  const [diagOpen, setDiagOpen] = useState(false);
+  useEffect(() => {
+    // Como en Visual Studio: se abre sola al empezar a ejecutar o depurar.
+    if (diag.pid !== null) setDiagOpen(true);
+  }, [diag.pid]);
+  const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
+  useEffect(() => {
+    if (debugSnap.status === "starting") setConsoleEntries([]);
+  }, [debugSnap.status]);
 
   // La lista de errores combina el análisis en vivo (rust-analyzer) con la última compilación.
   const diagnostics = useMemo(() => {
@@ -557,11 +583,6 @@ export default function App() {
 
   useEffect(() => bpStore.load(project), [bpStore, project]);
 
-  // Si cambian los puntos durante la sesión, avisar al depurador.
-  useEffect(() => {
-    if (debug.active) debug.sendAllBreakpoints();
-  }, [bpVersion, debug]);
-
   // La compilación para depurar terminó: lanzar lldb-dap.
   useEffect(() => {
     const un = listen<{ program: string; cwd: string }>("debug-ready", (e) => {
@@ -570,6 +591,7 @@ export default function App() {
         program: e.payload.program,
         cwd: e.payload.cwd,
         formatters: info?.formatters ?? null,
+        formatterGuard: info?.formatterGuard ?? null,
         stdinSupported: info?.stdinSupported ?? false,
         runTo: pendingRunTo.current ?? undefined,
       });
@@ -817,6 +839,11 @@ export default function App() {
       setBottomTab("output");
       setRunning(task);
       if (projects.length > 1) log(`Proyecto: ${startupProject.name}`, "muted");
+      // Como en Visual Studio, "sin depurar" no se detiene en los puntos: avisarlo.
+      const bps = bpStore.all().filter((b) => b.enabled && isInside(b.path, startupProject.dir)).length;
+      if (task === "run" && bps > 0) {
+        log(`Aviso: tienes ${bps} punto(s) de interrupción, pero “Sin depurar” los ignora. Para que se detenga usa ▶ Depurar (F5).`, "warning");
+      }
       try {
         await api.startTask(startupProject.dir, task, task === "run" && runExternal);
       } catch (err) {
@@ -824,7 +851,7 @@ export default function App() {
         log(String(err), "error");
       }
     },
-    [project, startupProject, projects.length, running, saveAll, log, runExternal, debugActive],
+    [project, startupProject, projects.length, running, saveAll, log, runExternal, debugActive, bpStore],
   );
 
   const changeRunMode = useCallback((external: boolean) => {
@@ -850,7 +877,9 @@ export default function App() {
   );
 
   /** F5: iniciar depuración (o continuar si está detenido), como en Visual Studio. */
-  const startDebug = useCallback(async (runTo?: { path: string; line: number }) => {
+  const startDebug = useCallback(async (target?: { path: string; line: number }) => {
+    // Solo aceptar una ubicación real (no, por ejemplo, el evento de un clic).
+    const runTo = target && typeof target.path === "string" && Number.isInteger(target.line) ? target : undefined;
     if (debugSnap.status === "stopped") return runTo ? debug.runToCursor(runTo.path, runTo.line) : debug.continue();
     if (debugActive || running) return;
     if (!startupProject) return log("No hay un proyecto de inicio para depurar.", "warning");
@@ -1039,7 +1068,7 @@ export default function App() {
         onSetStartup={setStartup}
         debugStatus={debugSnap.status}
         debugAvailable={!!debuggerInfo?.adapter}
-        onDebug={startDebug}
+        onDebug={() => void startDebug()}
         onContinue={debug.continue}
         onPause={debug.pause}
         onStepOver={debug.stepOver}
@@ -1047,6 +1076,8 @@ export default function App() {
         onStepOut={debug.stepOut}
         onRestart={() => void debug.restart()}
         onDebugStop={() => void debug.stop()}
+        diagOpen={diagOpen}
+        onToggleDiag={() => setDiagOpen((o) => !o)}
       />
       <ToolchainBanner status={toolchain} onInstall={installComponents} />
       <div className="main">
@@ -1093,6 +1124,9 @@ export default function App() {
             acceptsInput={running === "run" || (debugActive && debugSnap.stdin)}
             debugActive={debugActive}
             debugContent={<DebugPanel ctl={debug} snap={debugSnap} root={project} />}
+            consoleContent={
+              <DebugConsole ctl={debug} entries={consoleEntries} setEntries={setConsoleEntries} stopped={debugSnap.status === "stopped"} />
+            }
             breakpointsContent={
               <BreakpointsPanel
                 key={bpVersion}
@@ -1110,6 +1144,7 @@ export default function App() {
             breakpointCount={bpStore.all().length}
           />
         </div>
+        {diagOpen && <DiagnosticsPanel state={diag} onClose={() => setDiagOpen(false)} />}
       </div>
       <footer className={"statusbar" + (debugActive ? " debugging" : running ? " running" : "")}>
         <span className="status-item">

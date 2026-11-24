@@ -7,10 +7,27 @@ import type { Variable } from "./dap";
 
 // ---------- Árbol de variables (se expande bajo demanda) ----------
 
-function VarNode({ v, ctl, depth, stopCount }: { v: Variable; ctl: DebugController; depth: number; stopCount: number }) {
+function VarNode({ v, ctl, depth, stopCount, parentRef }: {
+  v: Variable;
+  ctl: DebugController;
+  depth: number;
+  stopCount: number;
+  /** variablesReference del contenedor (necesario para cambiar el valor). */
+  parentRef: number;
+}) {
   const [open, setOpen] = useState(false);
   const [kids, setKids] = useState<Variable[] | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState("");
   const expandable = v.variablesReference > 0;
+  // Solo se editan valores simples (números, booleanos, caracteres); no structs ni colecciones.
+  const editable = !expandable && parentRef > 0;
+  const commit = async (value: string) => {
+    setEditing(false);
+    if (value.trim() === "" || value === v.value) return;
+    const err = await ctl.setVariable(parentRef, v.name, value.trim());
+    setError(err ?? "");
+  };
   const toggle = async () => {
     if (!expandable) return;
     if (!open && kids === null) setKids(await ctl.variables(v.variablesReference));
@@ -22,10 +39,38 @@ function VarNode({ v, ctl, depth, stopCount }: { v: Variable; ctl: DebugControll
         <span className="twisty">{expandable && <Codicon name={open ? "chevron-down" : "chevron-right"} />}</span>
         <span className="var-name">{v.name}</span>
         <span className="var-sep">=</span>
-        <span className={"var-value" + (/^".*"$/.test(v.value) ? " str" : /^-?\d/.test(v.value) ? " num" : "")}>{v.value}</span>
+        {editing ? (
+          <input
+            className="var-edit"
+            autoFocus
+            defaultValue={v.value}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit((e.target as HTMLInputElement).value);
+              if (e.key === "Escape") setEditing(false);
+            }}
+            onBlur={(e) => commit(e.target.value)}
+          />
+        ) : (
+          <span
+            className={"var-value" + (/^".*"$/.test(v.value) ? " str" : /^-?\d/.test(v.value) ? " num" : "") + (editable ? " editable" : "")}
+            title={editable ? "Doble clic para cambiar el valor" : undefined}
+            onDoubleClick={(e) => {
+              if (!editable) return;
+              e.stopPropagation();
+              setError("");
+              setEditing(true);
+            }}
+          >
+            {v.value}
+          </span>
+        )}
+        {error && <span className="var-error" title={error}><Codicon name="error" /></span>}
         {v.type && <span className="var-type">{shortType(v.type)}</span>}
       </div>
-      {open && kids?.map((k) => <VarNode key={`${stopCount}-${k.name}`} v={k} ctl={ctl} depth={depth + 1} stopCount={stopCount} />)}
+      {open && kids?.map((k) => (
+        <VarNode key={`${stopCount}-${k.name}`} v={k} ctl={ctl} depth={depth + 1} stopCount={stopCount} parentRef={v.variablesReference} />
+      ))}
     </>
   );
 }
@@ -54,7 +99,9 @@ export function DebugPanel({ ctl, snap, root }: { ctl: DebugController; snap: De
           ) : snap.locals.length === 0 ? (
             <div className="muted pad small">No hay variables en este punto.</div>
           ) : (
-            snap.locals.map((v) => <VarNode key={`${snap.stopCount}-${snap.frameId}-${v.name}`} v={v} ctl={ctl} depth={0} stopCount={snap.stopCount} />)
+            snap.locals.map((v) => (
+              <VarNode key={`${snap.stopCount}-${snap.frameId}-${v.name}`} v={v} ctl={ctl} depth={0} stopCount={snap.stopCount} parentRef={snap.localsRef} />
+            ))
           )}
         </div>
       </div>
@@ -86,7 +133,23 @@ export function DebugPanel({ ctl, snap, root }: { ctl: DebugController; snap: De
       </div>
 
       <div className="debug-col">
-        <div className="debug-col-title"><Codicon name="debug-stackframe" /> Pila de llamadas</div>
+        <div className="debug-col-title">
+          <Codicon name="debug-stackframe" /> Pila de llamadas
+          {stopped && snap.threads.length > 1 && (
+            <select
+              className="thread-select"
+              value={snap.viewThreadId}
+              onChange={(e) => ctl.selectThread(Number(e.target.value))}
+              title="Hilo"
+            >
+              {snap.threads.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.id === snap.threadId ? "● " : ""}{t.name || `Hilo ${t.id}`}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         <div className="debug-col-body">
           {!stopped && <div className="muted pad small">—</div>}
           {stopped &&

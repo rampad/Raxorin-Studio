@@ -26,6 +26,8 @@ export class BreakpointStore {
   private files = new Map<string, BreakpointInfo[]>();
   private decorations = new Map<string, string[]>(); // uri → ids de decoraciones
   private listeners = new Set<Listener>();
+  /** Avisos de cambios hechos por el usuario (no los de "verificado"), por archivo. */
+  private editListeners = new Set<(path: string) => void>();
   private root: string | null = null;
   private version = 0;
   private currentLine: { path: string; line: number } | null = null;
@@ -41,6 +43,13 @@ export class BreakpointStore {
     return () => this.listeners.delete(fn);
   };
   getVersion = () => this.version;
+  onEdit(fn: (path: string) => void) {
+    this.editListeners.add(fn);
+    return () => this.editListeners.delete(fn);
+  }
+  private edited(path: string) {
+    this.editListeners.forEach((fn) => fn(path));
+  }
   private changed(persist = true) {
     this.version++;
     if (persist) this.save();
@@ -125,6 +134,7 @@ export class BreakpointStore {
     this.files.clear();
     paths.forEach((p) => this.renderPath(p));
     this.changed();
+    paths.forEach((p) => this.edited(p));
   }
 
   /** Resultado de setBreakpoints: el depurador puede mover la línea o rechazarlo. */
@@ -149,6 +159,7 @@ export class BreakpointStore {
     else this.files.delete(path);
     this.renderPath(path);
     this.changed();
+    this.edited(path);
   }
 
   // ---------- Línea actual de ejecución ----------
@@ -213,6 +224,7 @@ export class BreakpointStore {
         // Quitar duplicados si dos puntos terminaron en la misma línea.
         this.files.set(path, list.filter((b, i) => list.findIndex((x) => x.line === b.line) === i));
         this.changed();
+        this.edited(path);
       }
     });
     model.onWillDispose(() => this.decorations.delete(model.uri.toString()));
