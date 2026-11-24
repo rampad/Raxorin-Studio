@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ProjectInfo, Task } from "../api";
 import { relative } from "../util";
 import { Codicon, FileIcon } from "./Icon";
-import rustLogo from "../assets/file-icons/rust.svg";
+import oxideMark from "../assets/brand/oxide-mark.svg";
 
 interface Props {
   hasProject: boolean;
@@ -69,8 +69,8 @@ export default function Toolbar(p: Props) {
   return (
     <div className="toolbar">
       <span className="brand">
-        <img src={rustLogo} width={18} height={18} alt="" />
-        Oxide Studio
+        <img src={oxideMark} height={18} alt="" />
+        <span className="brand-name"><span className="brand-oxide">Oxide</span> Studio</span>
       </span>
       <Btn icon="new-file" label="Nuevo" title="Nuevo proyecto" onClick={p.onNew} />
       <Btn icon="folder-opened" label="Abrir" title="Abrir carpeta" onClick={p.onOpen} />

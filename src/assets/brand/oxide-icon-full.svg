@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Oxide Studio — ícono sin margen (Windows, Linux y tamaños pequeños) -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2e36"/>
+      <stop offset="1" stop-color="#15161a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff6a2b" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ff6a2b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="oxide" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffc07a"/>
+      <stop offset="0.45" stop-color="#f26b2a"/>
+      <stop offset="1" stop-color="#b3301a"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <g transform="translate(512 512) scale(1.22) translate(-512 -512)">
+  <circle cx="512" cy="512" r="330" fill="url(#glow)"/>
+  <polygon points="512,242 745.8,377 745.8,647 512,782 278.2,647 278.2,377"
+           fill="none" stroke="url(#oxide)" stroke-width="96" stroke-linejoin="round"/>
+  <g stroke="#ffeede" stroke-width="62" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="410,436 494,512 410,588"/>
+    <line x1="540" y1="588" x2="618" y2="588"/>
+  </g>
+  </g>
+</svg>

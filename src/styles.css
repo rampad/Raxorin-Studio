@@ -465,3 +465,13 @@ code { font-family: var(--mono); font-size: 12px; background: var(--bg); padding
 .chip.static { cursor: default; }
 .chip.cat { color: var(--info); }
 .readme-frame { width: 100%; border: none; min-height: 200px; background: transparent; }
+
+/* ---------- Marca Oxide Studio ---------- */
+.brand-name { font-weight: 600; color: var(--text-strong); letter-spacing: 0.2px; }
+.brand-oxide {
+  background: linear-gradient(120deg, #ffc07a 0%, #f26b2a 50%, #d2441f 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.welcome-logo { filter: drop-shadow(0 6px 24px rgba(242, 107, 42, 0.35)); margin-bottom: 8px; }
+.wordmark { font-weight: 300 !important; letter-spacing: 0.5px; }
+.wordmark .brand-oxide { font-weight: 600; }

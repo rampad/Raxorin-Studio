@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/assets/brand/oxide-icon.svg" width="128" alt="Oxide Studio" />
+</p>
+
 # Oxide Studio
 
 IDE para crear programas en Rust de forma fácil, inspirada en Visual Studio.

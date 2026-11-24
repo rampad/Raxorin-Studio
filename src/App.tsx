@@ -26,7 +26,7 @@ import { registerRustProviders } from "./lsp/providers";
 import type * as L from "./lsp/types";
 import { basename, dirname, isInside, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
-import rustLogo from "./assets/file-icons/rust.svg";
+import oxideMark from "./assets/brand/oxide-mark.svg";
 
 const LAST_PROJECT_KEY = "oxidestudio.lastProject";
 const RUN_EXTERNAL_KEY = "oxidestudio.runExternal";
@@ -831,8 +831,10 @@ export default function App() {
 function Welcome({ onNew, onOpen }: { onNew: () => void; onOpen: () => void }) {
   return (
     <div className="welcome">
-      <img className="welcome-logo" src={rustLogo} width={72} height={72} alt="" />
-      <h1>Oxide Studio</h1>
+      <img className="welcome-logo" src={oxideMark} height={96} alt="" />
+      <h1 className="wordmark">
+        <span className="brand-oxide">Oxide</span> Studio
+      </h1>
       <p className="muted">Crea programas en Rust de forma fácil.</p>
       <div className="welcome-actions">
         <button className="welcome-card" onClick={onNew}>
