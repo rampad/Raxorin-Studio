@@ -1,0 +1,39 @@
+import { Button, LineEdit } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "Mi aplicación";
+    width: 400px;
+    height: 220px;
+
+    in-out property <string> saludo_text <=> saludo.text;
+    in-out property <string> nombre_text <=> nombre.text;
+    callback saludar_clicked();
+
+    saludo := Text {
+        x: 24px;
+        y: 24px;
+        width: 352px;
+        height: 32px;
+        text: "¿Cómo te llamas?";
+        font-size: 18px;
+    }
+
+    nombre := LineEdit {
+        x: 24px;
+        y: 72px;
+        width: 352px;
+        height: 36px;
+        placeholder-text: "Escribe tu nombre";
+    }
+
+    saludar := Button {
+        x: 24px;
+        y: 124px;
+        width: 120px;
+        height: 36px;
+        text: "Saludar";
+        clicked => {
+            root.saludar_clicked();
+        }
+    }
+}

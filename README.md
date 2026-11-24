@@ -15,6 +15,13 @@ npm install
 npm run tauri dev
 ```
 
+## Pruebas
+
+```bash
+npm test                                 # parser/generador del diseñador (.slint)
+cd src-tauri && cargo test               # backend
+```
+
 ## Generar instalador
 
 ```bash
@@ -43,6 +50,7 @@ src/                    Frontend (React)
   api.ts                Llamadas al backend (invoke)
   lsp/client.ts         Cliente LSP: JSON-RPC, sincronización de documentos, diagnósticos
   lsp/providers.ts      Autocompletado, hover, definición, renombrar, etc. → Monaco
+  designer/             Diseñador visual de Slint: parser/generador .slint, lienzo, propiedades
   components/           Toolbar, Explorer, EditorArea, BottomPanel, diálogos
 src-tauri/src/          Backend (Rust)
   fs_cmds.rs            Archivos y creación de proyectos (cargo new)
@@ -56,7 +64,7 @@ src-tauri/src/          Backend (Rust)
 
 - [x] **Fase 1**: proyectos de consola, editor, compilar/ejecutar, lista de errores, stdin
 - [x] **Fase 2**: rust-analyzer (autocompletado, ir a definición), cargo fmt/clippy, gestor de crates
-- [ ] **Fase 3**: diseñador visual drag & drop con Slint
+- [x] **Fase 3**: diseñador visual drag & drop con Slint (`.slint` ↔ diseñador, eventos → `main.rs`)
 - [ ] **Fase 4**: depurador (DAP + CodeLLDB), temas, instaladores
 
 ## Créditos

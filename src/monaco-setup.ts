@@ -5,3 +5,6 @@ import { loader } from "@monaco-editor/react";
 
 self.MonacoEnvironment = { getWorker: () => new editorWorker() };
 loader.config({ monaco });
+
+import { registerSlintLanguage } from "./designer/slintLanguage";
+registerSlintLanguage();

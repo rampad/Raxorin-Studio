@@ -81,7 +81,7 @@ export const api = {
   listDir: (path: string) => invoke<Entry[]>("list_dir", { path }),
   readFile: (path: string) => invoke<string>("read_file", { path }),
   writeFile: (path: string, contents: string) => invoke<void>("write_file", { path, contents }),
-  createProject: (parent: string, name: string, kind: "bin" | "lib") =>
+  createProject: (parent: string, name: string, kind: "bin" | "lib" | "slint") =>
     invoke<string>("create_project", { parent, name, kind }),
   startTask: (project: string, task: Task, external = false) =>
     invoke<void>("start_task", { project, task, external }),

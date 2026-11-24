@@ -74,7 +74,77 @@ fn main() {
 }
 "#;
 
-/// Crea un proyecto nuevo con `cargo new`. `kind` es "bin" (consola) o "lib".
+// Plantilla "Aplicación de ventana" (Slint): la interfaz en ui/, el código en main.rs.
+const SLINT_UI: &str = r##"import { Button, LineEdit } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "Mi aplicación";
+    width: 400px;
+    height: 220px;
+
+    in-out property <string> saludo_text <=> saludo.text;
+    in-out property <string> nombre_text <=> nombre.text;
+    callback saludar_clicked();
+
+    saludo := Text {
+        x: 24px;
+        y: 24px;
+        width: 352px;
+        height: 32px;
+        text: "¿Cómo te llamas?";
+        font-size: 18px;
+    }
+
+    nombre := LineEdit {
+        x: 24px;
+        y: 72px;
+        width: 352px;
+        height: 36px;
+        placeholder-text: "Escribe tu nombre";
+    }
+
+    saludar := Button {
+        x: 24px;
+        y: 124px;
+        width: 120px;
+        height: 36px;
+        text: "Saludar";
+        clicked => {
+            root.saludar_clicked();
+        }
+    }
+}
+"##;
+
+const SLINT_MAIN: &str = r##"// Código de la ventana (como el "code-behind" de WPF).
+// La interfaz está en ui/app-window.slint: ábrela para editarla con el diseñador.
+
+slint::include_modules!();
+
+fn main() -> Result<(), slint::PlatformError> {
+    let ui = AppWindow::new()?;
+
+    ui.on_saludar_clicked({
+        let ui_handle = ui.as_weak();
+        move || {
+            let ui = ui_handle.unwrap();
+            let nombre = ui.get_nombre_text();
+            ui.set_saludo_text(format!("¡Hola, {nombre}!").into());
+        }
+    });
+
+    ui.run()
+}
+"##;
+
+const SLINT_BUILD: &str = r##"fn main() {
+    slint_build::compile("ui/app-window.slint").expect("No se pudo compilar la interfaz .slint");
+}
+"##;
+
+const SLINT_VERSION: &str = "1.19";
+
+/// Crea un proyecto nuevo con `cargo new`. `kind` es "bin" (consola), "lib" o "slint" (ventana).
 #[tauri::command]
 pub fn create_project(parent: String, name: String, kind: String) -> Result<String, String> {
     let valid = !name.is_empty()
@@ -107,8 +177,30 @@ pub fn create_project(parent: String, name: String, kind: String) -> Result<Stri
         return Err(String::from_utf8_lossy(&out.stderr).into_owned());
     }
 
-    if kind != "lib" {
-        let _ = std::fs::write(target.join("src").join("main.rs"), CONSOLE_TEMPLATE);
+    let write = |rel: &str, text: &str| -> Result<(), String> {
+        let path = target.join(rel);
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&path, text).map_err(|e| format!("No se pudo escribir {rel}: {e}"))
+    };
+    match kind.as_str() {
+        "lib" => {}
+        "slint" => {
+            // Dependencias escritas directamente (funciona sin internet; cargo descarga al compilar).
+            let manifest = target.join("Cargo.toml");
+            let mut toml = std::fs::read_to_string(&manifest).map_err(|e| e.to_string())?;
+            if !toml.contains("[dependencies]") {
+                toml.push_str("\n[dependencies]\n");
+            }
+            toml = toml.replacen("[dependencies]\n", &format!("[dependencies]\nslint = \"{SLINT_VERSION}\"\n"), 1);
+            toml.push_str(&format!("\n[build-dependencies]\nslint-build = \"{SLINT_VERSION}\"\n"));
+            std::fs::write(&manifest, toml).map_err(|e| e.to_string())?;
+            write("build.rs", SLINT_BUILD)?;
+            write("ui/app-window.slint", SLINT_UI)?;
+            write("src/main.rs", SLINT_MAIN)?;
+        }
+        _ => write("src/main.rs", CONSOLE_TEMPLATE)?,
     }
     Ok(target.to_string_lossy().into_owned())
 }
@@ -189,4 +281,24 @@ pub fn reveal_path(path: String) -> Result<(), String> {
     result
         .map(|_| ())
         .map_err(|e| format!("No se pudo abrir el gestor de archivos: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn crea_proyecto_de_ventana() {
+        let parent = std::env::temp_dir().join(format!("oxide-tpl-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&parent);
+        let path = create_project(parent.to_string_lossy().into(), "mi_ventana".into(), "slint".into()).unwrap();
+        let p = Path::new(&path);
+        let toml = std::fs::read_to_string(p.join("Cargo.toml")).unwrap();
+        assert!(toml.contains("[dependencies]\nslint = \"1.19\""), "{toml}");
+        assert!(toml.contains("[build-dependencies]\nslint-build = \"1.19\""), "{toml}");
+        assert!(p.join("build.rs").is_file());
+        assert!(std::fs::read_to_string(p.join("ui/app-window.slint")).unwrap().contains("export component AppWindow inherits Window"));
+        assert!(std::fs::read_to_string(p.join("src/main.rs")).unwrap().contains("slint::include_modules!()"));
+        println!("PROYECTO={path}");
+    }
 }

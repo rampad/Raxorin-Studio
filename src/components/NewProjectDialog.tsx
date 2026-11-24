@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { homeDir, join } from "@tauri-apps/api/path";
 import { Codicon } from "./Icon";
 
-type Kind = "bin" | "lib";
+type Kind = "bin" | "lib" | "slint";
 
 interface Props {
   /** Carpeta abierta actualmente (para "agregar a la carpeta actual"). */
@@ -15,7 +15,7 @@ interface Props {
 const TEMPLATES: { kind: Kind | null; icon: string; title: string; desc: string }[] = [
   { kind: "bin", icon: "terminal", title: "Aplicación de consola", desc: "Un programa que se ejecuta en la terminal." },
   { kind: "lib", icon: "library", title: "Biblioteca", desc: "Código reutilizable para otros proyectos." },
-  { kind: null, icon: "window", title: "Aplicación de ventana", desc: "Diseñador visual con Slint · Próximamente" },
+  { kind: "slint", icon: "window", title: "Aplicación de ventana", desc: "Ventana con diseñador visual (Slint), como WPF." },
 ];
 
 export default function NewProjectDialog({ currentRoot, onCancel, onCreate }: Props) {

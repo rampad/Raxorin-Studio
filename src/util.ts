@@ -16,6 +16,7 @@ export function languageFor(path: string): string {
     case "js": return "javascript";
     case "ts": return "typescript";
     case "yml": case "yaml": return "yaml";
+    case "slint": return "slint";
     default: return "plaintext";
   }
 }

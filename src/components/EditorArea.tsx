@@ -1,5 +1,7 @@
+import { useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { Uri } from "monaco-editor";
+import SlintDesigner, { type DesignerHost } from "../designer/SlintDesigner";
 import { languageFor } from "../util";
 import { Codicon, FileIcon } from "./Icon";
 
@@ -16,12 +18,18 @@ interface Props {
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
   onMount: OnMount;
+  designer: DesignerHost;
 }
 
 // El contenido de las pestañas se sincroniza desde los modelos de Monaco en App.tsx,
 // así también se reflejan las ediciones hechas en otros archivos (p. ej. al renombrar).
-export default function EditorArea({ tabs, active, onSelect, onClose, onMount }: Props) {
+export default function EditorArea({ tabs, active, onSelect, onClose, onMount, designer }: Props) {
   const tab = tabs.find((t) => t.path === active);
+  // Los .slint se abren en el diseñador; se puede cambiar a la vista de código.
+  const [modes, setModes] = useState<Record<string, "design" | "code">>({});
+  const isSlint = !!tab && tab.path.toLowerCase().endsWith(".slint");
+  const mode = tab ? modes[tab.path] ?? (isSlint ? "design" : "code") : "code";
+  const setMode = (m: "design" | "code") => tab && setModes((x) => ({ ...x, [tab.path]: m }));
   return (
     <div className="editor-area">
       <div className="tabs">
@@ -51,9 +59,27 @@ export default function EditorArea({ tabs, active, onSelect, onClose, onMount }:
           </div>
         ))}
       </div>
+      {isSlint && (
+        <div className="view-switch">
+          <div className="segmented small">
+            <button className={mode === "design" ? "active" : ""} onClick={() => setMode("design")}>
+              <Codicon name="layout" /> Diseño
+            </button>
+            <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}>
+              <Codicon name="code" /> Código
+            </button>
+          </div>
+          <span className="muted small">
+            {mode === "design" ? "Los cambios del diseñador se escriben en el archivo .slint" : "Edita el .slint a mano; el diseñador se actualiza al volver"}
+          </span>
+        </div>
+      )}
       <div className="editor-host">
-        {tab ? (
+        {tab && mode === "design" ? (
+          <SlintDesigner key={tab.path} path={tab.path} onShowCode={() => setMode("code")} {...designer} />
+        ) : tab ? (
           <Editor
+            keepCurrentModel
             theme="vs-dark"
             path={Uri.file(tab.path).toString()}
             language={languageFor(tab.path)}

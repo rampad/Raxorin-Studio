@@ -23,6 +23,8 @@ import ReferenceDialog from "./components/ReferenceDialog";
 import ToolchainBanner from "./components/ToolchainBanner";
 import { LspClient } from "./lsp/client";
 import { registerRustProviders } from "./lsp/providers";
+import type { DesignerHost } from "./designer/SlintDesigner";
+import type { EventParam } from "./designer/widgets";
 import type * as L from "./lsp/types";
 import { basename, dirname, isInside, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
@@ -433,24 +435,31 @@ export default function App() {
   }, [openProject, log]);
 
   const createProject = useCallback(
-    async (parent: string, name: string, kind: "bin" | "lib", addToCurrent: boolean) => {
+    async (parent: string, name: string, kind: "bin" | "lib" | "slint", addToCurrent: boolean) => {
       const path = await api.createProject(parent, name, kind);
+      const openDesigner = async () => {
+        if (kind !== "slint") return;
+        await openFile(await join(path, "ui", "app-window.slint"));
+        log("Ventana creada: diseña en app-window.slint y escribe el código en main.rs. La primera compilación de Slint tarda un poco.", "muted");
+      };
       setShowNew(false);
       if (addToCurrent && project && isInside(path, project)) {
-        log(`Proyecto agregado a la carpeta: ${name} (${kind === "bin" ? "aplicación" : "biblioteca"})`, "success");
+        log(`Proyecto agregado a la carpeta: ${name} (${{ bin: "aplicación de consola", lib: "biblioteca", slint: "aplicación de ventana" }[kind]})`, "success");
         // Si aún no hay un ejecutable de inicio, el nuevo pasa a serlo.
-        const prefer = kind === "bin" && startupProject?.kind !== "bin" ? path : startupDir ?? undefined;
-        await refreshProjects(project, prefer);
+        const prefer = kind !== "lib" && startupProject?.kind !== "bin" ? path : startupDir ?? undefined;
+        await refreshProjects(project, kind === "slint" && startupProject?.kind !== "bin" ? path : prefer);
         await openMainFile(path);
+        await openDesigner();
         if (kind === "lib") {
           log("Consejo: clic derecho sobre un proyecto → “Agregar referencia a proyecto…” para usar esta biblioteca.", "muted");
         }
       } else {
         log(`Proyecto creado: ${path}`, "success");
         await openProject(path);
+        await openDesigner();
       }
     },
-    [project, startupProject, startupDir, refreshProjects, openMainFile, openProject, log],
+    [project, startupProject, startupDir, refreshProjects, openMainFile, openProject, openFile, log],
   );
 
   const refreshToolchain = useCallback(async () => {
@@ -493,6 +502,95 @@ export default function App() {
       lspRef.current?.reloadWorkspace();
     },
     [project, log],
+  );
+
+  // ---------- Diseñador Slint ↔ main.rs (el "code-behind") ----------
+
+  /** Abre el main.rs del proyecto que contiene el .slint. */
+  const rustMainFor = useCallback(
+    async (slintPath: string) => {
+      const owner = projectsRef.current
+        .filter((p) => isInside(slintPath, p.dir))
+        .sort((a, b) => b.dir.length - a.dir.length)[0];
+      if (!owner) {
+        log("Este archivo .slint no está dentro de un proyecto de Rust.", "warning");
+        return null;
+      }
+      const main = await join(owner.dir, "src", "main.rs");
+      await openFile(main);
+      const model = monaco.editor.getModel(monaco.Uri.file(main));
+      if (!model) {
+        log(`No se encontró ${main}.`, "warning");
+        return null;
+      }
+      return { main, model };
+    },
+    [openFile, log],
+  );
+
+  const gotoHandler = useCallback(
+    async (slintPath: string, callback: string) => {
+      const r = await rustMainFor(slintPath);
+      if (!r) return;
+      const lines = r.model.getLinesContent();
+      const i = lines.findIndex((l) => l.includes(`on_${callback}(`));
+      if (i < 0) {
+        log(`No se encontró ui.on_${callback}(…) en main.rs. Puedes escribirlo a mano o volver a crear el evento.`, "warning");
+        return;
+      }
+      const body = lines.findIndex((l, j) => j > i && /move\s*\|/.test(l));
+      setReveal({ path: r.main, line: body >= 0 ? body + 2 : i + 1, column: 1 });
+    },
+    [rustMainFor, log],
+  );
+
+  const createHandler = useCallback(
+    async (slintPath: string, callback: string, params: EventParam[], label: string) => {
+      const r = await rustMainFor(slintPath);
+      if (!r) return;
+      const lines = r.model.getLinesContent();
+      if (lines.some((l) => l.includes(`on_${callback}(`))) return gotoHandler(slintPath, callback);
+      let runIdx = -1;
+      lines.forEach((l, j) => {
+        if (/^\s*ui\.run\(\)/.test(l)) runIdx = j;
+      });
+      const ind = runIdx >= 0 ? lines[runIdx].match(/^\s*/)![0] : "    ";
+      const args = params.map((x) => x.name).join(", ");
+      const print = params.length
+        ? `println!("${callback}: ${params.map(() => "{:?}").join(", ")}", ${args});`
+        : `println!("${callback}");`;
+      const snippet = [
+        `${ind}// ${label}`,
+        `${ind}ui.on_${callback}({`,
+        `${ind}    let ui_handle = ui.as_weak();`,
+        `${ind}    move |${args}| {`,
+        `${ind}        let ui = ui_handle.unwrap();`,
+        `${ind}        // Escribe aquí lo que debe pasar. Por ejemplo: ui.set_…(…);`,
+        `${ind}        ${print}`,
+        `${ind}        let _ = ui;`,
+        `${ind}    }`,
+        `${ind}});`,
+        "",
+      ].join("\n");
+      if (runIdx < 0) {
+        log("No encontré `ui.run()` en main.rs. Pega este código antes de mostrar la ventana:", "warning");
+        log(snippet, "stdout");
+        return;
+      }
+      r.model.pushEditOperations([], [{ range: new monaco.Range(runIdx + 1, 1, runIdx + 1, 1), text: snippet + "\n" }], () => null);
+      setReveal({ path: r.main, line: runIdx + 6, column: ind.length + 9 });
+      log(`Evento conectado: ui.on_${callback}(…) en main.rs`, "success");
+    },
+    [rustMainFor, gotoHandler, log],
+  );
+
+  const designerHost = useMemo<DesignerHost>(
+    () => ({
+      createHandler: (path, cb, params, label) => void createHandler(path, cb, params, label),
+      gotoHandler: (path, cb) => void gotoHandler(path, cb),
+      openRustFile: (path) => void rustMainFor(path),
+    }),
+    [createHandler, gotoHandler, rustMainFor],
   );
 
   // ---------- Explorador: crear, renombrar, eliminar ----------
@@ -761,6 +859,7 @@ export default function App() {
               onSelect={setActive}
               onClose={closeTab}
               onMount={onEditorMount}
+              designer={designerHost}
             />
           ) : (
             <Welcome onNew={() => setShowNew(true)} onOpen={openFolder} />
