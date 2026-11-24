@@ -19,3 +19,11 @@ export function languageFor(path: string): string {
     default: return "plaintext";
   }
 }
+
+/** Separador de rutas usado en `p` ("\\" en Windows, "/" en el resto). */
+export const sepOf = (p: string) => (p.includes("\\") && !p.includes("/") ? "\\" : "/");
+export const joinPath = (dir: string, name: string) => dir.replace(/[\\/]$/, "") + sepOf(dir) + name;
+export const dirname = (p: string) => p.replace(/[\\/][^\\/]*$/, "") || p;
+/** ¿`p` es `dir` o está dentro de `dir`? */
+export const isInside = (p: string, dir: string) =>
+  p === dir || p.startsWith(dir.replace(/[\\/]$/, "") + sepOf(dir));

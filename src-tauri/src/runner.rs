@@ -6,9 +6,9 @@
 //! - `diagnostic`    Diagnostic        un error/advertencia del compilador
 //! - `task-finished` TaskFinished      la tarea terminó
 
+use crate::toolchain::{cargo_bin, clippy_available, new_command};
 use serde::Serialize;
 use serde_json::Value;
-use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
@@ -58,47 +58,13 @@ struct TaskFinished {
 }
 
 fn out(app: &AppHandle, text: impl Into<String>, kind: &'static str) {
-    let _ = app.emit("output", OutputChunk { text: text.into(), kind });
-}
-
-/// Crea un `Command` sin ventana de consola extra en Windows.
-pub fn new_command(program: impl AsRef<OsStr>) -> Command {
-    #[allow(unused_mut)]
-    let mut cmd = Command::new(program);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    }
-    cmd
-}
-
-/// Busca cargo. Las apps abiertas desde Finder/Explorer no heredan el PATH
-/// de la terminal, así que primero miramos la instalación de rustup.
-pub fn cargo_bin() -> PathBuf {
-    let exe = if cfg!(windows) { "cargo.exe" } else { "cargo" };
-    if let Some(home) = std::env::var_os("CARGO_HOME") {
-        let p = PathBuf::from(home).join("bin").join(exe);
-        if p.exists() {
-            return p;
-        }
-    }
-    if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
-        let p = PathBuf::from(home).join(".cargo").join("bin").join(exe);
-        if p.exists() {
-            return p;
-        }
-    }
-    PathBuf::from(exe)
-}
-
-#[tauri::command]
-pub fn toolchain_info() -> Result<String, String> {
-    let o = new_command(cargo_bin())
-        .arg("--version")
-        .output()
-        .map_err(|_| "No se encontró cargo. Instala Rust desde https://rustup.rs".to_string())?;
-    Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
+    let _ = app.emit(
+        "output",
+        OutputChunk {
+            text: text.into(),
+            kind,
+        },
+    );
 }
 
 /// Inicia una tarea: "build", "check", "test" o "run".
@@ -108,6 +74,7 @@ pub fn start_task(
     state: State<'_, ProcState>,
     project: String,
     task: String,
+    external: Option<bool>,
 ) -> Result<(), String> {
     let inner = state.0.clone();
     if inner.running.swap(true, SeqCst) {
@@ -116,7 +83,13 @@ pub fn start_task(
     inner.cancelled.store(false, SeqCst);
 
     thread::spawn(move || {
-        let result = run_task(&app, &inner, Path::new(&project), &task);
+        let result = run_task(
+            &app,
+            &inner,
+            Path::new(&project),
+            &task,
+            external.unwrap_or(false),
+        );
         let cancelled = inner.cancelled.load(SeqCst);
         let (success, code) = result.unwrap_or_else(|e| {
             out(&app, format!("✖ {e}\n"), "error");
@@ -128,7 +101,12 @@ pub fn start_task(
         inner.running.store(false, SeqCst);
         let _ = app.emit(
             "task-finished",
-            TaskFinished { task, success: success && !cancelled, code, cancelled },
+            TaskFinished {
+                task,
+                success: success && !cancelled,
+                code,
+                cancelled,
+            },
         );
     });
     Ok(())
@@ -147,7 +125,9 @@ pub fn stop_task(state: State<'_, ProcState>) -> Result<(), String> {
 #[tauri::command]
 pub fn send_stdin(state: State<'_, ProcState>, text: String) -> Result<(), String> {
     let mut guard = state.0.stdin.lock().unwrap();
-    let stdin = guard.as_mut().ok_or("No hay ningún programa esperando entrada.")?;
+    let stdin = guard
+        .as_mut()
+        .ok_or("No hay ningún programa esperando entrada.")?;
     stdin
         .write_all(format!("{text}\n").as_bytes())
         .and_then(|_| stdin.flush())
@@ -159,9 +139,12 @@ fn run_task(
     inner: &Arc<Inner>,
     project: &Path,
     task: &str,
+    external: bool,
 ) -> Result<(bool, Option<i32>), String> {
     let sub = match task {
         "build" | "run" => "build",
+        // "Revisar" usa Clippy (más sugerencias) si está instalado.
+        "check" if clippy_available() => "clippy",
         "check" => "check",
         "test" => "test",
         other => return Err(format!("Tarea desconocida: {other}")),
@@ -179,7 +162,14 @@ fn run_task(
     let mut executable: Option<PathBuf> = None;
     let (mut errors, mut warnings) = (0u32, 0u32);
     let mut on_line = |line: &str| {
-        handle_cargo_line(app, project, line, &mut executable, &mut errors, &mut warnings)
+        handle_cargo_line(
+            app,
+            project,
+            line,
+            &mut executable,
+            &mut errors,
+            &mut warnings,
+        )
     };
     let status = run_child(app, inner, cmd, false, "muted", Some(&mut on_line))?;
 
@@ -211,7 +201,21 @@ fn run_task(
     let exe = executable.ok_or(
         "Este proyecto no genera un ejecutable (¿es una biblioteca?). Usa Compilar o Probar.",
     )?;
-    let name = exe.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let name = exe
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    if external {
+        launch_in_terminal(project, &exe)?;
+        out(
+            app,
+            format!("▶ {name} se está ejecutando en una terminal externa.\n"),
+            "info",
+        );
+        return Ok((true, Some(0)));
+    }
+
     out(app, format!("> Ejecutando {name}\n\n"), "info");
 
     let mut cmd = new_command(&exe);
@@ -223,7 +227,11 @@ fn run_task(
     let code = status.and_then(|s| s.code());
     match code {
         Some(0) => out(app, "\n✔ El programa terminó (código 0)\n", "success"),
-        Some(c) => out(app, format!("\n✖ El programa terminó con código {c}\n"), "error"),
+        Some(c) => out(
+            app,
+            format!("\n✖ El programa terminó con código {c}\n"),
+            "error",
+        ),
         None => out(app, "\n✖ El programa terminó de forma anormal\n", "error"),
     }
     Ok((code == Some(0), code))
@@ -242,7 +250,11 @@ fn run_child(
 ) -> Result<Option<ExitStatus>, String> {
     cmd.stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .stdin(if with_stdin { Stdio::piped() } else { Stdio::null() });
+        .stdin(if with_stdin {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        });
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("No se pudo iniciar {:?}: {e}", cmd.get_program()))?;
@@ -287,7 +299,7 @@ fn stream_chunks<R: Read>(app: &AppHandle, mut reader: R, kind: &'static str) {
         let valid = match std::str::from_utf8(&pending) {
             Ok(_) => pending.len(),
             Err(e) if e.error_len().is_none() => e.valid_up_to(), // carácter incompleto al final
-            Err(_) => pending.len(),                               // bytes inválidos: se muestran con �
+            Err(_) => pending.len(), // bytes inválidos: se muestran con �
         };
         if valid > 0 {
             let text = String::from_utf8_lossy(&pending[..valid]).into_owned();
@@ -341,7 +353,11 @@ fn handle_cargo_line(
             }
             let file = sp["file_name"].as_str().map(|f| {
                 let p = Path::new(f);
-                let abs = if p.is_absolute() { p.to_path_buf() } else { project.join(p) };
+                let abs = if p.is_absolute() {
+                    p.to_path_buf()
+                } else {
+                    project.join(p)
+                };
                 abs.to_string_lossy().into_owned()
             });
             let num = |k: &str| sp[k].as_u64().unwrap_or(1);
@@ -368,5 +384,89 @@ fn handle_cargo_line(
             }
         }
         _ => {}
+    }
+}
+
+// ---------- Terminal externa ----------
+
+/// Abre una ventana de terminal del sistema que ejecuta el programa y,
+/// al terminar, espera una tecla para que se pueda leer la salida.
+fn launch_in_terminal(project: &Path, exe: &Path) -> Result<(), String> {
+    let name = exe
+        .file_stem()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "programa".into());
+    let dir = std::env::temp_dir().join("rust-studio");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let err = |e: std::io::Error| format!("No se pudo abrir una terminal: {e}");
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let script = dir.join(format!("{name}.bat"));
+        let content = format!(
+            "@echo off\r\ntitle {name}\r\ncd /d \"{}\"\r\n\"{}\"\r\necho.\r\necho -- El programa termino con codigo %ERRORLEVEL% --\r\npause\r\n",
+            project.display(),
+            exe.display()
+        );
+        std::fs::write(&script, content).map_err(|e| e.to_string())?;
+        Command::new("cmd")
+            .arg("/C")
+            .arg(&script)
+            .creation_flags(0x0000_0010) // CREATE_NEW_CONSOLE
+            .spawn()
+            .map_err(err)?;
+        return Ok(());
+    }
+
+    #[cfg(not(windows))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let q = |p: &Path| format!("'{}'", p.to_string_lossy().replace('\'', r"'\''"));
+        let ext = if cfg!(target_os = "macos") {
+            "command"
+        } else {
+            "sh"
+        };
+        let script = dir.join(format!("{name}.{ext}"));
+        let content = format!(
+            "#!/bin/bash\nclear\ncd {}\n{}\ncode=$?\necho\necho \"── El programa terminó con código $code. Presiona Enter para cerrar ──\"\nread -r\n",
+            q(project),
+            q(exe)
+        );
+        std::fs::write(&script, content).map_err(|e| e.to_string())?;
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| e.to_string())?;
+
+        if cfg!(target_os = "macos") {
+            Command::new("open")
+                .args(["-a", "Terminal"])
+                .arg(&script)
+                .spawn()
+                .map_err(err)?;
+            return Ok(());
+        }
+        // Linux: probar las terminales más comunes.
+        const TERMINALS: &[(&str, &[&str])] = &[
+            ("x-terminal-emulator", &["-e"]),
+            ("gnome-terminal", &["--"]),
+            ("konsole", &["-e"]),
+            ("xfce4-terminal", &["-x"]),
+            ("alacritty", &["-e"]),
+            ("kitty", &[]),
+            ("xterm", &["-e"]),
+        ];
+        for (term, args) in TERMINALS {
+            if Command::new(term)
+                .args(*args)
+                .arg("bash")
+                .arg(&script)
+                .spawn()
+                .is_ok()
+            {
+                return Ok(());
+            }
+        }
+        Err("No se encontró ninguna terminal (gnome-terminal, konsole, xterm…).".into())
     }
 }

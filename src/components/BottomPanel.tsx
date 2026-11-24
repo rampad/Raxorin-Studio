@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Diagnostic, OutputChunk, Task } from "../api";
 import { relative } from "../util";
+import { Codicon } from "./Icon";
 
 export type BottomTab = "output" | "errors";
 
@@ -40,16 +41,18 @@ export default function BottomPanel(p: Props) {
     <div className="bottom-panel">
       <div className="panel-tabs">
         <button className={p.tab === "output" ? "active" : ""} onClick={() => p.setTab("output")}>
+          <Codicon name="output" />
           Salida
         </button>
         <button className={p.tab === "errors" ? "active" : ""} onClick={() => p.setTab("errors")}>
+          <Codicon name="list-unordered" />
           Lista de errores
-          <span className="badge err">✖ {errors}</span>
-          <span className="badge warn">⚠ {warnings}</span>
+          <span className="badge err"><Codicon name="error" /> {errors}</span>
+          <span className="badge warn"><Codicon name="warning" /> {warnings}</span>
         </button>
         <div className="spacer" />
         {p.tab === "output" && (
-          <button className="icon-btn" onClick={p.onClear} title="Limpiar salida">🗑</button>
+          <button className="icon-btn" onClick={p.onClear} title="Limpiar salida"><Codicon name="clear-all" /></button>
         )}
       </div>
 
@@ -69,7 +72,7 @@ export default function BottomPanel(p: Props) {
               setInput("");
             }}
           >
-            <span className="stdin-label">Entrada ›</span>
+            <span className="stdin-label"><Codicon name="chevron-right" /> Entrada</span>
             <input
               ref={inputRef}
               value={input}
@@ -86,7 +89,7 @@ export default function BottomPanel(p: Props) {
       ) : (
         <div className="errors">
           {p.diagnostics.length === 0 ? (
-            <div className="muted pad">No hay errores ni advertencias. 🎉</div>
+            <div className="muted pad"><Codicon name="pass" className="ok" /> No hay errores ni advertencias.</div>
           ) : (
             <table>
               <thead>
@@ -101,7 +104,7 @@ export default function BottomPanel(p: Props) {
               <tbody>
                 {p.diagnostics.map((d, i) => (
                   <tr key={i} onClick={() => p.onGoto(d)} title="Clic para ir al error">
-                    <td>{d.level.startsWith("error") ? <span className="err">✖</span> : <span className="warn">⚠</span>}</td>
+                    <td>{d.level.startsWith("error") ? <Codicon name="error" className="err" /> : <Codicon name="warning" className="warn" />}</td>
                     <td className="muted">{d.code ?? ""}</td>
                     <td>{d.message}</td>
                     <td className="muted">{d.file ? relative(p.project, d.file) : ""}</td>

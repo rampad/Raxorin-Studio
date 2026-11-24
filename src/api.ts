@@ -20,14 +20,107 @@ export interface Diagnostic {
 export type Task = "build" | "run" | "check" | "test";
 export interface TaskFinished { task: Task; success: boolean; code: number | null; cancelled: boolean }
 
+export interface ToolchainStatus {
+  cargo: string | null;
+  rustAnalyzer: boolean;
+  clippy: boolean;
+  rustfmt: boolean;
+  rustSrc: boolean;
+}
+
+export interface ProjectInfo {
+  name: string;
+  dir: string;
+  manifest: string;
+  kind: "bin" | "lib";
+  workspaceManifest: string;
+}
+
+export interface CrateSummary {
+  name: string;
+  description: string;
+  version: string;
+  downloads: number;
+  recentDownloads: number;
+  updatedAt: string;
+}
+export interface VersionInfo {
+  num: string;
+  createdAt: string;
+  license: string | null;
+  rustVersion: string | null;
+  features: Record<string, string[]>;
+}
+export interface CrateDetails extends CrateSummary {
+  homepage: string | null;
+  repository: string | null;
+  documentation: string | null;
+  keywords: string[];
+  categories: string[];
+  versions: VersionInfo[];
+}
+export type DepKind = "normal" | "dev" | "build";
+export interface Dependency {
+  name: string;
+  req: string;
+  resolved: string | null;
+  kind: DepKind;
+  features: string[];
+  defaultFeatures: boolean;
+  optional: boolean;
+  path: string | null;
+}
+export interface AddOptions {
+  version?: string;
+  features?: string[];
+  kind?: DepKind;
+  defaultFeatures?: boolean;
+}
+
 export const api = {
   listDir: (path: string) => invoke<Entry[]>("list_dir", { path }),
   readFile: (path: string) => invoke<string>("read_file", { path }),
   writeFile: (path: string, contents: string) => invoke<void>("write_file", { path, contents }),
   createProject: (parent: string, name: string, kind: "bin" | "lib") =>
     invoke<string>("create_project", { parent, name, kind }),
-  startTask: (project: string, task: Task) => invoke<void>("start_task", { project, task }),
+  startTask: (project: string, task: Task, external = false) =>
+    invoke<void>("start_task", { project, task, external }),
+  createFile: (path: string) => invoke<void>("create_file", { path }),
+  createDir: (path: string) => invoke<void>("create_dir", { path }),
+  renamePath: (from: string, to: string) => invoke<void>("rename_path", { from, to }),
+  deletePath: (path: string) => invoke<void>("delete_path", { path }),
+  revealPath: (path: string) => invoke<void>("reveal_path", { path }),
+  findProjects: (root: string) => invoke<ProjectInfo[]>("find_projects", { root }),
+  addProjectReference: (project: string, dependency: string) =>
+    invoke<string>("add_project_reference", { project, dependency }),
+  watchProject: (root: string) => invoke<void>("watch_project", { root }),
   stopTask: () => invoke<void>("stop_task"),
   sendStdin: (text: string) => invoke<void>("send_stdin", { text }),
-  toolchainInfo: () => invoke<string>("toolchain_info"),
+  toolchainStatus: () => invoke<ToolchainStatus>("toolchain_status"),
+  installComponents: (components: string[]) => invoke<string>("install_components", { components }),
+  crateSearch: (query: string, page = 1) => invoke<CrateSummary[]>("crate_search", { query, page }),
+  crateDetails: (name: string) => invoke<CrateDetails>("crate_details", { name }),
+  crateReadme: (name: string, version: string) => invoke<string>("crate_readme", { name, version }),
+  crateLatest: (names: string[]) => invoke<Record<string, string>>("crate_latest", { names }),
+  crateList: (project: string) => invoke<Dependency[]>("crate_list", { project }),
+  crateAdd: (project: string, name: string, o: AddOptions = {}) =>
+    invoke<string>("crate_add", {
+      project,
+      name,
+      version: o.version,
+      features: o.features,
+      kind: o.kind,
+      defaultFeatures: o.defaultFeatures,
+    }),
+  crateSetFeatures: (project: string, d: Dependency, features: string[], defaultFeatures: boolean) =>
+    invoke<string>("crate_set_features", {
+      project,
+      name: d.name,
+      req: d.req,
+      kind: d.kind,
+      features,
+      defaultFeatures,
+    }),
+  crateRemove: (project: string, name: string, kind: string) =>
+    invoke<void>("crate_remove", { project, name, kind }),
 };

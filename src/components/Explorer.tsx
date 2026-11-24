@@ -1,91 +1,528 @@
-import { useEffect, useState } from "react";
-import { api, type Entry } from "../api";
-import { basename } from "../util";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { api, type Entry, type ProjectInfo } from "../api";
+import { basename, dirname, isInside, joinPath, relative } from "../util";
+import { Codicon, FileIcon } from "./Icon";
+
+export interface FileProblems { errors: number; warnings: number }
 
 interface Props {
   root: string | null;
   activePath: string | null;
+  problems: Map<string, FileProblems>;
   onOpenFile: (path: string) => void;
-  onRefresh: () => void;
+  onCreated: (path: string, isDir: boolean) => void;
+  onRenamed: (from: string, to: string) => void;
+  onDeleted: (path: string) => void;
+  onError: (message: string) => void;
+  projects: ProjectInfo[];
+  startupDir: string | null;
+  onSetStartup: (dir: string) => void;
+  onAddReference: (dir: string) => void;
+  onManagePackages: (dir: string) => void;
 }
 
-export default function Explorer({ root, activePath, onOpenFile, onRefresh }: Props) {
+type Editing =
+  | { mode: "rename"; path: string; isDir: boolean }
+  | { mode: "new-file" | "new-folder"; parent: string };
+
+interface Menu { x: number; y: number; entry: Entry; isRoot: boolean }
+
+const DRAG_TYPE = "application/x-ruststudio-path";
+const expandedKey = (root: string) => `ruststudio.expanded:${root}`;
+
+export default function Explorer(p: Props) {
+  const { root } = p;
+  const [children, setChildren] = useState<Record<string, Entry[]>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const projectByDir = useMemo(() => new Map(p.projects.map((pr) => [pr.dir, pr])), [p.projects]);
+  const childrenRef = useRef(children);
+  childrenRef.current = children;
+  const treeRef = useRef<HTMLDivElement>(null);
+
+  const loadDir = useCallback(async (dir: string) => {
+    try {
+      const entries = await api.listDir(dir);
+      setChildren((c) => ({ ...c, [dir]: entries }));
+    } catch {
+      // La carpeta ya no existe: olvidarla.
+      setChildren((c) => {
+        const { [dir]: _, ...rest } = c;
+        return rest;
+      });
+    }
+  }, []);
+
+  // Al abrir un proyecto: restaurar carpetas expandidas y empezar a vigilar cambios.
+  useEffect(() => {
+    if (!root) return;
+    let saved: string[] = [];
+    try {
+      saved = JSON.parse(localStorage.getItem(expandedKey(root)) ?? "null") ?? [joinPath(root, "src")];
+    } catch {
+      saved = [joinPath(root, "src")];
+    }
+    const initial = new Set([root, ...saved.filter((d) => isInside(d, root))]);
+    setChildren({});
+    setExpanded(initial);
+    initial.forEach(loadDir);
+    api.watchProject(root).catch((e) => p.onError(String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [root, loadDir]);
+
+  // Guardar carpetas expandidas.
+  useEffect(() => {
+    if (!root) return;
+    try {
+      localStorage.setItem(expandedKey(root), JSON.stringify([...expanded].filter((d) => d !== root)));
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [expanded, root]);
+
+  // Actualización automática cuando cambian archivos en disco.
+  useEffect(() => {
+    const un = listen<string[]>("fs-changed", (e) => {
+      for (const dir of e.payload) if (childrenRef.current[dir]) loadDir(dir);
+    });
+    return () => {
+      un.then((f) => f());
+    };
+  }, [loadDir]);
+
+  // Mostrar en el árbol el archivo activo del editor.
+  useEffect(() => {
+    const path = p.activePath;
+    if (!root || !path || !isInside(path, root) || path === root) return;
+    const ancestors: string[] = [];
+    for (let d = dirname(path); d !== root && isInside(d, root); d = dirname(d)) ancestors.push(d);
+    setExpanded((e) => {
+      const missing = ancestors.filter((a) => !e.has(a));
+      if (missing.length === 0) return e;
+      missing.forEach(loadDir);
+      return new Set([...e, ...missing]);
+    });
+    setSelected(path);
+    setTimeout(() => {
+      treeRef.current?.querySelector(`[data-path="${CSS.escape(path)}"]`)?.scrollIntoView({ block: "nearest" });
+    }, 50);
+  }, [p.activePath, root, loadDir]);
+
+  // Cerrar el menú contextual con cualquier clic o Escape.
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", close);
+    };
+  }, [menu]);
+
+  // ---------- Acciones ----------
+
+  const toggle = (dir: string) => {
+    setExpanded((e) => {
+      const next = new Set(e);
+      if (next.has(dir)) next.delete(dir);
+      else {
+        next.add(dir);
+        loadDir(dir);
+      }
+      return next;
+    });
+  };
+
+  const findEntry = (path: string): Entry | undefined => {
+    if (path === root) return { name: basename(path), path, isDir: true };
+    return childrenRef.current[dirname(path)]?.find((e) => e.path === path);
+  };
+
+  /** Carpeta destino para "nuevo archivo": la seleccionada, la del archivo seleccionado o la raíz. */
+  const targetDir = (path: string | null) => {
+    if (!root) return null;
+    if (!path) return root;
+    const entry = findEntry(path);
+    return entry?.isDir ? path : dirname(path);
+  };
+
+  const startNew = (mode: "new-file" | "new-folder", parent: string | null) => {
+    if (!parent) return;
+    setExpanded((e) => new Set([...e, parent]));
+    loadDir(parent);
+    setEditing({ mode, parent });
+  };
+
+  const commitEdit = async (name: string) => {
+    const ed = editing;
+    setEditing(null);
+    name = name.trim();
+    if (!ed || !name) return;
+    try {
+      if (ed.mode === "rename") {
+        if (name === basename(ed.path)) return;
+        const to = joinPath(dirname(ed.path), name);
+        await api.renamePath(ed.path, to);
+        await loadDir(dirname(ed.path));
+        if (ed.isDir && expanded.has(ed.path)) {
+          setExpanded((e) => new Set([...[...e].map((d) => (isInside(d, ed.path) ? to + d.slice(ed.path.length) : d))]));
+          loadDir(to);
+        }
+        setSelected(to);
+        p.onRenamed(ed.path, to);
+      } else {
+        const path = joinPath(ed.parent, name);
+        if (ed.mode === "new-file") await api.createFile(path);
+        else await api.createDir(path);
+        await loadDir(ed.parent);
+        setSelected(path);
+        p.onCreated(path, ed.mode === "new-folder");
+      }
+    } catch (e) {
+      p.onError(String(e));
+    }
+  };
+
+  const remove = async (entry: Entry) => {
+    const ok = await ask(
+      `¿Mover “${entry.name}”${entry.isDir ? " y todo su contenido" : ""} a la papelera?`,
+      { title: "Eliminar", kind: "warning", okLabel: "Mover a la papelera", cancelLabel: "Cancelar" },
+    );
+    if (!ok) return;
+    try {
+      await api.deletePath(entry.path);
+      await loadDir(dirname(entry.path));
+      p.onDeleted(entry.path);
+    } catch (e) {
+      p.onError(String(e));
+    }
+  };
+
+  const move = async (from: string, toDir: string) => {
+    if (dirname(from) === toDir || isInside(toDir, from)) return;
+    const to = joinPath(toDir, basename(from));
+    try {
+      await api.renamePath(from, to);
+      await Promise.all([loadDir(dirname(from)), loadDir(toDir)]);
+      setExpanded((e) => new Set([...e, toDir]));
+      p.onRenamed(from, to);
+    } catch (e) {
+      p.onError(String(e));
+    }
+  };
+
+  const refreshAll = () => Object.keys(childrenRef.current).forEach(loadDir);
+  const collapseAll = () => setExpanded(new Set(root ? [root] : []));
+  const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
+
+  // ---------- Teclado ----------
+
+  /** Filas visibles en orden, para moverse con las flechas. */
+  const visible = useMemo(() => {
+    const out: Entry[] = [];
+    if (!root) return out;
+    const walk = (dir: string) => {
+      for (const e of children[dir] ?? []) {
+        out.push(e);
+        if (e.isDir && expanded.has(e.path)) walk(e.path);
+      }
+    };
+    out.push({ name: basename(root), path: root, isDir: true });
+    if (expanded.has(root)) walk(root);
+    return out;
+  }, [children, expanded, root]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (editing || !selected) return;
+    const entry = visible.find((v) => v.path === selected);
+    if (!entry) return;
+    const idx = visible.indexOf(entry);
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const next = visible[idx + (e.key === "ArrowDown" ? 1 : -1)];
+      if (next) setSelected(next.path);
+    } else if (e.key === "ArrowRight" && entry.isDir && !expanded.has(entry.path)) toggle(entry.path);
+    else if (e.key === "ArrowLeft") {
+      if (entry.isDir && expanded.has(entry.path)) toggle(entry.path);
+      else if (entry.path !== root) setSelected(dirname(entry.path));
+    } else if (e.key === "Enter") entry.isDir ? toggle(entry.path) : p.onOpenFile(entry.path);
+    else if (e.key === "F2" && entry.path !== root) setEditing({ mode: "rename", path: entry.path, isDir: entry.isDir });
+    else if ((e.key === "Delete" || (mod && e.key === "Backspace")) && entry.path !== root) remove(entry);
+    else return;
+    e.preventDefault();
+  };
+
+  // ---------- Problemas (errores/advertencias) ----------
+
+  const problemsIn = (path: string, isDir: boolean): FileProblems | null => {
+    if (!isDir) return p.problems.get(path) ?? null;
+    let errors = 0, warnings = 0;
+    p.problems.forEach((v, file) => {
+      if (isInside(file, path)) {
+        errors += v.errors;
+        warnings += v.warnings;
+      }
+    });
+    return errors || warnings ? { errors, warnings } : null;
+  };
+
+  // ---------- Render ----------
+
+  if (!root) {
+    return (
+      <div className="explorer">
+        <div className="panel-title"><span>EXPLORADOR</span></div>
+        <div className="muted pad">No hay ningún proyecto abierto.</div>
+      </div>
+    );
+  }
+
+  const renderRow = (entry: Entry, depth: number, isRoot = false) => {
+    const isOpen = expanded.has(entry.path);
+    const renaming = editing?.mode === "rename" && editing.path === entry.path;
+    const prob = problemsIn(entry.path, entry.isDir);
+    const dropDir = entry.isDir ? entry.path : dirname(entry.path);
+    const proj = entry.isDir ? projectByDir.get(entry.path) : undefined;
+    const isStartup = !!proj && proj.dir === p.startupDir;
+    const cls = [
+      "tree-row",
+      isRoot && "root",
+      selected === entry.path && "selected",
+      p.activePath === entry.path && "active",
+      dropTarget === entry.path && "drop",
+      prob?.errors ? "has-errors" : prob?.warnings ? "has-warnings" : "",
+      proj && "project",
+      isStartup && "startup",
+    ].filter(Boolean).join(" ");
+
+    return (
+      <div
+        key={entry.path}
+        data-path={entry.path}
+        className={cls}
+        style={{ paddingLeft: 6 + depth * 14 }}
+        title={relative(root, entry.path) || entry.path}
+        draggable={!isRoot && !renaming}
+        onClick={() => {
+          setSelected(entry.path);
+          if (entry.isDir) toggle(entry.path);
+          else p.onOpenFile(entry.path);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setSelected(entry.path);
+          setMenu({ x: e.clientX, y: e.clientY, entry, isRoot });
+        }}
+        onDragStart={(e) => {
+          e.dataTransfer.setData(DRAG_TYPE, entry.path);
+          e.dataTransfer.effectAllowed = "move";
+        }}
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+          e.preventDefault();
+          setDropTarget(entry.isDir ? entry.path : dropDir);
+        }}
+        onDragLeave={() => setDropTarget((t) => (t === entry.path ? null : t))}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDropTarget(null);
+          const from = e.dataTransfer.getData(DRAG_TYPE);
+          if (from) move(from, dropDir);
+        }}
+      >
+        <span className="twisty">{entry.isDir && <Codicon name={isOpen ? "chevron-down" : "chevron-right"} />}</span>
+        <span className="file-icon">
+          <FileIcon name={entry.name} isDir={entry.isDir} open={isOpen} project={proj?.kind} />
+        </span>
+        {renaming ? (
+          <InlineInput initial={entry.name} selectStem={!entry.isDir} onDone={commitEdit} onCancel={() => setEditing(null)} />
+        ) : (
+          <>
+            <span className="label">{entry.name}</span>
+            {isStartup && <Codicon name="play" className="startup-badge" title="Proyecto de inicio" />}
+            {prob && !entry.isDir && (
+              <span className={"problem-count " + (prob.errors ? "err" : "warn")}>
+                {prob.errors || prob.warnings}
+              </span>
+            )}
+            {prob && entry.isDir && !isOpen && <Codicon name="circle-filled" className={"problem-dot " + (prob.errors ? "err" : "warn")} />}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderDir = (dir: string, depth: number): React.ReactNode[] => {
+    const rows: React.ReactNode[] = [];
+    const creating = editing && editing.mode !== "rename" && editing.parent === dir ? editing : null;
+    if (creating) {
+      rows.push(
+        <div key="__new" className="tree-row editing" style={{ paddingLeft: 6 + depth * 14 }}>
+          <span className="twisty" />
+          <span className="file-icon">
+            <FileIcon name="" isDir={creating.mode === "new-folder"} />
+          </span>
+          <InlineInput initial="" onDone={commitEdit} onCancel={() => setEditing(null)} />
+        </div>,
+      );
+    }
+    for (const e of children[dir] ?? []) {
+      rows.push(renderRow(e, depth));
+      if (e.isDir && expanded.has(e.path)) rows.push(...renderDir(e.path, depth + 1));
+    }
+    return rows;
+  };
+
+  const menuEntry = menu?.entry;
+  const menuProject = menuEntry?.isDir ? projectByDir.get(menuEntry.path) : undefined;
+  const menuDir = menuEntry ? (menuEntry.isDir ? menuEntry.path : dirname(menuEntry.path)) : null;
+
   return (
     <div className="explorer">
       <div className="panel-title">
         <span>EXPLORADOR</span>
-        {root && <button className="icon-btn" onClick={onRefresh} title="Actualizar">⟳</button>}
+        <span className="title-actions">
+          <button className="icon-btn" title="Nuevo archivo" onClick={() => startNew("new-file", targetDir(selected))}><Codicon name="new-file" /></button>
+          <button className="icon-btn" title="Nueva carpeta" onClick={() => startNew("new-folder", targetDir(selected))}><Codicon name="new-folder" /></button>
+          <button className="icon-btn" title="Actualizar" onClick={refreshAll}><Codicon name="refresh" /></button>
+          <button className="icon-btn" title="Contraer todo" onClick={collapseAll}><Codicon name="collapse-all" /></button>
+        </span>
       </div>
-      {root ? (
-        <div className="tree">
-          <TreeNode
-            entry={{ name: basename(root), path: root, isDir: true }}
-            depth={0}
-            initiallyOpen
-            activePath={activePath}
-            onOpenFile={onOpenFile}
-          />
+      <div
+        className="tree"
+        ref={treeRef}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onContextMenu={(e) => {
+          if (e.target !== e.currentTarget) return;
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY, entry: { name: basename(root), path: root, isDir: true }, isRoot: true });
+        }}
+        onDragOver={(e) => e.dataTransfer.types.includes(DRAG_TYPE) && e.target === e.currentTarget && e.preventDefault()}
+        onDrop={(e) => {
+          if (e.target !== e.currentTarget) return;
+          const from = e.dataTransfer.getData(DRAG_TYPE);
+          if (from) move(from, root);
+        }}
+      >
+        {renderRow({ name: basename(root), path: root, isDir: true }, 0, true)}
+        {expanded.has(root) && renderDir(root, 1)}
+      </div>
+
+      {menu && menuEntry && menuDir && (
+        <div
+          className="context-menu"
+          style={{ left: Math.min(menu.x, window.innerWidth - 230), top: Math.min(menu.y, window.innerHeight - 300) }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => setMenu(null)}
+        >
+          {!menuEntry.isDir && <MenuItem icon="go-to-file" label="Abrir" onClick={() => p.onOpenFile(menuEntry.path)} />}
+          {menuProject && (
+            <>
+              <div className="menu-header">{menuProject.kind === "bin" ? "Aplicación" : "Biblioteca"} · {menuProject.name}</div>
+              {menuProject.dir !== p.startupDir && (
+                <MenuItem icon="play" label="Establecer como proyecto de inicio" onClick={() => p.onSetStartup(menuProject.dir)} />
+              )}
+              <MenuItem icon="references" label="Agregar referencia a proyecto…" onClick={() => p.onAddReference(menuProject.dir)} />
+              <MenuItem icon="package" label="Administrar paquetes…" onClick={() => p.onManagePackages(menuProject.dir)} />
+              <div className="menu-sep" />
+            </>
+          )}
+          {menuEntry.isDir && (
+            <>
+              <MenuItem icon="new-file" label="Nuevo archivo…" onClick={() => startNew("new-file", menuDir)} />
+              <MenuItem icon="new-folder" label="Nueva carpeta…" onClick={() => startNew("new-folder", menuDir)} />
+            </>
+          )}
+          <div className="menu-sep" />
+          <MenuItem icon="folder-opened" label={revealLabel()} onClick={() => api.revealPath(menuEntry.path).catch((e) => p.onError(String(e)))} />
+          <MenuItem icon="copy" label="Copiar ruta" onClick={() => copy(menuEntry.path)} />
+          {!menu.isRoot && <MenuItem label="Copiar ruta relativa" onClick={() => copy(relative(root, menuEntry.path))} />}
+          {!menu.isRoot && (
+            <>
+              <div className="menu-sep" />
+              <MenuItem
+                icon="edit"
+                label="Renombrar"
+                shortcut="F2"
+                onClick={() => setEditing({ mode: "rename", path: menuEntry.path, isDir: menuEntry.isDir })}
+              />
+              <MenuItem icon="trash" label="Eliminar" shortcut="Supr" danger onClick={() => remove(menuEntry)} />
+            </>
+          )}
+          {menu.isRoot && (
+            <>
+              <div className="menu-sep" />
+              <MenuItem icon="refresh" label="Actualizar" onClick={refreshAll} />
+              <MenuItem icon="collapse-all" label="Contraer todo" onClick={collapseAll} />
+            </>
+          )}
         </div>
-      ) : (
-        <div className="muted pad">No hay ningún proyecto abierto.</div>
       )}
     </div>
   );
 }
 
-interface NodeProps {
-  entry: Entry;
-  depth: number;
-  initiallyOpen?: boolean;
-  activePath: string | null;
-  onOpenFile: (path: string) => void;
-}
-
-function TreeNode({ entry, depth, initiallyOpen = false, activePath, onOpenFile }: NodeProps) {
-  const [open, setOpen] = useState(initiallyOpen);
-  const [children, setChildren] = useState<Entry[] | null>(null);
-
-  useEffect(() => {
-    if (open && entry.isDir && children === null) {
-      api.listDir(entry.path).then(setChildren).catch(() => setChildren([]));
-    }
-  }, [open, entry, children]);
-
-  const onClick = () => (entry.isDir ? setOpen((o) => !o) : onOpenFile(entry.path));
-
+function MenuItem(props: { icon?: string; label: string; shortcut?: string; danger?: boolean; onClick: () => void }) {
   return (
-    <>
-      <div
-        className={"tree-row" + (activePath === entry.path ? " active" : "") + (depth === 0 ? " root" : "")}
-        style={{ paddingLeft: 6 + depth * 14 }}
-        onClick={onClick}
-        title={entry.path}
-      >
-        <span className="twisty">{entry.isDir ? (open ? "▾" : "▸") : ""}</span>
-        <span className="file-icon">{iconFor(entry, open)}</span>
-        <span className="label">{entry.name}</span>
-      </div>
-      {open &&
-        children?.map((c) => (
-          <TreeNode
-            key={c.path}
-            entry={c}
-            depth={depth + 1}
-            initiallyOpen={depth === 0 && c.name === "src"}
-            activePath={activePath}
-            onOpenFile={onOpenFile}
-          />
-        ))}
-    </>
+    <button className={"menu-item" + (props.danger ? " danger" : "")} onClick={props.onClick}>
+      <span className="menu-label">
+        <Codicon name={props.icon ?? "blank"} />
+        {props.label}
+      </span>
+      {props.shortcut && <span className="muted">{props.shortcut}</span>}
+    </button>
   );
 }
 
-function iconFor(e: Entry, open: boolean) {
-  if (e.isDir) return open ? "📂" : "📁";
-  const ext = e.name.split(".").pop()?.toLowerCase();
-  if (ext === "rs") return "🦀";
-  if (ext === "toml") return "⚙️";
-  if (ext === "md") return "📝";
-  if (ext === "lock") return "🔒";
-  return "📄";
+/** Campo de texto en línea para crear o renombrar (Enter confirma, Escape cancela). */
+function InlineInput(props: { initial: string; selectStem?: boolean; onDone: (v: string) => void; onCancel: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const done = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    // Al renombrar, seleccionar el nombre sin la extensión (como VS Code).
+    const dot = props.initial.lastIndexOf(".");
+    el.setSelectionRange(0, props.selectStem && dot > 0 ? dot : props.initial.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const finish = (commit: boolean) => {
+    if (done.current) return;
+    done.current = true;
+    commit ? props.onDone(ref.current?.value ?? "") : props.onCancel();
+  };
+  return (
+    <input
+      ref={ref}
+      className="tree-input"
+      defaultValue={props.initial}
+      spellCheck={false}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") finish(true);
+        if (e.key === "Escape") finish(false);
+      }}
+      onBlur={() => finish(true)}
+    />
+  );
 }
+
+function revealLabel() {
+  const ua = navigator.userAgent;
+  if (ua.includes("Mac")) return "Mostrar en Finder";
+  if (ua.includes("Windows")) return "Mostrar en el Explorador";
+  return "Abrir carpeta contenedora";
+}
+
