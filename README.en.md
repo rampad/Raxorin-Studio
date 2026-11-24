@@ -64,6 +64,8 @@ ready-to-share program — without having to learn the `cargo` command line.
   that don't stop the program), stepping, call stack and editable variables.
 - A **debug console** to evaluate expressions and **diagnostics** with CPU and memory charts of your program.
 - Stops on *panics* and shows where they happened.
+- On **Windows** (and on Linux if lldb-dap is missing) it uses [CodeLLDB](https://github.com/vadimcn/codelldb),
+  installed from *Ayuda → Herramientas necesarias* (Help → Required tools).
 
 ### Git and GitHub
 
@@ -207,7 +209,8 @@ src-tauri/src/            Backend (Rust)
 - [x] Publishing (Release, Windows from macOS and GitHub Actions)
 - [x] Built-in Git and GitHub
 - [ ] Code signing for macOS and Windows
-- [ ] Debugging on Windows
+- [x] Debugging on Windows (CodeLLDB)
+- [x] Install Rust, the C/C++ compiler and tools from the app
 - [ ] Installers (`.dmg`, `.msi`) for the programs you build
 - [ ] English user interface
 

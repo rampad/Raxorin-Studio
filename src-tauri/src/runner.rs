@@ -22,7 +22,7 @@ use tauri::{AppHandle, Emitter, State};
 pub struct ProcState(Arc<Inner>);
 
 #[derive(Default)]
-struct Inner {
+pub(crate) struct Inner {
     child: Mutex<Option<Child>>,
     stdin: Mutex<Option<ChildStdin>>,
     running: AtomicBool,
@@ -63,7 +63,7 @@ struct DebugReady {
     cwd: String,
 }
 
-fn out(app: &AppHandle, text: impl Into<String>, kind: &'static str) {
+pub(crate) fn out(app: &AppHandle, text: impl Into<String>, kind: &'static str) {
     let _ = app.emit(
         "output",
         OutputChunk {
@@ -170,6 +170,9 @@ fn run_task(
     opts: &TaskOptions,
 ) -> Result<(bool, Option<i32>), String> {
     let external = opts.external;
+    if let Some(tool) = task.strip_prefix("setup:") {
+        return crate::setup::install(app, inner, tool);
+    }
     if task == "setup-target" {
         let target = opts.publish.as_ref().and_then(|p| p.target.clone()).ok_or("Falta la plataforma")?;
         return setup_target(app, inner, &target);
@@ -301,7 +304,7 @@ fn run_task(
 /// Lanza un proceso, lo registra para poder detenerlo y transmite su salida.
 /// Si `on_line` es `Some`, stdout se procesa línea a línea; si no, se envía
 /// tal cual en trozos (para que funcionen los `print!` sin salto de línea).
-fn run_child(
+pub(crate) fn run_child(
     app: &AppHandle,
     inner: &Arc<Inner>,
     mut cmd: Command,

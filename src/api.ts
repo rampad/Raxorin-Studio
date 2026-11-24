@@ -17,7 +17,21 @@ export interface Diagnostic {
   endColumn: number;
 }
 
-export type Task = "build" | "run" | "check" | "test" | "debug" | "publish" | "setup-target";
+export type Task = "build" | "run" | "check" | "test" | "debug" | "publish" | "setup-target" | `setup:${string}`;
+
+/** Herramienta del sistema (ver setup.rs). */
+export interface SetupTool {
+  id: string;
+  name: string;
+  description: string;
+  required: boolean;
+  installed: boolean;
+  version: string | null;
+  canInstall: boolean;
+  needsAdmin: boolean;
+  manual: string | null;
+  unavailable: string | null;
+}
 
 /** Opciones de "Publicar" (ver runner.rs). */
 export interface PublishOptions { outDir: string; target: string | null; zip: boolean; open: boolean }
@@ -33,6 +47,8 @@ export interface CrossStatus {
 }
 export interface DebuggerInfo {
   adapter: string | null;
+  /** "lldb-dap" (Apple/LLVM) o "codelldb" (Windows; también en Linux si no hay lldb-dap). */
+  kind: "lldb-dap" | "codelldb" | null;
   formatters: string | null;
   formatterGuard: string | null;
   stdinSupported: boolean;
@@ -143,6 +159,7 @@ export const api = {
   startTask: (project: string, task: Task, external = false, release = false, publish: PublishOptions | null = null) =>
     invoke<void>("start_task", { project, task, external, release, publish }),
   rustTargets: () => invoke<RustTargets>("rust_targets"),
+  setupStatus: () => invoke<SetupTool[]>("setup_status"),
   updateCheck: (channel: "stable" | "beta") => invoke<UpdateInfo | null>("update_check", { channel }),
   updateInstall: () => invoke<void>("update_install"),
   updateRestart: () => invoke<void>("update_restart"),

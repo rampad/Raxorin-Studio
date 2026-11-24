@@ -63,6 +63,8 @@ línea de comandos de `cargo`.
   y **mensajes** que no detienen el programa), paso a paso, pila de llamadas y variables que se pueden editar.
 - **Consola de depuración** para evaluar expresiones y **diagnóstico** con gráficas de CPU y memoria del programa.
 - Se detiene en los *panics* y muestra dónde ocurrieron.
+- En **Windows** (y en Linux si falta lldb-dap) usa [CodeLLDB](https://github.com/vadimcn/codelldb), que se instala
+  desde *Ayuda → Herramientas necesarias*.
 
 ### Git y GitHub
 
@@ -207,7 +209,8 @@ src-tauri/src/            Backend (Rust)
 - [x] Publicar (Release, Windows desde macOS y GitHub Actions)
 - [x] Git y GitHub integrados
 - [ ] Firma de código para macOS y Windows
-- [ ] Depuración en Windows
+- [x] Depuración en Windows (CodeLLDB)
+- [x] Instalar Rust, el compilador de C/C++ y las herramientas desde la app
 - [ ] Instaladores (`.dmg`, `.msi`) para los programas que creas
 
 ## Licencia

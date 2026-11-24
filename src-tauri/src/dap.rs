@@ -132,6 +132,57 @@ fn debuggee_pid(msg: &str) -> Option<u32> {
 }
 
 /// Busca `lldb-dap` (o su nombre antiguo `lldb-vscode`).
+/// Depurador que se usa: lldb-dap (el de LLVM/Apple) o CodeLLDB (con soporte de Rust y de
+/// los PDB de Windows). CodeLLDB se instala desde la app en la carpeta de datos.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum AdapterKind {
+    LldbDap,
+    CodeLldb,
+}
+
+impl AdapterKind {
+    fn id(self) -> &'static str {
+        match self {
+            AdapterKind::LldbDap => "lldb-dap",
+            AdapterKind::CodeLldb => "codelldb",
+        }
+    }
+}
+
+/// Carpeta de datos de Raxorin Studio (la misma que usa Tauri para la app).
+pub fn data_dir() -> PathBuf {
+    const ID: &str = "dev.raxorinstudio.ide";
+    let home = || std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from).unwrap_or_default();
+    if cfg!(target_os = "macos") {
+        home().join("Library/Application Support").join(ID)
+    } else if cfg!(windows) {
+        std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(|| home().join("AppData/Roaming")).join(ID)
+    } else {
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".local/share")).join(ID)
+    }
+}
+
+/// Carpeta donde se instala CodeLLDB (su contenido es la carpeta `extension/` del paquete).
+pub fn codelldb_dir() -> PathBuf {
+    data_dir().join("codelldb")
+}
+
+pub fn find_codelldb() -> Option<PathBuf> {
+    let exe = if cfg!(windows) { "codelldb.exe" } else { "codelldb" };
+    Some(codelldb_dir().join("adapter").join(exe)).filter(|p| p.is_file())
+}
+
+/// En Windows siempre CodeLLDB (lldb-dap no lee bien los PDB de MSVC). En macOS y Linux,
+/// lldb-dap si está, y si no, CodeLLDB. `RAXORIN_DEBUGGER=codelldb` fuerza CodeLLDB (pruebas).
+pub fn pick_adapter() -> Option<(PathBuf, AdapterKind)> {
+    let forced = std::env::var("RAXORIN_DEBUGGER").ok();
+    let code = || find_codelldb().map(|p| (p, AdapterKind::CodeLldb));
+    if cfg!(windows) || forced.as_deref() == Some("codelldb") {
+        return code();
+    }
+    find_adapter().map(|p| (p, AdapterKind::LldbDap)).or_else(code)
+}
+
 fn find_adapter() -> Option<PathBuf> {
     // macOS: viene con las Command Line Tools de Xcode.
     if cfg!(target_os = "macos") {
@@ -178,6 +229,8 @@ fn rust_formatters() -> Option<PathBuf> {
 #[serde(rename_all = "camelCase")]
 pub struct DebuggerInfo {
     adapter: Option<String>,
+    /// "lldb-dap" o "codelldb": cambia la configuración de inicio.
+    kind: Option<&'static str>,
     formatters: Option<String>,
     /// Script que limita la profundidad de esos formateadores (se carga después).
     formatter_guard: Option<String>,
@@ -187,14 +240,20 @@ pub struct DebuggerInfo {
 
 #[tauri::command]
 pub async fn debugger_info() -> DebuggerInfo {
-    tauri::async_runtime::spawn_blocking(|| DebuggerInfo {
-        adapter: find_adapter().map(|p| p.to_string_lossy().into_owned()),
-        formatters: rust_formatters().map(|p| p.to_string_lossy().into_owned()),
-        formatter_guard: formatter_guard().map(|p| p.to_string_lossy().into_owned()),
-        stdin_supported: cfg!(unix),
+    tauri::async_runtime::spawn_blocking(|| {
+        let picked = pick_adapter();
+        // CodeLLDB trae su propio soporte de Rust: no necesita los formateadores de rustc.
+        let lldb_dap = matches!(picked, Some((_, AdapterKind::LldbDap)));
+        DebuggerInfo {
+            kind: picked.as_ref().map(|(_, k)| k.id()),
+            adapter: picked.map(|(p, _)| p.to_string_lossy().into_owned()),
+            formatters: if lldb_dap { rust_formatters().map(|p| p.to_string_lossy().into_owned()) } else { None },
+            formatter_guard: if lldb_dap { formatter_guard().map(|p| p.to_string_lossy().into_owned()) } else { None },
+            stdin_supported: cfg!(unix),
+        }
     })
     .await
-    .unwrap_or(DebuggerInfo { adapter: None, formatters: None, formatter_guard: None, stdin_supported: false })
+    .unwrap_or(DebuggerInfo { adapter: None, kind: None, formatters: None, formatter_guard: None, stdin_supported: false })
 }
 
 #[tauri::command]
@@ -202,9 +261,9 @@ pub fn dap_start(app: AppHandle, state: State<'_, DapState>) -> Result<u64, Stri
     // Si quedó un depurador anterior (p. ej. la interfaz se recargó), cerrarlo de forma ordenada.
     // Ojo: NO tocar el FIFO de entrada; el controlador lo crea justo antes de llamar aquí.
     state.proc.lock().unwrap().take();
-    let adapter = find_adapter().ok_or(
-        "No se encontró el depurador lldb-dap. En macOS instala las herramientas con `xcode-select --install`; \
-         en Linux instala el paquete `lldb` (p. ej. `sudo apt install lldb`); en Windows, LLVM.",
+    let (adapter, _kind) = pick_adapter().ok_or(
+        "No se encontró el depurador. Instálalo desde Ayuda → Herramientas necesarias \
+         (en macOS también con `xcode-select --install`).",
     )?;
     let mut child = new_command(&adapter)
         .stdin(Stdio::piped())

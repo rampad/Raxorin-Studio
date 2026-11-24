@@ -3,3 +3,6 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 .DS_Store
+
+# Programa de prueba del depurador
+tests/dap/ejemplo/target/

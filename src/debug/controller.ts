@@ -42,6 +42,8 @@ export interface DebugHost {
 
 export interface StartOptions {
   program: string;
+  /** Depurador en uso: cambia algunos campos de la configuración de inicio. */
+  kind: "lldb-dap" | "codelldb" | null;
   cwd: string;
   formatters: string | null;
   /** Limita la profundidad de los formateadores (tipos recursivos como los de Slint). */
@@ -52,7 +54,7 @@ export interface StartOptions {
 }
 
 const WATCH_KEY = "raxorinstudio.watches";
-const IGNORED_OUTPUT = /no plugin for the language "rust"|^Running initCommands|^Running preRunCommands|^\(lldb\) (command script import|settings set|breakpoint set)/;
+const IGNORED_OUTPUT = /no plugin for the language "rust"|^Running initCommands|^Running preRunCommands|^\(lldb\) (command script import|settings set|breakpoint set)|^Console is in '|^Launching: |^Launched process|^Process exited with code|^Executing script: |^Breakpoint \d+:/;
 
 export class DebugController {
   private client: DapClient | null = null;
@@ -139,7 +141,7 @@ export class DebugController {
       await client.request("initialize", {
         clientID: "raxorin-studio",
         clientName: "Raxorin Studio",
-        adapterID: "lldb-dap",
+        adapterID: opts.kind === "codelldb" ? "lldb" : "lldb-dap",
         locale: "es",
         linesStartAt1: true,
         columnsStartAt1: true,
@@ -147,7 +149,25 @@ export class DebugController {
         supportsVariableType: true,
         supportsRunInTerminalRequest: false,
       });
-      await client.request("launch", {
+      const preRunCommands = [
+        // Detenerse cuando el programa entra en pánico (como una excepción en C#).
+        "breakpoint set --name rust_panic",
+        ...(stdinPath ? [`settings set target.input-path "${stdinPath}"`] : []),
+        ...(opts.runTo ? [oneShot(opts.runTo.path, opts.runTo.line)] : []),
+      ];
+      // CodeLLDB: trae su propio soporte de Rust (sourceLanguages) y la salida del programa
+      // llega como eventos "output" (terminal "console").
+      const codelldb = opts.kind === "codelldb";
+      await client.request("launch", codelldb ? {
+        type: "lldb",
+        request: "launch",
+        program: opts.program,
+        cwd: opts.cwd,
+        stopOnEntry: false,
+        terminal: "console",
+        sourceLanguages: ["rust"],
+        preRunCommands,
+      } : {
         program: opts.program,
         cwd: opts.cwd,
         stopOnEntry: false,
@@ -158,12 +178,7 @@ export class DebugController {
               ...(opts.formatterGuard ? [`command script import "${opts.formatterGuard}"`] : []),
             ]
           : [],
-        preRunCommands: [
-          // Detenerse cuando el programa entra en pánico (como una excepción en C#).
-          "breakpoint set --name rust_panic",
-          ...(stdinPath ? [`settings set target.input-path "${stdinPath}"`] : []),
-          ...(opts.runTo ? [oneShot(opts.runTo.path, opts.runTo.line)] : []),
-        ],
+        preRunCommands,
       });
       this.update({ stdin: !!stdinPath });
       this.markRunning();

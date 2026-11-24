@@ -11,6 +11,7 @@ const CREDITS: { name: string; license: string; url: string }[] = [
   { name: "Tauri", license: "MIT / Apache-2.0", url: "https://tauri.app" },
   { name: "Monaco Editor", license: "MIT", url: "https://github.com/microsoft/monaco-editor" },
   { name: "rust-analyzer", license: "MIT / Apache-2.0", url: "https://rust-analyzer.github.io" },
+  { name: "CodeLLDB (depurador en Windows y Linux)", license: "MIT", url: "https://github.com/vadimcn/codelldb" },
   { name: "Slint", license: "GPL-3.0 / Royalty-free / comercial", url: "https://slint.dev" },
   { name: "Codicons", license: "CC BY 4.0", url: "https://github.com/microsoft/vscode-codicons" },
   { name: "Material Icon Theme", license: "MIT", url: "https://github.com/material-extensions/vscode-material-icon-theme" },

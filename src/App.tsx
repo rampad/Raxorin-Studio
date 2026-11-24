@@ -41,6 +41,7 @@ import { Codicon } from "./components/Icon";
 import Splitter from "./components/Splitter";
 import ToolbarCustomize from "./components/ToolbarCustomize";
 import PublishDialog from "./components/PublishDialog";
+import SetupDialog from "./components/SetupDialog";
 import { useGit } from "./git/useGit";
 import { UpdateDialog, useUpdates } from "./updates";
 import GitPanel, { githubUrl, type GitIntent } from "./git/GitPanel";
@@ -74,7 +75,7 @@ const RUN_EXTERNAL_KEY = "raxorinstudio.runExternal";
 const startupKey = (root: string) => `raxorinstudio.startup:${root}`;
 const MAX_CHUNKS = 5000;
 
-const TASK_LABEL: Record<Task, string> = {
+const TASK_LABEL: Partial<Record<Task, string>> = {
   build: "Compilando…",
   check: "Revisando…",
   test: "Ejecutando pruebas…",
@@ -138,6 +139,8 @@ export default function App() {
   const [sidebarVisible, setSidebarVisible] = usePanelVisible("sidebar");
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  // Asistente de herramientas (Rust, C/C++, Git…): "first" = se abrió solo porque falta algo imprescindible.
+  const [setupOpen, setSetupOpen] = useState<null | "first" | "manual">(null);
   // Configuración de compilación (como Debug/Release de Visual Studio). Depurar siempre usa Debug.
   const [buildConfig, setBuildConfigState] = useState<"debug" | "release">(() => {
     try {
@@ -801,6 +804,7 @@ export default function App() {
       debug.start({
         program: e.payload.program,
         cwd: e.payload.cwd,
+        kind: info?.kind ?? null,
         formatters: info?.formatters ?? null,
         formatterGuard: info?.formatterGuard ?? null,
         stdinSupported: info?.stdinSupported ?? false,
@@ -1518,10 +1522,13 @@ export default function App() {
     {
       label: "Ayuda",
       items: [
+        { label: "Documentación", icon: "book", shortcut: "F1", onClick: () => void openUrl("https://raxorin.dev") },
+        "sep",
         { label: "Repositorio en GitHub", icon: "github", onClick: () => void openUrl(GITHUB_URL) },
         { label: "Reportar un problema", icon: "bug", onClick: () => void openUrl(GITHUB_URL + "/issues/new") },
         { label: "Licencia (MIT)", icon: "law", onClick: () => setAboutOpen(true) },
         { label: "Buscar actualizaciones…", icon: "cloud-download", onClick: () => void updates.check(true) },
+        { label: "Herramientas necesarias…", icon: "tools", onClick: () => setSetupOpen("manual") },
         "sep",
         { label: "Acerca de Raxorin Studio", icon: "info", onClick: () => setAboutOpen(true) },
       ],
@@ -1558,6 +1565,7 @@ export default function App() {
       else if (mod && !e.shiftKey && !e.altKey && key === "n") void actions.current.newFile();
       else if (mod && !e.shiftKey && !e.altKey && key === "o") void actions.current.openFileDialog();
       else if (mod && !e.shiftKey && !e.altKey && key === ",") setSettingsOpen(true);
+      else if (e.key === "F1" && !mod) void openUrl("https://raxorin.dev");
       else if (mod && e.shiftKey && !e.altKey && key === "g") actions.current.showGit();
       else if (mod && e.shiftKey && !e.altKey && key === "e") actions.current.showExplorer();
       else if (mod && !e.shiftKey && !e.altKey && key === "b") setSidebarVisible((v) => !v);
@@ -1586,6 +1594,11 @@ export default function App() {
   // ---------- Inicio ----------
   useEffect(() => {
     refreshToolchain();
+    // Si falta algo imprescindible (Rust o el compilador de C/C++), abrir el asistente.
+    api
+      .setupStatus()
+      .then((tools) => tools.some((t) => t.required && !t.installed && !t.unavailable) && setSetupOpen("first"))
+      .catch(() => {});
     let last: string | null = null;
     try {
       last = localStorage.getItem(LAST_PROJECT_KEY);
@@ -1800,6 +1813,32 @@ export default function App() {
         />
       )}
       <UpdateDialog u={updates} />
+      {setupOpen && (
+        <SetupDialog
+          firstRun={setupOpen === "first"}
+          busy={running !== null && !running.startsWith("setup:")}
+          onInstall={async (id) => {
+            if (running && !running.startsWith("setup:")) return false;
+            setBottomVisible(true);
+            setBottomTab("output");
+            setRunning(`setup:${id}`);
+            try {
+              await api.startTask(".", `setup:${id}`);
+              return true;
+            } catch (e) {
+              setRunning(null);
+              log(String(e), "error");
+              return false;
+            }
+          }}
+          onChanged={() => {
+            void refreshToolchain();
+            // Un depurador recién instalado (p. ej. CodeLLDB) se usa en la próxima depuración.
+            api.debuggerInfo().then(setDebuggerInfo).catch(() => {});
+          }}
+          onClose={() => setSetupOpen(null)}
+        />
+      )}
       {cloneOpen && (
         <CloneDialog
           defaultParent={homeProjects}
@@ -1971,7 +2010,7 @@ export default function App() {
           ) : (
             <>
               {running ? <Codicon name="loading" spin /> : <Codicon name="check" />}
-              {running ? TASK_LABEL[running] : "Listo"}
+              {running ? TASK_LABEL[running] ?? (running.startsWith("setup:") ? "Instalando herramientas…" : "Trabajando…") : "Listo"}
             </>
           )}
         </span>

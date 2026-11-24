@@ -7,6 +7,7 @@ mod monitor;
 mod projects;
 mod runner;
 mod solution;
+mod setup;
 mod toolchain;
 mod update;
 mod watcher;
@@ -62,6 +63,7 @@ pub fn run() {
             solution::take_pending_open,
             runner::rust_targets,
             runner::cross_status,
+            setup::setup_status,
             update::update_check,
             update::update_install,
             update::update_restart,

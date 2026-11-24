@@ -1,0 +1,59 @@
+# Prueba el depurador (CodeLLDB) en máquinas reales de Windows y Linux: una sesión completa
+# con la misma configuración que usa Raxorin Studio (tests/dap/sesion.py).
+name: Depurador
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/debug/**"
+      - "src-tauri/src/dap.rs"
+      - "src-tauri/src/setup.rs"
+      - "tests/dap/**"
+      - ".github/workflows/depurador.yml"
+  pull_request:
+    paths:
+      - "src/debug/**"
+      - "src-tauri/src/dap.rs"
+      - "tests/dap/**"
+  workflow_dispatch:
+
+env:
+  # Misma versión que instala la app (CODELLDB_VERSION en src-tauri/src/setup.rs).
+  CODELLDB_VERSION: v1.12.3
+
+jobs:
+  sesion:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (MSVC)
+            os: windows-latest
+            paquete: win32-x64
+            adaptador: codelldb/extension/adapter/codelldb.exe
+            extra: ""
+          - name: Linux
+            os: ubuntu-22.04
+            paquete: linux-x64
+            adaptador: codelldb/extension/adapter/codelldb
+            extra: --entrada
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Descargar CodeLLDB
+        shell: bash
+        run: |
+          curl -sSL -o codelldb.vsix "https://github.com/vadimcn/codelldb/releases/download/${CODELLDB_VERSION}/codelldb-${{ matrix.paquete }}.vsix"
+          python -c "import zipfile; zipfile.ZipFile('codelldb.vsix').extractall('codelldb')"
+          chmod +x "${{ matrix.adaptador }}" codelldb/extension/lldb/bin/* 2>/dev/null || true
+
+      - name: Sesión de depuración
+        shell: bash
+        run: python tests/dap/sesion.py "${{ matrix.adaptador }}" codelldb ${{ matrix.extra }}
