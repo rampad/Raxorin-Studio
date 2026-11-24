@@ -44,5 +44,5 @@ pub fn run() {
             crates::crate_set_features,
         ])
         .run(tauri::generate_context!())
-        .expect("error al iniciar Rust Studio");
+        .expect("error al iniciar Oxide Studio");
 }

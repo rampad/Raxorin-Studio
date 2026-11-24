@@ -62,7 +62,7 @@ pub fn write_file(path: String, contents: String) -> Result<(), String> {
 const CONSOLE_TEMPLATE: &str = r#"use std::io::{self, Write};
 
 fn main() {
-    println!("¡Hola desde Rust Studio!");
+    println!("¡Hola desde Oxide Studio!");
 
     print!("¿Cómo te llamas? ");
     io::stdout().flush().unwrap();

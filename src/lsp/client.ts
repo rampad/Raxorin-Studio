@@ -166,7 +166,7 @@ export class LspClient {
     const name = this.opts.root.split(/[\\/]/).filter(Boolean).pop() ?? "proyecto";
     const result = await this.request<{ capabilities: L.ServerCapabilities }>("initialize", {
       processId: null,
-      clientInfo: { name: "Rust Studio", version: "0.2.0" },
+      clientInfo: { name: "Oxide Studio", version: "0.2.0" },
       locale: "es",
       rootUri,
       workspaceFolders: [{ uri: rootUri, name }],

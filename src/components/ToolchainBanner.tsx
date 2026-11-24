@@ -28,7 +28,7 @@ export default function ToolchainBanner({ status, onInstall }: Props) {
     return (
       <div className="banner error">
         <Codicon name="warning" />
-        <span>No se encontró Rust en este equipo. Instálalo desde <strong>https://rustup.rs</strong> y reinicia Rust Studio.</span>
+        <span>No se encontró Rust en este equipo. Instálalo desde <strong>https://rustup.rs</strong> y reinicia Oxide Studio.</span>
       </div>
     );
   }

@@ -12,7 +12,7 @@ use std::time::Duration;
 
 const API: &str = "https://crates.io/api/v1";
 // crates.io pide identificar al cliente con un User-Agent propio.
-const USER_AGENT: &str = "rust-studio-ide/0.2 (IDE de escritorio para Rust)";
+const USER_AGENT: &str = "oxide-studio-ide/0.2 (IDE de escritorio para Rust)";
 
 fn http_json(url: &str) -> Result<Value, String> {
     ureq::get(url)

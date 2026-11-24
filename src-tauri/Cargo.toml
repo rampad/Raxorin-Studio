@@ -1,11 +1,11 @@
 [package]
-name = "rust-studio"
+name = "oxide-studio"
 version = "0.1.0"
 description = "IDE para crear programas en Rust de forma fácil"
 edition = "2021"
 
 [lib]
-name = "rust_studio_lib"
+name = "oxide_studio_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

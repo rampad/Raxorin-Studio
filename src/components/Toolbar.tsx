@@ -70,7 +70,7 @@ export default function Toolbar(p: Props) {
     <div className="toolbar">
       <span className="brand">
         <img src={rustLogo} width={18} height={18} alt="" />
-        Rust Studio
+        Oxide Studio
       </span>
       <Btn icon="new-file" label="Nuevo" title="Nuevo proyecto" onClick={p.onNew} />
       <Btn icon="folder-opened" label="Abrir" title="Abrir carpeta" onClick={p.onOpen} />

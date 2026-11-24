@@ -29,8 +29,8 @@ type Editing =
 
 interface Menu { x: number; y: number; entry: Entry; isRoot: boolean }
 
-const DRAG_TYPE = "application/x-ruststudio-path";
-const expandedKey = (root: string) => `ruststudio.expanded:${root}`;
+const DRAG_TYPE = "application/x-oxidestudio-path";
+const expandedKey = (root: string) => `oxidestudio.expanded:${root}`;
 
 export default function Explorer(p: Props) {
   const { root } = p;

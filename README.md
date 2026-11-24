@@ -1,4 +1,4 @@
-# 🦀 Rust Studio
+# Oxide Studio
 
 IDE para crear programas en Rust de forma fácil, inspirada en Visual Studio.
 

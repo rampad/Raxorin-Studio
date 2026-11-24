@@ -28,9 +28,9 @@ import { basename, dirname, isInside, languageFor } from "./util";
 import { Codicon } from "./components/Icon";
 import rustLogo from "./assets/file-icons/rust.svg";
 
-const LAST_PROJECT_KEY = "ruststudio.lastProject";
-const RUN_EXTERNAL_KEY = "ruststudio.runExternal";
-const startupKey = (root: string) => `ruststudio.startup:${root}`;
+const LAST_PROJECT_KEY = "oxidestudio.lastProject";
+const RUN_EXTERNAL_KEY = "oxidestudio.runExternal";
+const startupKey = (root: string) => `oxidestudio.startup:${root}`;
 const MAX_CHUNKS = 5000;
 
 const TASK_LABEL: Record<Task, string> = {
@@ -832,7 +832,7 @@ function Welcome({ onNew, onOpen }: { onNew: () => void; onOpen: () => void }) {
   return (
     <div className="welcome">
       <img className="welcome-logo" src={rustLogo} width={72} height={72} alt="" />
-      <h1>Rust Studio</h1>
+      <h1>Oxide Studio</h1>
       <p className="muted">Crea programas en Rust de forma fácil.</p>
       <div className="welcome-actions">
         <button className="welcome-card" onClick={onNew}>
