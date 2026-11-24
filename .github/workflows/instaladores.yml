@@ -66,6 +66,13 @@ jobs:
       - name: Pruebas
         run: npm test
 
+      # Las novedades de la versión (NOVEDADES.md) van en el Release y en el aviso de actualización.
+      - name: Novedades
+        id: notas
+        shell: bash
+        run: |
+          { echo 'texto<<FIN_NOVEDADES'; cat NOVEDADES.md; echo 'FIN_NOVEDADES'; } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,13 +82,7 @@ jobs:
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
           releaseName: Raxorin Studio v__VERSION__
-          releaseBody: |
-            Instaladores de Raxorin Studio.
-            - macOS: `.dmg` (Apple Silicon o Intel)
-            - Windows: `.msi` o `.exe`
-            - Linux: `.deb`, `.rpm` o `.AppImage`
-
-            Requisito: Rust instalado (https://rustup.rs).
+          releaseBody: ${{ steps.notas.outputs.texto }}
           releaseDraft: true
           # v1.2.0-beta.1 → versión de prueba (canal beta del actualizador).
           prerelease: ${{ contains(github.ref_name, '-') }}
