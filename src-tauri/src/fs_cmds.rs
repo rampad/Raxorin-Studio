@@ -219,6 +219,21 @@ fn check_name(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Escribe un archivo binario recibido en base64 (p. ej. imágenes importadas de Figma).
+/// Crea las carpetas que falten.
+#[tauri::command]
+pub fn write_file_base64(path: String, base64: String) -> Result<(), String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64.trim())
+        .map_err(|e| format!("Datos de imagen inválidos: {e}"))?;
+    let p = Path::new(&path);
+    if let Some(parent) = p.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear {}: {e}", parent.display()))?;
+    }
+    std::fs::write(p, bytes).map_err(|e| format!("No se pudo escribir {path}: {e}"))
+}
+
 #[tauri::command]
 pub fn create_file(path: String) -> Result<(), String> {
     let p = Path::new(&path);
@@ -290,6 +305,16 @@ pub fn reveal_path(path: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn escribe_base64() {
+        let dir = std::env::temp_dir().join(format!("raxorin-b64-{}", std::process::id()));
+        let file = dir.join("figma/logo.png");
+        write_file_base64(file.to_string_lossy().into(), "iVBORw0KGgo=".into()).unwrap();
+        assert_eq!(&std::fs::read(&file).unwrap()[..4], &[0x89, b'P', b'N', b'G']);
+        assert!(write_file_base64(file.to_string_lossy().into(), "%%%".into()).is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
 
     #[test]
     fn crea_proyecto_de_ventana() {

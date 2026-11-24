@@ -114,19 +114,31 @@ export default function WidgetPreview({ el }: { el: Element }) {
           <div style={{ width: `${Math.min(1, Math.max(0, num(el, "progress", 0))) * 100}%` }} />
         </div>
       );
-    case "Rectangle":
+    case "Rectangle": {
+      // Sombra (drop-shadow-*) como en Slint.
+      const shadowColor = parseColor(getProp(el, "drop-shadow-color"));
+      const shadow = shadowColor
+        ? `${len(el, "drop-shadow-offset-x") ?? 0}px ${len(el, "drop-shadow-offset-y") ?? 0}px ${len(el, "drop-shadow-blur") ?? 0}px ${shadowColor}`
+        : undefined;
+      const corner = (k: string) => len(el, k) ?? len(el, "border-radius") ?? 0;
       return (
         <div
           className="w-rect"
           style={{
             background: parseColor(getProp(el, "background")) ?? "transparent",
-            borderRadius: len(el, "border-radius") ?? 0,
+            boxShadow: shadow,
+            opacity: parseNumber(getProp(el, "opacity")) ?? undefined,
+            borderTopLeftRadius: corner("border-top-left-radius"),
+            borderTopRightRadius: corner("border-top-right-radius"),
+            borderBottomRightRadius: corner("border-bottom-right-radius"),
+            borderBottomLeftRadius: corner("border-bottom-left-radius"),
             border: (len(el, "border-width") ?? 0) > 0
               ? `${len(el, "border-width")}px solid ${parseColor(getProp(el, "border-color")) ?? "#000"}`
               : undefined,
           }}
         />
       );
+    }
     case "Spinner": {
       const indeterminate = bool(el, "indeterminate");
       const pct = Math.min(1, Math.max(0, num(el, "progress", 0)));

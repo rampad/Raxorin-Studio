@@ -22,6 +22,7 @@ export type Task = "build" | "run" | "check" | "test" | "debug" | "publish" | "s
 /** Opciones de "Publicar" (ver runner.rs). */
 export interface PublishOptions { outDir: string; target: string | null; zip: boolean; open: boolean }
 export interface RustTargets { host: string; installed: string[] }
+export interface UpdateInfo { version: string; current: string; notes: string | null; date: string | null }
 export interface CrossStatus {
   target: string;
   rustTarget: boolean;
@@ -136,11 +137,15 @@ export const api = {
   listDir: (path: string) => invoke<Entry[]>("list_dir", { path }),
   readFile: (path: string) => invoke<string>("read_file", { path }),
   writeFile: (path: string, contents: string) => invoke<void>("write_file", { path, contents }),
+  writeFileBase64: (path: string, base64: string) => invoke<void>("write_file_base64", { path, base64 }),
   createProject: (parent: string, name: string, kind: "bin" | "lib" | "slint") =>
     invoke<string>("create_project", { parent, name, kind }),
   startTask: (project: string, task: Task, external = false, release = false, publish: PublishOptions | null = null) =>
     invoke<void>("start_task", { project, task, external, release, publish }),
   rustTargets: () => invoke<RustTargets>("rust_targets"),
+  updateCheck: (channel: "stable" | "beta") => invoke<UpdateInfo | null>("update_check", { channel }),
+  updateInstall: () => invoke<void>("update_install"),
+  updateRestart: () => invoke<void>("update_restart"),
   crossStatus: (target: string) => invoke<CrossStatus>("cross_status", { target }),
   gitStatus: (dir: string) => invoke<GitStatus>("git_status", { dir }),
   gitInit: (dir: string) => invoke<void>("git_init", { dir }),

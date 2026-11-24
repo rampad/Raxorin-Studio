@@ -11,6 +11,8 @@ ok(s.wordWrap === true, "conserva valores válidos");
 ok(s.minimap === DEFAULT_SETTINGS.minimap, "ignora valores de otro tipo");
 ok(!("extra" in s), "ignora claves desconocidas");
 ok(normalizeSettings({ fontSize: 3 }).fontSize === 8, "tamaño de letra mínimo 8");
+ok(normalizeSettings({ updateChannel: "nocturno" }).updateChannel === "stable", "canal de actualizaciones inválido → estable");
+ok(normalizeSettings({ updateChannel: "beta", autoUpdate: false }).updateChannel === "beta", "canal beta");
 ok(formatShortcut("Mod+Shift+S", false) === "Ctrl+Shift+S", "atajo en Windows/Linux");
 ok(formatShortcut("Mod+Shift+S", true) === "⇧⌘S", "atajo en macOS");
 ok(formatShortcut("Mod+Alt+S", true) === "⌥⌘S" && formatShortcut("F5", true) === "F5", "atajos con Alt y teclas sueltas");

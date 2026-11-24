@@ -3,6 +3,8 @@
 # Se ejecuta al publicar una etiqueta de versión (git tag v0.2.0 && git push --tags)
 # o a mano desde la pestaña "Actions" de GitHub ("Run workflow").
 # El resultado queda en un borrador de Release, para revisarlo antes de publicarlo.
+# Las versiones se firman (secreto TAURI_SIGNING_PRIVATE_KEY) y se publica latest.json,
+# que Raxorin Studio consulta para actualizarse solo.
 name: Instaladores
 
 on:
@@ -67,6 +69,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Firma de las actualizaciones (la clave pública está en tauri.conf.json).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
           releaseName: Raxorin Studio v__VERSION__
@@ -78,5 +83,7 @@ jobs:
 
             Requisito: Rust instalado (https://rustup.rs).
           releaseDraft: true
-          prerelease: false
+          # v1.2.0-beta.1 → versión de prueba (canal beta del actualizador).
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          includeUpdaterJson: true
           args: ${{ matrix.args }}

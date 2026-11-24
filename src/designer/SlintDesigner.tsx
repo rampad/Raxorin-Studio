@@ -18,6 +18,9 @@ import {
   GRID_CHILD, LAYOUT_CHILD, WIDGETS, widgetDef, type Bindable, type EventDef, type EventParam, type LayoutKind, type WidgetDef,
 } from "./widgets";
 import * as Ops from "./designOps";
+import FigmaImportDialog, { type FigmaMode } from "./FigmaImportDialog";
+import type { ImportResult } from "./figmaImport";
+import { api } from "../api";
 import type { CSSProperties } from "react";
 import WidgetPreview from "./WidgetPreview";
 import PropertyPanel from "./PropertyPanel";
@@ -102,6 +105,7 @@ export default function SlintDesigner(p: Props) {
   const [dragIndicator, setDragIndicator] = useState<Indicator | null>(null);
   // Pestaña visible de cada TabWidget (clave: ruta). Solo en el diseñador.
   const [activeTabs, setActiveTabs] = useState<Record<string, number>>({});
+  const [figmaOpen, setFigmaOpen] = useState(false);
   const applying = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -236,6 +240,47 @@ export default function SlintDesigner(p: Props) {
     });
     setSel(newPath);
     rootRef.current?.focus();
+  };
+
+  /** Importa una pantalla de Figma: guarda sus imágenes y reemplaza o agrega los controles. */
+  const importFigma = async (r: ImportResult, mode: FigmaMode) => {
+    for (const a of r.assets) await api.writeFileBase64(`${slintDir}/${a.path}`, a.base64);
+    commit((d) => {
+      if (r.tokens && !/export\s+global\s+Tema\b/.test(d.before)) d.before = `${d.before.trim()}\n\n${r.tokens}`.trim();
+      if (mode === "replace") {
+        d.root.items = d.root.items.filter((it) => it.kind !== "element");
+        // Quitar las propiedades expuestas a Rust que apuntaban a controles que ya no existen.
+        const ids = new Set<string>();
+        const collect = (e: Element) => e.items.forEach((it) => it.kind === "element" && (it.id && ids.add(it.id), collect(it)));
+        r.items.forEach((e) => { if (e.id) ids.add(e.id); collect(e); });
+        d.root.items = d.root.items.filter((it) => {
+          if (it.kind !== "raw") return true;
+          const m = it.text.match(/<=>\s*([A-Za-z_][\w-]*)\./);
+          return !m || ids.has(m[1]);
+        });
+        setProp(d.root, "width", formatLength(r.width));
+        setProp(d.root, "height", formatLength(r.height));
+        setProp(d.root, "title", formatString(r.title));
+        if (r.background) setProp(d.root, "background", r.background);
+        d.root.items.push(...r.items);
+      } else {
+        const panel: Element = {
+          kind: "element",
+          type: "Rectangle",
+          id: uniqueId(d, "figma"),
+          items: [
+            { kind: "prop", name: "x", value: "0px" },
+            { kind: "prop", name: "y", value: "0px" },
+            { kind: "prop", name: "width", value: formatLength(r.width) },
+            { kind: "prop", name: "height", value: formatLength(r.height) },
+            ...(r.background ? [{ kind: "prop" as const, name: "background", value: r.background }] : []),
+            ...r.items,
+          ],
+        };
+        d.root.items.push(panel);
+      }
+    });
+    setSel([]);
   };
 
   /** Agrega una pestaña al TabWidget seleccionado (o al que contiene la pestaña seleccionada). */
@@ -698,7 +743,9 @@ export default function SlintDesigner(p: Props) {
     const w = override?.w ?? parseLength(getProp(el, "width"));
     const h = override?.h ?? parseLength(getProp(el, "height"));
     const pw = def?.size[0] ?? 100;
-    const ph = def?.size[1] ?? 30;
+    // Un texto ocupa al menos el alto de su letra (Slint lo calcula a partir de la fuente).
+    const fontSize = parseLength(getProp(el, "font-size"));
+    const ph = Math.max(def?.size[1] ?? 30, el.type === "Text" && fontSize ? Math.ceil(fontSize * 1.35) : 0);
     const stretchAlign = (getProp(parent, "alignment")?.trim() ?? "stretch") === "stretch";
     const base: CSSProperties = { position: "relative", minWidth: 0, minHeight: 0 };
     if (kind === "grid" && cell) {
@@ -950,6 +997,9 @@ export default function SlintDesigner(p: Props) {
           <select className="zoom" value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((z) => <option key={z} value={z}>{Math.round(z * 100)}%</option>)}
           </select>
+          <button className="btn small" onClick={() => setFigmaOpen(true)} title="Importar una pantalla exportada con el plugin de Figma">
+            <Codicon name="symbol-color" /> Figma
+          </button>
           <button className="btn small" onClick={() => p.openRustFile(p.path)} title="Abrir el código Rust (main.rs)">
             <Codicon name="file-code" /> main.rs
           </button>
@@ -1012,6 +1062,9 @@ export default function SlintDesigner(p: Props) {
         </div>
       </div>
 
+      {figmaOpen && doc && (
+        <FigmaImportDialog usedIds={allIds(doc.root)} onImport={importFigma} onClose={() => setFigmaOpen(false)} />
+      )}
       {/* ----- Propiedades ----- */}
       <Splitter spec={PANELS.properties} panel="after" size={propsSize.size} onResize={propsSize.set} onReset={propsSize.reset} />
       <div className="props-col" style={{ width: propsSize.size }}>

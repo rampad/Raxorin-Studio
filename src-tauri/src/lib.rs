@@ -8,6 +8,7 @@ mod projects;
 mod runner;
 mod solution;
 mod toolchain;
+mod update;
 mod watcher;
 
 use tauri::Manager;
@@ -16,6 +17,23 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .manage(update::PendingUpdate::default())
+        .setup(|app| {
+            // `raxorin-studio --actualizar`: actualizar sin abrir la ventana.
+            if let Some(channel) = update::cli_requested() {
+                if let Some(w) = tauri::Manager::get_webview_window(app, "main") {
+                    let _ = w.hide();
+                }
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let code = update::cli_update(handle.clone(), channel).await;
+                    handle.exit(code);
+                });
+            }
+            Ok(())
+        })
         .manage(runner::ProcState::default())
         .manage(lsp::LspState::default())
         .manage(watcher::WatchState::default())
@@ -26,6 +44,7 @@ pub fn run() {
             fs_cmds::list_dir,
             fs_cmds::read_file,
             fs_cmds::write_file,
+            fs_cmds::write_file_base64,
             fs_cmds::create_project,
             fs_cmds::create_file,
             fs_cmds::create_dir,
@@ -43,6 +62,9 @@ pub fn run() {
             solution::take_pending_open,
             runner::rust_targets,
             runner::cross_status,
+            update::update_check,
+            update::update_install,
+            update::update_restart,
             git::git_status,
             git::git_init,
             git::git_nested_repos,

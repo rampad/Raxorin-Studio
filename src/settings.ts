@@ -17,6 +17,9 @@ export interface Settings {
   reopenLast: boolean;
   /** Preguntar antes de cerrar la ventana si hay archivos sin guardar. */
   confirmUnsaved: boolean;
+  /** Actualizaciones */
+  autoUpdate: boolean;
+  updateChannel: "stable" | "beta";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoSave: false,
   reopenLast: true,
   confirmUnsaved: true,
+  autoUpdate: true,
+  updateChannel: "stable",
 };
 
 const KEY = "raxorinstudio.settings";
@@ -44,6 +49,7 @@ export function normalizeSettings(raw: unknown): Settings {
   }
   out.fontSize = Math.min(32, Math.max(8, Math.round(out.fontSize)));
   if (![2, 4, 8].includes(out.tabSize)) out.tabSize = 4;
+  if (out.updateChannel !== "beta") out.updateChannel = "stable";
   return out;
 }
 

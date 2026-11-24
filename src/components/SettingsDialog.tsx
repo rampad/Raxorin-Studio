@@ -4,19 +4,21 @@ import { setThemePref, useTheme, type ThemePref } from "../theme";
 import { resetSettings, updateSettings, useSettings, type Settings } from "../settings";
 import { resetLayout } from "../layout";
 
-type Section = "appearance" | "editor" | "save" | "run";
+type Section = "appearance" | "editor" | "save" | "run" | "updates";
 
 const SECTIONS: { id: Section; icon: string; name: string }[] = [
   { id: "appearance", icon: "symbol-color", name: "Apariencia" },
   { id: "editor", icon: "code", name: "Editor" },
   { id: "save", icon: "save", name: "Guardar" },
   { id: "run", icon: "play-circle", name: "Inicio y ejecución" },
+  { id: "updates", icon: "cloud-download", name: "Actualizaciones" },
 ];
 
 interface Props {
   runExternal: boolean;
   onRunExternal: (v: boolean) => void;
   onCustomizeToolbar: () => void;
+  onCheckUpdates: () => void;
   onClose: () => void;
 }
 
@@ -41,7 +43,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 }
 
 /** Configuración general (Ctrl/⌘+,). Los cambios se aplican y guardan al momento. */
-export default function SettingsDialog({ runExternal, onRunExternal, onCustomizeToolbar, onClose }: Props) {
+export default function SettingsDialog({ runExternal, onRunExternal, onCustomizeToolbar, onCheckUpdates, onClose }: Props) {
   const [section, setSection] = useState<Section>("appearance");
   const s = useSettings();
   const { pref } = useTheme();
@@ -132,6 +134,28 @@ export default function SettingsDialog({ runExternal, onRunExternal, onCustomize
                 </Row>
                 <Row title="Avisar al cerrar con cambios sin guardar">
                   <Toggle label="Avisar al cerrar" on={s.confirmUnsaved} onChange={set("confirmUnsaved")} />
+                </Row>
+              </>
+            )}
+            {section === "updates" && (
+              <>
+                <Row title="Buscar actualizaciones automáticamente" desc="Al abrir Raxorin Studio y cada 6 horas. Siempre te pregunta antes de instalar.">
+                  <Toggle label="Buscar actualizaciones automáticamente" on={s.autoUpdate} onChange={set("autoUpdate")} />
+                </Row>
+                <Row title="Canal" desc="Beta recibe antes las funciones nuevas, que pueden tener errores.">
+                  <div className="segmented">
+                    <button type="button" className={s.updateChannel === "stable" ? "active" : ""} onClick={() => set("updateChannel")("stable")}>
+                      <Codicon name="verified" /> Estable
+                    </button>
+                    <button type="button" className={s.updateChannel === "beta" ? "active" : ""} onClick={() => set("updateChannel")("beta")}>
+                      <Codicon name="beaker" /> Beta
+                    </button>
+                  </div>
+                </Row>
+                <Row title="Buscar ahora" desc="Las actualizaciones están firmadas: solo se instalan versiones oficiales.">
+                  <button className="btn" onClick={onCheckUpdates}>
+                    <Codicon name="sync" /> Buscar actualizaciones
+                  </button>
                 </Row>
               </>
             )}

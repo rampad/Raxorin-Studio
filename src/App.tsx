@@ -42,6 +42,7 @@ import Splitter from "./components/Splitter";
 import ToolbarCustomize from "./components/ToolbarCustomize";
 import PublishDialog from "./components/PublishDialog";
 import { useGit } from "./git/useGit";
+import { UpdateDialog, useUpdates } from "./updates";
 import GitPanel, { githubUrl, type GitIntent } from "./git/GitPanel";
 import DiffView, { type DiffRequest } from "./git/DiffView";
 import { CloneDialog, PublishGitHubDialog } from "./git/GitDialogs";
@@ -256,6 +257,8 @@ export default function App() {
     (text: string, kind: OutputChunk["kind"] = "info") => append({ text: text + "\n", kind }),
     [append],
   );
+
+  const updates = useUpdates(log);
 
   // ---------- Git ----------
   const git = useGit(roots, log, solution?.dir ?? project, !!solution);
@@ -1518,6 +1521,7 @@ export default function App() {
         { label: "Repositorio en GitHub", icon: "github", onClick: () => void openUrl(GITHUB_URL) },
         { label: "Reportar un problema", icon: "bug", onClick: () => void openUrl(GITHUB_URL + "/issues/new") },
         { label: "Licencia (MIT)", icon: "law", onClick: () => setAboutOpen(true) },
+        { label: "Buscar actualizaciones…", icon: "cloud-download", onClick: () => void updates.check(true) },
         "sep",
         { label: "Acerca de Raxorin Studio", icon: "info", onClick: () => setAboutOpen(true) },
       ],
@@ -1775,6 +1779,10 @@ export default function App() {
         <SettingsDialog
           runExternal={runExternal}
           onRunExternal={changeRunMode}
+          onCheckUpdates={() => {
+            setSettingsOpen(false);
+            void updates.check(true);
+          }}
           onCustomizeToolbar={() => {
             setSettingsOpen(false);
             setCustomizeOpen(true);
@@ -1782,7 +1790,16 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
+      {aboutOpen && (
+        <AboutDialog
+          onClose={() => setAboutOpen(false)}
+          onCheckUpdates={() => {
+            setAboutOpen(false);
+            void updates.check(true);
+          }}
+        />
+      )}
+      <UpdateDialog u={updates} />
       {cloneOpen && (
         <CloneDialog
           defaultParent={homeProjects}
@@ -1983,6 +2000,12 @@ export default function App() {
               spin={/…|\d+%/.test(lspStatus)}
             />
             {lspStatus.replace(/ ✓$/, "")}
+          </button>
+        )}
+        {(updates.status === "available" || updates.status === "installed") && !updates.open && (
+          <button className="status-btn status-update" title="Ver la actualización" onClick={() => updates.setOpen(true)}>
+            <Codicon name="cloud-download" />
+            {updates.status === "installed" ? "Reiniciar para actualizar" : `Versión ${updates.info?.version} disponible`}
           </button>
         )}
         {activeTab && <span>Ln {cursor.line}, Col {cursor.column}</span>}

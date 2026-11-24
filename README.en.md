@@ -55,6 +55,9 @@ ready-to-share program — without having to learn the `cargo` command line.
 - **Properties** and **events** panels: connecting an event creates the function in `main.rs`, like
   WPF's *code-behind*.
 - The designer reads and writes the `.slint` file, so you can switch between **Design** and **Code** at any time.
+- **Import from Figma**: export a Figma screen with the [Raxorin Studio Export](https://github.com/rampad/Raxorin-Figma)
+  plugin and it becomes editable controls (Auto Layout → columns and rows, `Button`, `Input`, `Checkbox`…
+  components → real controls, design-system colors → `global Tema`).
 
 ### Debugger
 - **F5** just like Visual Studio: breakpoints (including **conditional**, **hit count** and **log messages**
@@ -114,6 +117,10 @@ Download the installer from [**Releases**](https://github.com/rampad/Raxorin-Stu
 **Requirement:** Rust must be installed ([rustup.rs](https://rustup.rs)). Raxorin Studio offers to install
 rust-analyzer, Clippy and rustfmt if they're missing. Git features use `git` and, optionally,
 [GitHub CLI](https://cli.github.com) (`gh`).
+
+**It updates itself:** on startup it checks for new versions and asks before installing them. Updates
+are signed, so only official versions get installed (stable or beta channel, under
+*Configuración → Actualizaciones*).
 
 > **macOS:** the app isn't signed with an Apple certificate yet. The first time, open it with
 > right-click → **Open** (or *System Settings → Privacy & Security → Open Anyway*).

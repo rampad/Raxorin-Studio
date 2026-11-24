@@ -18,7 +18,7 @@ const CREDITS: { name: string; license: string; url: string }[] = [
 ];
 
 /** Acerca de: versión, licencia MIT, enlaces a GitHub y créditos. */
-export default function AboutDialog({ onClose }: { onClose: () => void }) {
+export default function AboutDialog({ onClose, onCheckUpdates }: { onClose: () => void; onCheckUpdates?: () => void }) {
   const [version, setVersion] = useState("");
   const [showLicense, setShowLicense] = useState(false);
 
@@ -52,6 +52,11 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
           <button className="link-btn" onClick={link(GITHUB_URL + "/issues/new")}>
             <Codicon name="bug" /> Reportar un problema
           </button>
+          {onCheckUpdates && (
+            <button className="link-btn" onClick={onCheckUpdates}>
+              <Codicon name="sync" /> Buscar actualizaciones
+            </button>
+          )}
           <button className={"link-btn" + (showLicense ? " active" : "")} onClick={() => setShowLicense((v) => !v)}>
             <Codicon name="law" /> {showLicense ? "Ocultar licencia" : "Ver licencia"}
           </button>

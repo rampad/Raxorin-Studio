@@ -1166,3 +1166,31 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
 .git-solution { margin: 8px 10px 0; padding: 10px; border: 1px solid var(--accent); border-radius: 4px; display: flex; gap: 10px; background: var(--selection); }
 .git-solution > .codicon { font-size: 20px !important; color: var(--accent); }
 .git-solution .btn { margin-top: 8px; }
+
+/* ---------- Importar de Figma ---------- */
+.modal.figma-import { width: min(600px, calc(100vw - 32px)); }
+.figma-import p { margin: 0; }
+.figma-import code { margin: 0 3px; }
+.figma-paste { width: 100%; resize: vertical; font-size: 11px; background: var(--input); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px; user-select: text; -webkit-user-select: text; }
+.figma-source { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.figma-source .link-btn { margin-left: auto; }
+.figma-warnings { margin: 0; padding-left: 18px; }
+.figma-import details summary { cursor: pointer; }
+
+/* ---------- Actualizaciones ---------- */
+.modal.update-dialog { width: min(560px, calc(100vw - 32px)); }
+.update-dialog p { margin: 0; }
+.update-dialog .ok { color: var(--success); }
+.update-notes {
+  max-height: 220px; overflow: auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--code-bg); display: flex; flex-direction: column; gap: 3px; font-size: 12.5px;
+  user-select: text; -webkit-user-select: text;
+}
+.update-notes strong { margin-top: 4px; color: var(--text-strong); }
+.update-li { padding-left: 6px; }
+.update-progress { display: flex; flex-direction: column; gap: 6px; }
+.update-bar { height: 6px; border-radius: 3px; background: var(--active); overflow: hidden; }
+.update-bar > div { height: 100%; background: var(--accent); transition: width 0.2s; }
+.update-bar > div.indeterminate { animation: update-slide 1.2s ease-in-out infinite; }
+@keyframes update-slide { from { transform: translateX(-100%); } to { transform: translateX(330%); } }
+.statusbar .status-update { background: rgba(255, 255, 255, 0.18); }
