@@ -1,12 +1,11 @@
-## Hub de ejemplos
-- **Archivo → Ejemplos…** (también en la pantalla de bienvenida y en Ayuda): 10 aplicaciones de muestra listas para ejecutar y estudiar, comentadas en español.
-  - **Ventanas:** Conversor de temperatura, Calculadora, Lista de tareas y Temporizador Pomodoro.
-  - **Consola:** Adivina el número, Contador de palabras y Juego de la vida.
-  - **Encuentra el error:** para aprender a usar el depurador.
-  - **Geometría:** una biblioteca con pruebas.
-  - **Tienda:** una solución con dos proyectos.
-- Busca por nombre o tema, filtra por categoría y mira qué aprenderás con cada uno. **Crear y abrir** hace tu propia copia.
-- Los ejemplos nuevos aparecen sin actualizar la app (el catálogo se consulta en GitHub). Sin internet se usan los incluidos.
+## Terminal integrado
+- Nueva pestaña **Terminal** en el panel inferior (**Ver → Terminal** o <kbd>Ctrl</kbd>+<kbd>`</kbd>), con tu shell: zsh o bash en macOS y Linux, PowerShell en Windows.
+- Arranca en la carpeta del proyecto y con `cargo` disponible. Puedes abrir varias terminales, y siguen abiertas aunque ocultes el panel.
+- Mientras escribes en ella, <kbd>Ctrl</kbd>+letra va al shell (<kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>R</kbd>…).
+
+## Nuevo proyecto con ejemplos
+- **Nuevo proyecto** ahora tiene dos pasos. Primero eliges el tipo (consola, ventana, biblioteca o solución) y después cómo empezar: **en blanco** o **desde un ejemplo** de ese tipo.
+- Empezar desde un ejemplo también funciona para agregar un proyecto a la solución abierta.
 
 ## Instalar
 - macOS: `.dmg` (Apple Silicon o Intel)
