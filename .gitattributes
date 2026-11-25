@@ -1,2 +1,3 @@
 # Los ejemplos se copian tal cual a los proyectos de los usuarios: siempre con saltos de línea LF.
 ejemplos/** text=auto eol=lf
+src-tauri/mcp/*.json text eol=lf

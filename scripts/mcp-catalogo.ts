@@ -42,7 +42,7 @@ const part = (lang: string) =>
 const out = JSON.stringify({ slint: "1.19", es: part("es"), en: part("en") }, null, 1) + "\n";
 const dest = fileURLToPath(new URL("../src-tauri/mcp/controles.json", import.meta.url));
 if (process.argv.includes("--check")) {
-  if (!existsSync(dest) || readFileSync(dest, "utf8") !== out) {
+  if (!existsSync(dest) || readFileSync(dest, "utf8").replace(/\r\n/g, "\n") !== out) {
     console.error("src-tauri/mcp/controles.json no está al día: ejecuta node scripts/mcp-catalogo.ts");
     process.exit(1);
   }
