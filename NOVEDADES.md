@@ -1,10 +1,14 @@
-## Windows en procesadores ARM
-- **Nuevo instalador para Windows ARM64**: Surface, equipos Snapdragon y máquinas virtuales en un Mac con Apple Silicon (`_arm64-setup.exe`).
-- **Herramientas necesarias** detecta para qué arquitectura compila Rust y comprueba el enlazador de C++ correcto. En Windows ARM faltaban las herramientas de C++ para ARM64 y aparecía `linker 'link.exe' not found`; ahora lo detecta y **Reparar** las agrega.
-- **Reparar** usa el Instalador de Visual Studio que ya está en la máquina, que es más fiable para completar una instalación existente.
-- **Depurar en Windows ARM**: el programa se compila en x64 al depurar, porque el depurador (CodeLLDB) solo existe para x64. Ejecutar y Publicar siguen siendo nativos ARM64.
+## Hub de ejemplos
+- **Archivo → Ejemplos…** (también en la pantalla de bienvenida y en Ayuda): 10 aplicaciones de muestra listas para ejecutar y estudiar, comentadas en español.
+  - **Ventanas:** Conversor de temperatura, Calculadora, Lista de tareas y Temporizador Pomodoro.
+  - **Consola:** Adivina el número, Contador de palabras y Juego de la vida.
+  - **Encuentra el error:** para aprender a usar el depurador.
+  - **Geometría:** una biblioteca con pruebas.
+  - **Tienda:** una solución con dos proyectos.
+- Busca por nombre o tema, filtra por categoría y mira qué aprenderás con cada uno. **Crear y abrir** hace tu propia copia.
+- Los ejemplos nuevos aparecen sin actualizar la app (el catálogo se consulta en GitHub). Sin internet se usan los incluidos.
 
 ## Instalar
 - macOS: `.dmg` (Apple Silicon o Intel)
-- Windows: `-setup.exe` o `.msi` (x64), `_arm64-setup.exe` (ARM64)
+- Windows: `_x64-setup.exe` o `.msi` (x64), `_arm64-setup.exe` (ARM64)
 - Linux: `.AppImage` (se actualiza sola), `.deb` o `.rpm`
