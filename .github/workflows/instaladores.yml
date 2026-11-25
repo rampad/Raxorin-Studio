@@ -119,7 +119,9 @@ jobs:
         run: |
           dmg=$(ls src-tauri/target/*/release/bundle/dmg/*.dmg | head -1)
           echo "Revisando $dmg"
-          mp=$(yes | PAGER=cat hdiutil attach "$dmg" -nobrowse -noautoopen -mountrandom /tmp | grep -oE '/tmp/dmg\.[A-Za-z0-9]+' | tail -1)
+          # El .dmg muestra la licencia antes de montarse: `yes` la acepta (y termina con
+          # «Broken pipe» cuando hdiutil deja de leer, por eso el `|| true`).
+          mp=$( { yes 2>/dev/null || true; } | PAGER=cat hdiutil attach "$dmg" -nobrowse -noautoopen -mountrandom /tmp | grep -oE '/tmp/dmg\.[A-Za-z0-9]+' | tail -1)
           app="$mp/Raxorin Studio.app"
           codesign -dv "$app" 2>&1 | grep -E "Signature|Sealed Resources|flags"
           codesign --verify --deep --strict -v "$app"
