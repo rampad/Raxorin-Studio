@@ -9,6 +9,8 @@ entrada, explicar un error, catálogo de Slint y el bloqueo de rutas fuera de la
 """
 import json, os, shutil, subprocess, sys, tempfile
 
+# La consola de Windows en CI usa cp1252: los ✔/✖ se escriben en UTF-8.
+sys.stdout.reconfigure(encoding="utf-8")
 exe = sys.argv[1]
 root = os.path.realpath(tempfile.mkdtemp(prefix="raxorin-mcp-"))
 proc = subprocess.Popen([exe, "--mcp", "--root", root], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8")
