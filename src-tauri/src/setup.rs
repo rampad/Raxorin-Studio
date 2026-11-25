@@ -141,6 +141,11 @@ pub fn windows_target_arch() -> &'static str {
     if windows_native_arch() == "ARM64" { "arm64" } else { "x64" }
 }
 
+/// ¿Windows en un procesador ARM (p. ej. una máquina virtual en un Mac con Apple Silicon)?
+pub fn is_windows_arm() -> bool {
+    cfg!(windows) && windows_native_arch() == "ARM64"
+}
+
 /// Arquitectura real del sistema (el registro no se ve afectado por la emulación).
 fn windows_native_arch() -> String {
     new_command("reg")
@@ -200,7 +205,8 @@ fn macos_clt() -> bool {
 /// Plataforma de los paquetes de CodeLLDB (codelldb-<plataforma>.vsix).
 fn codelldb_platform() -> Option<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("windows", "x86_64") => Some("win32-x64"),
+        // CodeLLDB no tiene versión ARM64 para Windows: la x64 corre emulada (y se depura en x64).
+        ("windows", "x86_64" | "aarch64") => Some("win32-x64"),
         ("macos", "aarch64") => Some("darwin-arm64"),
         ("macos", "x86_64") => Some("darwin-x64"),
         ("linux", "x86_64") => Some("linux-x64"),
@@ -419,18 +425,33 @@ fn install_inner(app: &AppHandle, inner: &Arc<Inner>, id: &str) -> Result<bool, 
         // Windows y Linux: CodeLLDB, descargado en la carpeta de datos (sin permisos de administrador).
         "debugger" if !mac => install_codelldb(app),
         "cpp" if win => {
-            let dest = temp_dir()?.join("vs_BuildTools.exe");
-            download(app, "https://aka.ms/vs/17/release/vs_BuildTools.exe", &dest)?;
             out(app, "Windows pedirá permiso de administrador. La instalación tarda varios minutos.\n", "warning");
-            // Si ya hay una instalación (incompleta), se modifica para agregar lo que falta.
+            // Si ya hay una instalación (incompleta), se modifica con el Instalador de Visual Studio que
+            // ya está en la máquina (más fiable que el descargable para modificar). Si no, se descarga.
             let existing = msvc().install_path;
-            let path_arg = existing.as_ref().map(|p| p.to_string_lossy().into_owned());
+            let vs_setup = vswhere().with_file_name("setup.exe");
+            let (dest, modify) = match (&existing, vs_setup.is_file()) {
+                (Some(_), true) => (vs_setup, true),
+                _ => {
+                    let d = temp_dir()?.join("vs_BuildTools.exe");
+                    download(app, "https://aka.ms/vs/17/release/vs_BuildTools.exe", &d)?;
+                    (d, existing.is_some())
+                }
+            };
+            let path_arg = existing.as_ref().map(|p| format!("\"{}\"", p.display()));
             let mut args: Vec<&str> = Vec::new();
-            if let Some(p) = &path_arg {
-                args.extend(["modify", "--installPath", p.as_str()]);
+            if modify {
+                if let Some(p) = &path_arg {
+                    args.extend(["modify", "--installPath", p.as_str()]);
+                }
+            }
+            // --wait solo lo acepta el instalador descargable; el ya instalado (setup.exe) espera
+            // solo y con --wait termina con el código 87 (parámetro no válido).
+            if !dest.ends_with("setup.exe") {
+                args.push("--wait");
             }
             args.extend([
-                "--passive", "--wait", "--norestart",
+                "--passive", "--norestart",
                 "--add", "Microsoft.VisualStudio.Workload.VCTools",
                 "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
                 "--add", vc_component(windows_target_arch()),

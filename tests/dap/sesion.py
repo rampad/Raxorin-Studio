@@ -20,8 +20,11 @@ proyecto = os.path.join(aqui, "ejemplo")
 fuente = os.path.join(proyecto, "src", "main.rs")
 linea_punto = next(i + 1 for i, l in enumerate(open(fuente, encoding="utf-8")) if "PUNTO" in l)
 
-subprocess.run(["cargo", "build", "-q"], cwd=proyecto, check=True)
-exe = os.path.join(proyecto, "target", "debug", "ejemplo-depurar" + (".exe" if os.name == "nt" else ""))
+# RAXORIN_DAP_TARGET: compilar para otra plataforma (en Windows ARM la app depura en x64).
+destino = os.environ.get("RAXORIN_DAP_TARGET")
+subprocess.run(["cargo", "build", "-q"] + (["--target", destino] if destino else []), cwd=proyecto, check=True)
+carpeta = os.path.join(proyecto, "target", *( [destino] if destino else [] ), "debug")
+exe = os.path.join(carpeta, "ejemplo-depurar" + (".exe" if os.name == "nt" else ""))
 
 fallas = []
 def ok(cond, msg):

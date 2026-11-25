@@ -191,7 +191,15 @@ fn run_task(
     if opts.release {
         extra.push("--release".into());
     }
-    let target = opts.publish.as_ref().and_then(|p| p.target.clone()).filter(|t| !t.is_empty());
+    let mut target = opts.publish.as_ref().and_then(|p| p.target.clone()).filter(|t| !t.is_empty());
+    // Windows ARM: el depurador (CodeLLDB) solo existe para x64 y no lee los registros de un
+    // programa ARM64. Para depurar se compila en x64, que Windows ejecuta emulado.
+    if task == "debug" && crate::setup::is_windows_arm() {
+        const X64: &str = "x86_64-pc-windows-msvc";
+        ensure_target(app, inner, X64)?;
+        out(app, "Windows ARM: para depurar, el programa se compila en x64 (Windows lo ejecuta emulado).\n", "muted");
+        target = Some(X64.to_string());
+    }
     if let Some(t) = &target {
         extra.push("--target".into());
         extra.push(t.clone());
@@ -550,6 +558,23 @@ fn launch_in_terminal(project: &Path, exe: &Path) -> Result<(), String> {
         }
         Err("No se encontró ninguna terminal (gnome-terminal, konsole, xterm…).".into())
     }
+}
+
+/// Agrega una plataforma de Rust con rustup si falta (p. ej. x64 en Windows ARM para depurar).
+fn ensure_target(app: &AppHandle, inner: &Arc<Inner>, target: &str) -> Result<(), String> {
+    let installed = new_command(crate::toolchain::rustup_tool("rustup"))
+        .args(["target", "list", "--installed"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).lines().any(|l| l.trim() == target))
+        .unwrap_or(false);
+    if installed {
+        return Ok(());
+    }
+    out(app, format!("> rustup target add {target}   (solo la primera vez)\n"), "info");
+    let mut cmd = new_command(crate::toolchain::rustup_tool("rustup"));
+    cmd.args(["target", "add", target]);
+    let ok = run_child(app, inner, cmd, false, "muted", None, None)?.map(|s| s.success()).unwrap_or(false);
+    if ok { Ok(()) } else { Err(format!("No se pudo agregar la plataforma {target} de Rust.")) }
 }
 
 /// ¿La línea de cargo habla de un problema del enlazador?

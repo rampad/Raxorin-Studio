@@ -34,6 +34,12 @@ jobs:
             platform: windows-latest
             args: ""
             rust_targets: ""
+          # Windows en procesadores ARM (Surface, Snapdragon, máquinas virtuales en Mac). WiX (.msi)
+          # no genera ARM64: solo el instalador -setup.exe.
+          - name: Windows (ARM64)
+            platform: windows-latest
+            args: --target aarch64-pc-windows-msvc --bundles nsis
+            rust_targets: aarch64-pc-windows-msvc
           - name: Linux
             platform: ubuntu-22.04
             args: ""
