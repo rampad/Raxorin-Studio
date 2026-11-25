@@ -34,7 +34,9 @@ if (sobrantes.length) throw new Error(`Carpetas sin entrada en ejemplos.meta.jso
 const texto = JSON.stringify({ formato: 1, ejemplos }, null, 2) + "\n";
 const destino = join(base, "index.json");
 if (process.argv.includes("--check")) {
-  if (!existsSync(destino) || readFileSync(destino, "utf8") !== texto) {
+  // Sin distinguir CRLF/LF (Git en Windows puede convertir los saltos de línea).
+  const actual = existsSync(destino) ? readFileSync(destino, "utf8").replace(/\r\n/g, "\n") : null;
+  if (actual !== texto) {
     console.error("ejemplos/index.json no está al día: ejecuta node scripts/ejemplos.mjs");
     process.exit(1);
   }
