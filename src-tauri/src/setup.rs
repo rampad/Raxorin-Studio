@@ -105,6 +105,8 @@ fn vswhere() -> PathBuf {
 /// es `link.exe` (MSVC) y las bibliotecas del SDK de Windows (p. ej. kernel32.lib).
 #[derive(Debug, Default)]
 struct Msvc {
+    /// Arquitectura de los programas que se compilan ("arm64" o "x64").
+    arch: &'static str,
     /// Carpeta de una instalación de Visual Studio / Build Tools (aunque esté incompleta).
     install_path: Option<PathBuf>,
     name: Option<String>,
@@ -128,29 +130,63 @@ fn vswhere_prop(args: &[&str], prop: &str) -> Option<String> {
     String::from_utf8_lossy(&o.stdout).lines().next().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
 }
 
-/// `link.exe` dentro de VC\Tools\MSVC\<versión>\bin\Hostx64\x64.
-fn find_link(install: &Path) -> Option<PathBuf> {
+/// Arquitectura para la que compila Rust en este Windows: "arm64" o "x64".
+/// Se toma de rustc (`host: aarch64-pc-windows-msvc`); si Rust no está, de la arquitectura real de
+/// Windows. Ojo: Raxorin Studio x64 corre emulado en Windows ARM, así que no sirve
+/// `std::env::consts::ARCH` (diría x86_64).
+pub fn windows_target_arch() -> &'static str {
+    if let Some(host) = first_line_matching(&rustup_tool("rustc"), &["-vV"], "host: ") {
+        return if host.starts_with("aarch64") { "arm64" } else { "x64" };
+    }
+    if windows_native_arch() == "ARM64" { "arm64" } else { "x64" }
+}
+
+/// Arquitectura real del sistema (el registro no se ve afectado por la emulación).
+fn windows_native_arch() -> String {
+    new_command("reg")
+        .args(["query", r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "/v", "PROCESSOR_ARCHITECTURE"])
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8_lossy(&o.stdout).split_whitespace().last().map(String::from))
+        .unwrap_or_default()
+}
+
+fn first_line_matching(program: &Path, args: &[&str], prefix: &str) -> Option<String> {
+    let o = new_command(program).args(args).output().ok()?;
+    String::from_utf8_lossy(&o.stdout).lines().find_map(|l| l.strip_prefix(prefix).map(|s| s.trim().to_string()))
+}
+
+/// `link.exe` que genera programas para `arch` (VC\Tools\MSVC\<versión>\bin\Host<cualquiera>\<arch>).
+fn find_link(install: &Path, arch: &str) -> Option<PathBuf> {
     let tools = install.join(r"VC\Tools\MSVC");
     let mut versions: Vec<PathBuf> = std::fs::read_dir(tools).ok()?.flatten().map(|e| e.path()).collect();
     versions.sort();
-    versions.into_iter().rev().map(|v| v.join(r"bin\Hostx64\x64\link.exe")).find(|p| p.is_file())
+    let hosts = ["Hostarm64", "Hostx64", "Hostx86"];
+    versions.into_iter().rev().flat_map(|v| hosts.map(|h| v.join("bin").join(h).join(arch).join("link.exe"))).find(|p| p.is_file())
 }
 
-/// El SDK de Windows tiene kernel32.lib en Windows Kits\10\Lib\<versión>\um\x64.
-fn windows_sdk() -> bool {
+/// El SDK de Windows tiene kernel32.lib en Windows Kits\10\Lib\<versión>\um\<arch>.
+fn windows_sdk(arch: &str) -> bool {
     let base = std::env::var_os("ProgramFiles(x86)").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Program Files (x86)"));
     let lib = base.join(r"Windows Kits\10\Lib");
-    std::fs::read_dir(lib).ok().is_some_and(|d| d.flatten().any(|e| e.path().join(r"um\x64\kernel32.lib").is_file()))
+    std::fs::read_dir(lib).ok().is_some_and(|d| d.flatten().any(|e| e.path().join("um").join(arch).join("kernel32.lib").is_file()))
+}
+
+/// Componente de Visual Studio con las herramientas de C++ para `arch`.
+fn vc_component(arch: &str) -> &'static str {
+    if arch == "arm64" { "Microsoft.VisualStudio.Component.VC.Tools.ARM64" } else { "Microsoft.VisualStudio.Component.VC.Tools.x86.x64" }
 }
 
 fn msvc() -> Msvc {
+    let arch = windows_target_arch();
     let all = ["-latest", "-products", "*"];
-    let with_vc = ["-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"];
+    let with_vc = ["-latest", "-products", "*", "-requires", vc_component(arch)];
     let install_path = vswhere_prop(&with_vc, "installationPath").or_else(|| vswhere_prop(&all, "installationPath")).map(PathBuf::from);
     Msvc {
+        arch,
         name: vswhere_prop(&all, "displayName"),
-        link: install_path.as_deref().and_then(find_link),
-        sdk: windows_sdk(),
+        link: install_path.as_deref().and_then(|p| find_link(p, arch)),
+        sdk: windows_sdk(arch),
         install_path,
     }
 }
@@ -202,13 +238,15 @@ pub fn status() -> Vec<Tool> {
     let (cpp_ok, cpp_version) = if win {
         let m = msvc();
         if m.install_path.is_some() && !m.complete() {
+            let a = if m.arch == "arm64" { "ARM64" } else { "x64" };
             cpp_problem = Some(match (m.link.is_some(), m.sdk) {
-                (false, false) => "Visual Studio está instalado pero faltan las herramientas de C++ (link.exe) y el SDK de Windows.",
-                (false, true) => "Visual Studio está instalado pero falta el enlazador de C++ (link.exe).",
-                _ => "Falta el SDK de Windows (kernel32.lib): Rust no puede enlazar los programas.",
-            }.to_string());
+                (false, false) => format!("Visual Studio está instalado pero faltan las herramientas de C++ para {a} (link.exe) y el SDK de Windows."),
+                (false, true) => format!("Visual Studio está instalado pero falta el enlazador de C++ para {a} (link.exe)."),
+                _ => format!("Falta el SDK de Windows para {a} (kernel32.lib): Rust no puede enlazar los programas."),
+            });
         }
-        (m.complete(), m.name.map(|n| format!("{n} · link.exe y SDK de Windows")))
+        let a = if m.arch == "arm64" { "ARM64" } else { "x64" };
+        (m.complete(), m.name.map(|n| format!("{n} · C++ para {a} y SDK de Windows")))
     } else if mac {
         let ok = macos_clt();
         (ok, if ok { first_line(Path::new("clang"), &["--version"]) } else { None })
@@ -301,6 +339,8 @@ fn host_triple() -> &'static str {
         ("macos", "aarch64") => "aarch64-apple-darwin",
         ("macos", _) => "x86_64-apple-darwin",
         ("windows", "aarch64") => "aarch64-pc-windows-msvc",
+        // Raxorin Studio x64 corre emulado en Windows ARM: instalar el Rust nativo (ARM64).
+        ("windows", _) if windows_native_arch() == "ARM64" => "aarch64-pc-windows-msvc",
         ("windows", _) => "x86_64-pc-windows-msvc",
         ("linux", "aarch64") => "aarch64-unknown-linux-gnu",
         _ => "x86_64-unknown-linux-gnu",
@@ -393,6 +433,7 @@ fn install_inner(app: &AppHandle, inner: &Arc<Inner>, id: &str) -> Result<bool, 
                 "--passive", "--wait", "--norestart",
                 "--add", "Microsoft.VisualStudio.Workload.VCTools",
                 "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "--add", vc_component(windows_target_arch()),
                 "--add", "Microsoft.VisualStudio.Component.Windows11SDK.22621",
                 "--includeRecommended",
             ]);
@@ -523,6 +564,7 @@ mod tests {
         println!("{m:?}");
         assert!(m.install_path.is_some(), "no encontró Visual Studio");
         assert!(m.link.as_ref().is_some_and(|p| p.ends_with("link.exe")), "no encontró link.exe");
+        assert!(m.link.as_ref().unwrap().parent().unwrap().ends_with(m.arch), "link.exe que genera programas para {}", m.arch);
         assert!(m.sdk, "no encontró el SDK de Windows (kernel32.lib)");
         let cpp = status().into_iter().find(|t| t.id == "cpp").unwrap();
         assert!(cpp.installed && cpp.problem.is_none(), "{cpp:?}");
