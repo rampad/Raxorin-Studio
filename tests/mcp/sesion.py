@@ -120,12 +120,46 @@ mod tests {
     r, text = call("write_file", {"path": os.path.join(root, "..", "fuera.txt"), "content": "x"})
     ok(r["isError"] and not os.path.exists(os.path.join(os.path.dirname(root), "fuera.txt")), "write_file con .. : rechazado")
 
+    r, text = call("edit_file", {"path": os.path.join(project, "src/main.rs"), "old_text": "n * 2", "new_text": "n + n"})
+    with open(os.path.join(project, "src/main.rs")) as f:
+        ok(not r["isError"] and "n + n" in f.read(), "edit_file")
+    r, text = call("edit_file", {"path": os.path.join(project, "src/main.rs"), "old_text": "no existe", "new_text": "x"})
+    ok(r["isError"] and "wasn't found" in text, "edit_file: texto inexistente")
+
     err = request("no/existe")
     ok(err.get("error", {}).get("code") == -32601, "método desconocido: -32601")
 finally:
     proc.stdin.close()
     proc.wait(timeout=10)
     shutil.rmtree(root, ignore_errors=True)
+
+# Puente de aprobación (Claude Code → MCP approve → ventana): una ventana falsa que aprueba la
+# primera petición y rechaza la segunda.
+import socket, threading
+srv = socket.socket(); srv.bind(("127.0.0.1", 0)); srv.listen()
+asked = []
+def fake_window():
+    for answer in (True, False):
+        c, _ = srv.accept()
+        msg = json.loads(c.makefile().readline())
+        asked.append(msg)
+        c.sendall((json.dumps({"allow": answer, "message": None if answer else "No, gracias"}) + "\n").encode())
+        c.close()
+threading.Thread(target=fake_window, daemon=True).start()
+root2 = os.path.realpath(tempfile.mkdtemp(prefix="raxorin-mcp-"))
+proc = subprocess.Popen([exe, "--mcp", "--root", root2, "--approval-bridge", "127.0.0.1:%d" % srv.getsockname()[1]],
+                        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8",
+                        env={**os.environ, "RAXORIN_APPROVAL_TOKEN": "clave-de-prueba"})
+try:
+    request("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "prueba", "version": "1"}})
+    ok("approve" in [t["name"] for t in request("tools/list")["result"]["tools"]], "con puente: herramienta approve")
+    r, text = call("approve", {"tool_name": "Write", "input": {"file_path": "/x.rs", "content": "fn main() {}"}})
+    ok(json.loads(text) == {"behavior": "allow", "updatedInput": {"file_path": "/x.rs", "content": "fn main() {}"}}, "approve: aprobado")
+    r, text = call("approve", {"tool_name": "Bash", "input": {"command": "rm -rf /"}})
+    ok(json.loads(text) == {"behavior": "deny", "message": "No, gracias"}, "approve: rechazado con mensaje")
+    ok(asked[0]["token"] == "clave-de-prueba" and asked[1]["toolName"] == "Bash", "la ventana recibe la clave y la herramienta")
+finally:
+    proc.stdin.close(); proc.wait(timeout=10); shutil.rmtree(root2, ignore_errors=True)
 
 print("\nTodo OK" if not fails else f"\n{fails} FALLA(S)")
 sys.exit(1 if fails else 0)

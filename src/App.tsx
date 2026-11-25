@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { join } from "@tauri-apps/api/path";
 import { ask, message, open, save } from "@tauri-apps/plugin-dialog";
@@ -24,7 +24,11 @@ import BottomPanel, { type BottomTab } from "./components/BottomPanel";
 import NewProjectDialog from "./components/NewProjectDialog";
 import SamplesDialog from "./components/SamplesDialog";
 import McpDialog from "./components/McpDialog";
+// El chat (y los SDK de Anthropic y Gemini) se carga solo al abrirlo.
+const ChatPanel = lazy(() => import("./ai/ChatPanel"));
+import type { ChatContext } from "./ai/types";
 import TerminalPanel from "./terminal/TerminalPanel";
+import { runInTerminal } from "./terminal/sessions";
 import PackagesDialog from "./components/packages/PackagesDialog";
 import ReferenceDialog from "./components/ReferenceDialog";
 import ToolchainBanner from "./components/ToolchainBanner";
@@ -143,6 +147,7 @@ export default function App() {
   const sidebarSize = usePanelSize(PANELS.sidebar);
   const bottomSize = usePanelSize(PANELS.bottom);
   const diagSize = usePanelSize(PANELS.diagnostics);
+  const aiSize = usePanelSize(PANELS.ai);
   const [sidebarVisible, setSidebarVisible] = usePanelVisible("sidebar");
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -241,6 +246,20 @@ export default function App() {
   );
   const diag = useDiagnostics(stopInfo);
   const [diagOpen, setDiagOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(() => {
+    try {
+      return localStorage.getItem("raxorinstudio.aiOpen") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("raxorinstudio.aiOpen", aiOpen ? "1" : "0");
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [aiOpen]);
   useEffect(() => {
     // Como en Visual Studio: se abre sola al empezar a ejecutar o depurar.
     if (diag.pid !== null) setDiagOpen(true);
@@ -787,6 +806,58 @@ export default function App() {
     },
     [log, refreshToolchain],
   );
+
+  /**
+   * Recarga desde el disco las pestañas sin cambios pendientes cuyo archivo cambió fuera del editor
+   * (otra app, Git, una IA por MCP o el chat). Las que tienen cambios sin guardar no se tocan.
+   */
+  const reloadFromDisk = useCallback(async (paths?: string[]) => {
+    for (const tab of tabsRef.current) {
+      if (paths && !paths.includes(tab.path)) continue;
+      const model = monaco.editor.getModel(monaco.Uri.file(tab.path));
+      if (!model || model.getValue() !== tab.saved) continue;
+      let disk: string;
+      try {
+        disk = await api.readFile(tab.path);
+      } catch {
+        continue; // borrado o ilegible: se queda como está
+      }
+      if (disk === tab.saved || model.getValue() !== tab.saved) continue;
+      // Como una edición: Deshacer (Ctrl/⌘+Z) vuelve al texto anterior.
+      tabsRef.current = tabsRef.current.map((t) => (t.path === tab.path ? { ...t, content: disk, saved: disk } : t));
+      setTabs((ts) => ts.map((t) => (t.path === tab.path ? { ...t, content: disk, saved: disk } : t)));
+      model.pushEditOperations([], [{ range: model.getFullModelRange(), text: disk }], () => null);
+    }
+  }, []);
+
+  const activeRef = useRef<string | null>(null);
+  activeRef.current = active;
+  /** Lo que el chat con IA sabe del IDE en cada mensaje. */
+  const chatContext = useCallback((): ChatContext => {
+    const sol = solutionRef.current;
+    const roots = sol ? [sol.dir, ...rootsRef.current.filter((r) => !r.startsWith(sol.dir))] : rootsRef.current;
+    const ed = editorRef.current;
+    const sel = ed?.getSelection();
+    const selection = sel && !sel.isEmpty() ? ed?.getModel()?.getValueInRange(sel) ?? null : null;
+    const diags = diagRef.current;
+    const summary = diags
+      .filter((d) => d.level === "error" || d.level === "warning")
+      .slice(0, 30)
+      .map((d) => `${d.level}${d.code ? `[${d.code}]` : ""}: ${d.message}${d.file ? ` (${d.file}:${d.line})` : ""}`)
+      .join("\n");
+    return { roots, cwd: sol?.dir ?? rootsRef.current[0] ?? null, activeFile: activeRef.current, selection, diagnostics: summary };
+  }, []);
+
+  useEffect(() => {
+    const un = listen<string[]>("fs-changed", (e) => {
+      const dirs = new Set(e.payload.map((d) => d.replace(/[\\/]+$/, "")));
+      const touched = tabsRef.current.map((t) => t.path).filter((p) => dirs.has(p.replace(/[\\/][^\\/]*$/, "")));
+      if (touched.length) void reloadFromDisk(touched);
+    });
+    return () => {
+      void un.then((f) => f());
+    };
+  }, [reloadFromDisk]);
 
   /** Tras agregar/quitar un crate: recargar Cargo.toml si está abierto y avisar a rust-analyzer. */
   const onPackagesChanged = useCallback(
@@ -1471,6 +1542,7 @@ export default function App() {
         { label: t("Explorador"), checked: sidebarVisible, shortcut: "Mod+B", onClick: () => setSidebarVisible((v) => !v) },
         { label: t("Panel inferior"), checked: bottomVisible, shortcut: "Mod+J", onClick: () => setBottomVisible((v) => !v) },
         { label: t("Herramientas de diagnóstico"), checked: diagOpen, onClick: () => setDiagOpen((o) => !o) },
+        { label: t("Chat con IA"), checked: aiOpen, shortcut: "Mod+Shift+I", onClick: () => setAiOpen((o) => !o) },
         "sep",
         { label: t("Salida"), icon: "output", onClick: () => { setBottomVisible(true); setBottomTab("output"); } },
         { label: t("Lista de errores"), icon: "list-unordered", onClick: () => { setBottomVisible(true); setBottomTab("errors"); } },
@@ -1613,6 +1685,10 @@ export default function App() {
       else if (e.key === "F10" && dbg === "stopped") debug.stepOver();
       else if (e.key === "F11" && e.shiftKey && dbg === "stopped") debug.stepOut();
       else if (e.key === "F11" && dbg === "stopped") debug.stepInto();
+      else if (mod && e.shiftKey && !e.altKey && key === "i") {
+        e.preventDefault();
+        setAiOpen((o) => !o);
+      }
       else if (mod && e.shiftKey && key === "b") actions.current.runTask("build");
       else if (mod && e.altKey && !e.shiftKey && (key === "s" || e.code === "KeyS")) void actions.current.saveAll();
       else if (mod && e.shiftKey && !e.altKey && key === "s") void actions.current.saveAs();
@@ -2069,6 +2145,25 @@ export default function App() {
           </>
           )}
         </div>
+        {aiOpen && (
+          <>
+            <Splitter spec={PANELS.ai} panel="after" size={aiSize.size} onResize={aiSize.set} onReset={aiSize.reset} />
+            <Suspense fallback={<aside className="ai-panel" style={{ width: aiSize.size }} />}>
+            <ChatPanel
+              width={aiSize.size}
+              getContext={chatContext}
+              onFileChanged={(p) => void reloadFromDisk([p])}
+              onOpenFile={(p) => void openFile(p)}
+              onClose={() => setAiOpen(false)}
+              onRunInTerminal={(command) => {
+                runInTerminal(project, command, Math.max(10, settings.fontSize - 1));
+                setBottomVisible(true);
+                setBottomTab("terminal");
+              }}
+            />
+            </Suspense>
+          </>
+        )}
         {diagOpen && (
           <>
             <Splitter spec={PANELS.diagnostics} panel="after" size={diagSize.size} onResize={diagSize.set} onReset={diagSize.reset} />

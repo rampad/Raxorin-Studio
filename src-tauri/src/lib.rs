@@ -10,6 +10,7 @@ mod projects;
 mod runner;
 mod solution;
 mod terminal;
+mod ai;
 mod samples;
 mod setup;
 mod toolchain;
@@ -71,6 +72,19 @@ pub fn run() {
             runner::cross_status,
             install_location::app_location,
             install_location::move_to_applications,
+            ai::ai_key_get,
+            ai::ai_key_set,
+            ai::ai_tools,
+            ai::ai_tool,
+            ai::ai_cli_status,
+            ai::ai_cli_auth,
+            ai::ai_cli_models,
+            ai::ai_agent_start,
+            ai::ai_agent_send,
+            ai::ai_agent_stop,
+            ai::ai_bridge,
+            ai::ai_approval_reply,
+            ai::ai_private_file,
             mcp::mcp_setup,
             mcp::mcp_add_to_claude_desktop,
             terminal::terminal_open,
@@ -143,6 +157,7 @@ pub fn run() {
                 tauri::RunEvent::Exit => {
                     app.state::<dap::DapState>().shutdown();
                     terminal::close_all(&app.state::<terminal::Terminals>());
+                    ai::stop_all();
                 }
                 // macOS: doble clic en un .rxsln (con la app cerrada o abierta).
                 #[cfg(target_os = "macos")]

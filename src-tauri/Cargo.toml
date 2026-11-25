@@ -1,6 +1,6 @@
 [package]
 name = "raxorin-studio"
-version = "0.5.0"
+version = "0.6.0"
 license = "MIT"
 repository = "https://github.com/rampad/Raxorin-Studio"
 description = "IDE para crear programas en Rust de forma fácil"
@@ -30,3 +30,6 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 portable-pty = "0.9"
+# Claves de API del chat en el llavero del sistema (Llavero de macOS, Administrador de credenciales
+# de Windows, Secret Service en Linux).
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }

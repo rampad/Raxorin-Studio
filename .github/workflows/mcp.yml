@@ -1,6 +1,7 @@
-# Prueba el servidor MCP de Raxorin Studio (`raxorin-studio --mcp`) en macOS, Windows y Linux:
-# una sesión JSON-RPC real que crea un proyecto, compila con error, corrige, prueba, ejecuta y
-# comprueba que no se sale de la carpeta autorizada (tests/mcp/sesion.py).
+# Prueba el servidor MCP de Raxorin Studio (`raxorin-studio --mcp`) y el chat con IA en macOS,
+# Windows y Linux: una sesión JSON-RPC real que crea un proyecto, compila con error, corrige, prueba,
+# ejecuta y comprueba que no se sale de la carpeta autorizada (tests/mcp/sesion.py); y los bucles de
+# agente de Anthropic y Gemini contra APIs simuladas, con las herramientas reales (tests/ai).
 name: MCP
 
 on:
@@ -15,6 +16,9 @@ on:
       - "src/designer/widgets.ts"
       - "scripts/mcp-catalogo.ts"
       - "tests/mcp/**"
+      - "src-tauri/src/ai.rs"
+      - "src/ai/**"
+      - "tests/ai/**"
       - ".github/workflows/mcp.yml"
   pull_request:
     paths:
@@ -65,3 +69,8 @@ jobs:
       - name: Sesión MCP
         shell: bash
         run: python tests/mcp/sesion.py src-tauri/target/debug/raxorin-studio$([ "$RUNNER_OS" = Windows ] && echo .exe)
+
+      # Sin red ni claves: servidores locales que imitan las APIs de Anthropic y Gemini.
+      - name: Chat con IA (Anthropic y Gemini simulados)
+        shell: bash
+        run: npm ci --no-audit --no-fund && node tests/ai/agentes.mjs src-tauri/target/debug/raxorin-studio$([ "$RUNNER_OS" = Windows ] && echo .exe)

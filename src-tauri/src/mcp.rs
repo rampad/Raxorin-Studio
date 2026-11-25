@@ -31,15 +31,28 @@ add_dependency for packages, create_project or create_from_sample to start new o
 Slint: call slint_controls before writing .slint files so they open in Raxorin Studio's visual \
 designer (use its widget types, property names and events). Paths must be inside the allowed folders.";
 
-struct Server {
+pub(crate) struct Server {
     out: Mutex<std::io::Stdout>,
     /// Carpetas de --root (fijas) y las que comparte el cliente.
     cli_roots: Vec<PathBuf>,
     client_roots: Mutex<Vec<PathBuf>>,
     client_has_roots: Mutex<bool>,
+    /// Puente de aprobación con la ventana de Raxorin Studio (chat con Claude Code): dirección y clave.
+    bridge: Option<(String, String)>,
 }
 
 impl Server {
+    /// Para el chat del IDE: las herramientas sobre las carpetas del proyecto abierto.
+    pub(crate) fn for_roots(roots: &[PathBuf]) -> Server {
+        Server {
+            out: Mutex::new(std::io::stdout()),
+            cli_roots: roots.iter().map(|r| normalize(r)).collect(),
+            client_roots: Mutex::new(Vec::new()),
+            client_has_roots: Mutex::new(false),
+            bridge: None,
+        }
+    }
+
     fn send(&self, msg: &Value) {
         let mut out = self.out.lock().unwrap();
         let _ = writeln!(out, "{msg}");
@@ -173,7 +186,7 @@ fn percent_decode(s: &str) -> String {
 
 // ---------- Herramientas ----------
 
-fn tools() -> Value {
+pub(crate) fn tools() -> Value {
     let s = |props: Value, required: &[&str]| json!({ "type": "object", "properties": props, "required": required });
     let project = json!({ "type": "string", "description": "Absolute path of the project folder (the one with Cargo.toml)." });
     let ro = json!({ "readOnlyHint": true, "openWorldHint": false });
@@ -192,9 +205,16 @@ fn tools() -> Value {
           "description": "Reads a text file (up to 1 MB).",
           "inputSchema": s(json!({ "path": { "type": "string" } }), &["path"]), "annotations": ro },
         { "name": "write_file", "title": "Write a file",
-          "description": "Creates or overwrites a text file (creates missing folders). Raxorin Studio reloads it if it's open.",
+          "description": "Creates or overwrites a text file with the full content (creates missing folders). If the file is open in Raxorin Studio without unsaved changes, the editor reloads it. To change part of an existing file, prefer edit_file.",
           "inputSchema": s(json!({ "path": { "type": "string" }, "content": { "type": "string" } }), &["path", "content"]),
           "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false } },
+        { "name": "edit_file", "title": "Edit part of a file",
+          "description": "Replaces an exact piece of text in a file with new text. old_text must appear exactly once (include enough surrounding lines to make it unique), unless replace_all is true. Keeps indentation and line endings as given.",
+          "inputSchema": s(json!({ "path": { "type": "string" },
+              "old_text": { "type": "string", "description": "Exact text to replace, as it appears in the file." },
+              "new_text": { "type": "string" },
+              "replace_all": { "type": "boolean", "description": "Replace every occurrence (default false)." } }), &["path", "old_text", "new_text"]),
+          "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false } },
         { "name": "build", "title": "Build (cargo build)",
           "description": "Builds the project and returns the errors and warnings with file, line, column, code and the full compiler message.",
           "inputSchema": s(json!({ "project": project, "release": { "type": "boolean", "description": "Optimized build (default false)." } }), &["project"]), "annotations": runs },
@@ -268,7 +288,7 @@ fn project_dir(server: &Server, args: &Value) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-fn call_tool(server: &Server, name: &str, args: &Value, token: &Option<Value>) -> Result<Value, String> {
+pub(crate) fn call_tool(server: &Server, name: &str, args: &Value, token: &Option<Value>) -> Result<Value, String> {
     match name {
         "ide_info" => {
             let status = tauri::async_runtime::block_on(crate::toolchain::toolchain_status()).ok();
@@ -309,6 +329,16 @@ fn call_tool(server: &Server, name: &str, args: &Value, token: &Option<Value>) -
             let text = String::from_utf8(bytes).map_err(|_| format!("{} isn't a text file.", path.display()))?;
             Ok(result(text, None, false))
         }
+        "edit_file" => {
+            let path = server.allowed(arg(args, "path")?)?;
+            let old = args.get("old_text").and_then(Value::as_str).filter(|s| !s.is_empty()).ok_or("Missing argument “old_text”.")?;
+            let new = args.get("new_text").and_then(Value::as_str).ok_or("Missing argument “new_text”.")?;
+            let text = std::fs::read_to_string(&path).map_err(|_| format!("Couldn't read {} as text.", path.display()))?;
+            let (edited, count) = apply_edit(&text, old, new, args.get("replace_all").and_then(Value::as_bool) == Some(true))?;
+            std::fs::write(&path, &edited).map_err(|e| format!("Couldn't write {}: {e}", path.display()))?;
+            Ok(result(format!("Edited {} ({count} replacement(s)).", path.display()), None, false))
+        }
+        "approve" => approve(server, args),
         "write_file" => {
             let path = server.allowed(arg(args, "path")?)?;
             let content = args.get("content").and_then(Value::as_str).ok_or("Missing argument “content”.")?;
@@ -433,6 +463,43 @@ fn call_tool(server: &Server, name: &str, args: &Value, token: &Option<Value>) -
         }
         other => Err(format!("Unknown tool: {other}")),
     }
+}
+
+/// Reemplaza `old` por `new` en `text`. Si el archivo usa CRLF y el texto llega con LF, se adapta.
+pub(crate) fn apply_edit(text: &str, old: &str, new: &str, all: bool) -> Result<(String, usize), String> {
+    let crlf = text.contains("\r\n");
+    let (old, new) = if crlf && !old.contains("\r\n") {
+        (old.replace('\n', "\r\n"), new.replace("\r\n", "\n").replace('\n', "\r\n"))
+    } else {
+        (old.to_string(), new.to_string())
+    };
+    let count = text.matches(old.as_str()).count();
+    match count {
+        0 => Err("old_text wasn't found in the file (it must match exactly, including spaces and indentation). Read the file again and retry.".into()),
+        n if n > 1 && !all => Err(format!("old_text appears {n} times; include more surrounding lines to make it unique, or set replace_all.")),
+        n => Ok((if all { text.replace(old.as_str(), &new) } else { text.replacen(old.as_str(), &new, 1) }, n)),
+    }
+}
+
+/// Permiso pedido por Claude Code (--permission-prompt-tool): se pregunta en la ventana de
+/// Raxorin Studio por el puente local, y la respuesta vuelve en el formato que espera Claude Code.
+fn approve(server: &Server, args: &Value) -> Result<Value, String> {
+    let (addr, token) = server.bridge.as_ref().ok_or("No approval bridge.")?;
+    let input = args.get("input").cloned().unwrap_or(json!({}));
+    let ask = json!({ "token": token, "toolName": args.get("tool_name"), "input": input });
+    let reply = (|| -> std::io::Result<Value> {
+        let mut stream = std::net::TcpStream::connect(addr)?;
+        writeln!(stream, "{ask}")?;
+        let mut line = String::new();
+        BufReader::new(stream).read_line(&mut line)?;
+        serde_json::from_str(&line).map_err(std::io::Error::other)
+    })();
+    let decision = match reply {
+        Ok(v) if v["allow"] == true => json!({ "behavior": "allow", "updatedInput": input }),
+        Ok(v) => json!({ "behavior": "deny", "message": v["message"].as_str().unwrap_or("The user declined this action in Raxorin Studio.") }),
+        Err(e) => json!({ "behavior": "deny", "message": format!("Couldn't ask the user in Raxorin Studio: {e}") }),
+    };
+    Ok(result(decision.to_string(), None, false))
 }
 
 // ---------- Cargo ----------
@@ -685,7 +752,15 @@ fn handle(server: &Arc<Server>, msg: Value) {
             }
         }
         ("ping", Some(id)) => server.reply(&id, json!({})),
-        ("tools/list", Some(id)) => server.reply(&id, json!({ "tools": tools() })),
+        ("tools/list", Some(id)) => {
+            let mut list = tools();
+            if server.bridge.is_some() {
+                list.as_array_mut().unwrap().push(json!({ "name": "approve", "title": "Ask the user in Raxorin Studio",
+                    "description": "Permission prompt handled by Raxorin Studio's window (used by --permission-prompt-tool).",
+                    "inputSchema": { "type": "object", "properties": { "tool_name": { "type": "string" }, "input": { "type": "object" }, "tool_use_id": { "type": "string" } }, "required": ["tool_name", "input"] } }));
+            }
+            server.reply(&id, json!({ "tools": list }))
+        }
         ("tools/call", Some(id)) => {
             let server = server.clone();
             // En un hilo propio: una compilación larga no bloquea los demás mensajes.
@@ -710,9 +785,15 @@ fn handle(server: &Arc<Server>, msg: Value) {
 /// `raxorin-studio --mcp [--root <carpeta>]…`: atiende MCP por stdio hasta que se cierra la entrada.
 pub fn run_stdio(args: &[String]) -> i32 {
     let mut cli_roots = Vec::new();
+    let mut bridge = None;
     let mut it = args.iter();
     while let Some(a) = it.next() {
-        if a == "--root" {
+        if a == "--approval-bridge" {
+            // La clave va por variable de entorno (no se ve en la lista de procesos).
+            if let (Some(addr), Ok(token)) = (it.next(), std::env::var("RAXORIN_APPROVAL_TOKEN")) {
+                bridge = Some((addr.clone(), token));
+            }
+        } else if a == "--root" {
             if let Some(r) = it.next() {
                 cli_roots.push(normalize(Path::new(r)));
             }
@@ -725,6 +806,7 @@ pub fn run_stdio(args: &[String]) -> i32 {
         cli_roots,
         client_roots: Mutex::new(Vec::new()),
         client_has_roots: Mutex::new(false),
+        bridge,
     });
     let stdin = std::io::stdin();
     for line in stdin.lock().lines() {
@@ -751,7 +833,18 @@ mod tests {
             cli_roots: roots.iter().map(|r| normalize(Path::new(r))).collect(),
             client_roots: Mutex::new(Vec::new()),
             client_has_roots: Mutex::new(false),
+            bridge: None,
         }
+    }
+
+    #[test]
+    fn editar_fragmento() {
+        assert_eq!(apply_edit("a\nb\nc\n", "b\n", "B\n", false).unwrap(), ("a\nB\nc\n".to_string(), 1));
+        assert!(apply_edit("x x", "x", "y", false).unwrap_err().contains("2 times"));
+        assert_eq!(apply_edit("x x", "x", "y", true).unwrap(), ("y y".to_string(), 2));
+        assert!(apply_edit("abc", "zzz", "y", false).unwrap_err().contains("wasn't found"));
+        // Archivo con CRLF y texto buscado con LF (como lo escriben los modelos).
+        assert_eq!(apply_edit("a\r\nb\r\n", "a\nb", "a\nB", false).unwrap().0, "a\r\nB\r\n");
     }
 
     #[test]

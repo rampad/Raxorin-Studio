@@ -20,6 +20,8 @@ export interface Session {
   started: boolean;
   exited: boolean;
   cwd: string | null;
+  /** Comando que se escribe en el shell al abrirlo (p. ej. iniciar sesión en una CLI de IA). */
+  initialInput?: string;
 }
 
 let sessions: Session[] = [];
@@ -132,6 +134,7 @@ export function attach(s: Session, container: HTMLElement) {
         byBackend.set(id, s);
         for (const d of early.get(id) ?? []) s.term.write(d);
         early.delete(id);
+        if (s.initialInput) void invoke("terminal_write", { id, data: s.initialInput + "\r" });
         notify();
       })
       .catch((e) => {
@@ -141,6 +144,13 @@ export function attach(s: Session, container: HTMLElement) {
   } else {
     s.fit.fit();
   }
+}
+
+/** Abre una terminal nueva que ejecuta `command` (se ve y se puede responder a lo que pregunte). */
+export function runInTerminal(cwd: string | null, command: string, fontSize = 13): Session {
+  const s = createSession(cwd, fontSize);
+  s.initialInput = command;
+  return s;
 }
 
 export function setActive(key: number) {

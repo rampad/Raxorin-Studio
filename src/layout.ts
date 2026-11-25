@@ -51,6 +51,7 @@ export const PANELS = {
   diagnostics: { id: "diagnostics", initial: 320, min: 240, max: 0.45, axis: "x" },
   toolbox: { id: "toolbox", initial: 210, min: 150, max: 0.3, axis: "x" },
   properties: { id: "properties", initial: 300, min: 220, max: 0.4, axis: "x" },
+  ai: { id: "ai", initial: 400, min: 300, max: 0.5, axis: "x" },
 } satisfies Record<string, PanelSpec>;
 
 export function clampSize(spec: PanelSpec, size: number) {
