@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import * as monaco from "monaco-editor";
 import type * as L from "./types";
+import { t } from "../i18n/index.ts";
 
 export class LspError extends Error {
   constructor(public code: number, message: string) {
@@ -166,7 +167,7 @@ export class LspClient {
     const name = this.opts.root.split(/[\\/]/).filter(Boolean).pop() ?? "proyecto";
     const result = await this.request<{ capabilities: L.ServerCapabilities }>("initialize", {
       processId: null,
-      clientInfo: { name: "Raxorin Studio", version: "0.2.0" },
+      clientInfo: { name: t("Raxorin Studio"), version: "0.2.0" },
       locale: "es",
       rootUri,
       workspaceFolders: [{ uri: rootUri, name }],

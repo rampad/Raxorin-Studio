@@ -28,7 +28,7 @@
 
 Raxorin Studio lleva la experiencia de **Visual Studio** a Rust: abres o creas un proyecto, escribes código
 con ayuda en tiempo real, diseñas ventanas arrastrando controles (como en WPF), depuras con puntos de
-interrupción y publicas el programa listo para compartir. Todo en español y sin tener que aprender la
+interrupción y publicas el programa listo para compartir. En español o en inglés, y sin tener que aprender la
 línea de comandos de `cargo`.
 
 ## Características

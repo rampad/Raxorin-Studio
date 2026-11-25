@@ -3,6 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../../api";
 import { Codicon } from "../Icon";
 import { useTheme, type Theme } from "../../theme";
+import { t, tErr } from "../../i18n/index.ts";
 
 // Estilos del README según el tema (el HTML lo entrega crates.io ya saneado).
 const PALETTE: Record<Theme, Record<string, string>> = {
@@ -35,7 +36,7 @@ export default function Readme({ name, version }: { name: string; version: strin
   useEffect(() => {
     setHtml(null);
     setError("");
-    api.crateReadme(name, version).then(setHtml).catch((e) => setError(String(e)));
+    api.crateReadme(name, version).then(setHtml).catch((e) => setError(tErr(e)));
   }, [name, version]);
 
   // El iframe no ejecuta scripts (sandbox). Ajustamos su altura y abrimos los enlaces en el navegador.
@@ -55,8 +56,8 @@ export default function Readme({ name, version }: { name: string; version: strin
     });
   };
 
-  if (error) return <div className="muted pad">Este crate no tiene README disponible.</div>;
-  if (html === null) return <div className="muted pad"><Codicon name="loading" spin /> Cargando README…</div>;
+  if (error) return <div className="muted pad">{t("Este crate no tiene README disponible.")}</div>;
+  if (html === null) return <div className="muted pad"><Codicon name="loading" spin /> {" "}{t("Cargando README…")}</div>;
   return (
     <iframe
       ref={frame}
@@ -64,7 +65,7 @@ export default function Readme({ name, version }: { name: string; version: strin
       sandbox="allow-same-origin"
       onLoad={onLoad}
       srcDoc={`<!doctype html><html><head><meta charset="utf-8"><style>${readmeCss(theme)}</style></head><body>${html}</body></html>`}
-      title={`README de ${name}`}
+      title={t("README de {0}", name)}
     />
   );
 }

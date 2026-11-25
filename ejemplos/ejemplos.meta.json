@@ -12,7 +12,18 @@
       "Propiedades y callbacks de Slint",
       "Layouts automáticos",
       "Convertir texto a número"
-    ]
+    ],
+    "en": {
+      "nombre": "Temperature converter",
+      "descripcion": "Two fields that update each other: Celsius and Fahrenheit.",
+      "categoria": "Windows",
+      "nivel": "Beginner",
+      "aprenderas": [
+        "Slint properties and callbacks",
+        "Automatic layouts",
+        "Converting text to a number"
+      ]
+    }
   },
   {
     "id": "calculadora",
@@ -28,7 +39,19 @@
       "enum y match",
       "Rc<RefCell<…>> para compartir estado",
       "Probar la lógica sin la ventana"
-    ]
+    ],
+    "en": {
+      "nombre": "Calculator",
+      "descripcion": "A calculator with a grid keypad and the logic separated into a struct.",
+      "categoria": "Windows",
+      "nivel": "Beginner",
+      "aprenderas": [
+        "GridLayout",
+        "enum and match",
+        "Rc<RefCell<…>> to share state",
+        "Testing the logic without the window"
+      ]
+    }
   },
   {
     "id": "lista_de_tareas",
@@ -43,7 +66,18 @@
       "Listas en Slint (for + VecModel)",
       "Structs compartidos entre Slint y Rust",
       "Varios callbacks sobre el mismo modelo"
-    ]
+    ],
+    "en": {
+      "nombre": "To-do list",
+      "descripcion": "Add tasks, mark them as done and delete them.",
+      "categoria": "Windows",
+      "nivel": "Intermediate",
+      "aprenderas": [
+        "Lists in Slint (for + VecModel)",
+        "Structs shared between Slint and Rust",
+        "Several callbacks on the same model"
+      ]
+    }
   },
   {
     "id": "temporizador_pomodoro",
@@ -58,7 +92,18 @@
       "slint::Timer",
       "Estado con Cell y Rc",
       "Propiedades condicionales en Slint"
-    ]
+    ],
+    "en": {
+      "nombre": "Pomodoro timer",
+      "descripcion": "25 minutes of focus and 5 of rest, with a progress bar.",
+      "categoria": "Windows",
+      "nivel": "Intermediate",
+      "aprenderas": [
+        "slint::Timer",
+        "State with Cell and Rc",
+        "Conditional properties in Slint"
+      ]
+    }
   },
   {
     "id": "galeria_de_controles",
@@ -73,7 +118,18 @@
       "Timer y eventos periódicos",
       "StandardListView y TouchArea",
       "Sombras, opacidad e íconos coloreados"
-    ]
+    ],
+    "en": {
+      "nombre": "Control gallery",
+      "descripcion": "A clock with Timer, a list, a clickable card, a vertical slider and standard buttons, with their events.",
+      "categoria": "Windows",
+      "nivel": "Intermediate",
+      "aprenderas": [
+        "Timer and periodic events",
+        "StandardListView and TouchArea",
+        "Shadows, opacity and colorized icons"
+      ]
+    }
   },
   {
     "id": "adivina_el_numero",
@@ -88,7 +144,18 @@
       "Leer lo que escribe el usuario",
       "loop y match",
       "Result al convertir texto"
-    ]
+    ],
+    "en": {
+      "nombre": "Guess the number",
+      "descripcion": "The classic console game: guess a number from 1 to 100.",
+      "categoria": "Console",
+      "nivel": "Beginner",
+      "aprenderas": [
+        "Reading what the user types",
+        "loop and match",
+        "Result when converting text"
+      ]
+    }
   },
   {
     "id": "contador_de_palabras",
@@ -103,7 +170,18 @@
       "HashMap",
       "Iteradores y ordenar",
       "Pruebas unitarias"
-    ]
+    ],
+    "en": {
+      "nombre": "Word counter",
+      "descripcion": "Counts the words in a text and draws the most frequent ones.",
+      "categoria": "Console",
+      "nivel": "Beginner",
+      "aprenderas": [
+        "HashMap",
+        "Iterators and sorting",
+        "Unit tests"
+      ]
+    }
   },
   {
     "id": "juego_de_la_vida",
@@ -118,7 +196,18 @@
       "struct e impl",
       "Vectores de dos dimensiones",
       "Animación en la terminal"
-    ]
+    ],
+    "en": {
+      "nombre": "Game of Life",
+      "descripcion": "Conway's automaton animated in the console.",
+      "categoria": "Console",
+      "nivel": "Intermediate",
+      "aprenderas": [
+        "struct and impl",
+        "Two-dimensional vectors",
+        "Animation in the terminal"
+      ]
+    }
   },
   {
     "id": "encuentra_el_error",
@@ -133,7 +222,18 @@
       "Puntos de interrupción (F9)",
       "Depurar paso a paso (F5, F10)",
       "Inspeccionar variables"
-    ]
+    ],
+    "en": {
+      "nombre": "Find the bug",
+      "descripcion": "A program with a hidden bug to learn how to use the debugger.",
+      "categoria": "Debugging",
+      "nivel": "Beginner",
+      "aprenderas": [
+        "Breakpoints (F9)",
+        "Step-by-step debugging (F5, F10)",
+        "Inspecting variables"
+      ]
+    }
   },
   {
     "id": "geometria",
@@ -148,7 +248,18 @@
       "trait y Box<dyn Trait>",
       "Option para validar",
       "Pruebas unitarias"
-    ]
+    ],
+    "en": {
+      "nombre": "Geometry",
+      "descripcion": "A library with shapes, a common trait and tests.",
+      "categoria": "Libraries",
+      "nivel": "Intermediate",
+      "aprenderas": [
+        "trait and Box<dyn Trait>",
+        "Option for validation",
+        "Unit tests"
+      ]
+    }
   },
   {
     "id": "tienda",
@@ -164,6 +275,17 @@
       "Soluciones (.rxsln) con varios proyectos",
       "Referencias entre proyectos",
       "Errores propios con enum y Display"
-    ]
+    ],
+    "en": {
+      "nombre": "Shop (solution)",
+      "descripcion": "A solution with two projects: the inventario library and the caja program.",
+      "categoria": "Solutions",
+      "nivel": "Intermediate",
+      "aprenderas": [
+        "Solutions (.rxsln) with several projects",
+        "References between projects",
+        "Custom errors with enum and Display"
+      ]
+    }
   }
 ]

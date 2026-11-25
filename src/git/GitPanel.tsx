@@ -5,6 +5,7 @@ import { api, type GitBranch, type GitCommit, type GitFile } from "../api";
 import { Codicon, FileIcon } from "../components/Icon";
 import { basename } from "../util";
 import { gitLetter, repoPath, type GitState } from "./useGit";
+import { t } from "../i18n/index.ts";
 
 export type GitIntent = "commit" | "new-branch" | "branches" | null;
 
@@ -26,7 +27,7 @@ export function githubUrl(remote: string | undefined): string | null {
 }
 
 const LETTER_TITLE: Record<string, string> = {
-  M: "Modificado", A: "Agregado", D: "Borrado", R: "Renombrado", C: "En conflicto", U: "Nuevo (sin seguimiento)",
+  M: "Modificado", A: "Agregado", D: "Borrado", R: "Renombrado", C: t("En conflicto"), U: t("Nuevo (sin seguimiento)"),
 };
 
 /** Ofrece un solo repositorio para toda la solución (en la carpeta del .rxsln). */
@@ -37,12 +38,12 @@ function SolutionBanner({ git }: { git: GitState }) {
   const convert = async () => {
     const lines = setup.nested.map((n) => `• ${basename(n.path)}${n.commits ? ` (${n.commits} commit${n.commits === 1 ? "" : "s"})` : ""}`).join("\n");
     const yes = await ask(
-      (setup.hasRepo ? "La carpeta de la solución ya tiene repositorio, " : `Se creará un repositorio en ${setup.base} con todos los proyectos. `) +
+      (setup.hasRepo ? t("La carpeta de la solución ya tiene repositorio, ") : t("Se creará un repositorio en {0} con todos los proyectos. ", setup.base)) +
         (setup.nested.length
-          ? `Estos proyectos tienen su propio repositorio; su carpeta .git irá a la papelera (se puede recuperar):\n${lines}` +
-            (withHistory.length ? "\n\nEl historial de esos repositorios no pasa al nuevo: empezará desde cero." : "")
+          ? t("Estos proyectos tienen su propio repositorio; su carpeta .git irá a la papelera (se puede recuperar):\n{0}", lines) +
+            (withHistory.length ? t("\n\nEl historial de esos repositorios no pasa al nuevo: empezará desde cero.") : "")
           : ""),
-      { title: "Un solo repositorio para la solución", kind: "warning", okLabel: "Continuar", cancelLabel: "Cancelar" },
+      { title: t("Un solo repositorio para la solución"), kind: "warning", okLabel: t("Continuar"), cancelLabel: t("Cancelar") },
     );
     if (yes) await git.ops.initSolution();
   };
@@ -50,14 +51,14 @@ function SolutionBanner({ git }: { git: GitState }) {
     <div className="git-solution">
       <Codicon name="layers" />
       <div>
-        <strong>Subir la solución completa</strong>
+        <strong>{t("Subir la solución completa")}</strong>
         <div className="muted small">
           {setup.nested.length
-            ? `Cada proyecto tiene su propio repositorio (${setup.nested.length}). Para subir la solución entera a GitHub, usa uno solo.`
-            : "La solución todavía no tiene repositorio. Créalo para guardar y subir todos sus proyectos juntos."}
+            ? t("Cada proyecto tiene su propio repositorio ({0}). Para subir la solución entera a GitHub, usa uno solo.", setup.nested.length)
+            : t("La solución todavía no tiene repositorio. Créalo para guardar y subir todos sus proyectos juntos.")}
         </div>
         <button className="btn small primary" disabled={!!git.busy} onClick={convert}>
-          <Codicon name="repo" /> Usar un solo repositorio para la solución
+          <Codicon name="repo" /> {" "}{t("Usar un solo repositorio para la solución")}
         </button>
       </div>
     </div>
@@ -139,18 +140,18 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
           <Codicon name="source-control" className="git-empty-icon" />
           {target ? (
             <>
-              <p>Esta carpeta todavía no usa Git (control de versiones).</p>
+              <p>{t("Esta carpeta todavía no usa Git (control de versiones).")}</p>
               <button className="btn primary" disabled={!!busy} onClick={() => ops.init(target)}>
-                <Codicon name="repo" /> Inicializar repositorio
+                <Codicon name="repo" /> {" "}{t("Inicializar repositorio")}
               </button>
             </>
           ) : (
-            <p className="muted">Abre una carpeta para usar Git.</p>
+            <p className="muted">{t("Abre una carpeta para usar Git.")}</p>
           )}
           <button className="btn" onClick={onClone}>
-            <Codicon name="repo-clone" /> Clonar un repositorio…
+            <Codicon name="repo-clone" /> {" "}{t("Clonar un repositorio…")}
           </button>
-          <p className="muted small">Git guarda el historial de tus cambios y te permite subirlos a GitHub.</p>
+          <p className="muted small">{t("Git guarda el historial de tus cambios y te permite subirlos a GitHub.")}</p>
         </div>
         )}
       </div>
@@ -174,9 +175,9 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
     if (!list.length) return;
     const yes = await ask(
       list.length === 1
-        ? `¿Descartar los cambios de “${basename(list[0].path)}”? ${list[0].index === "?" ? "El archivo nuevo irá a la papelera." : "Volverá a como estaba en el último commit."}`
-        : `¿Descartar los cambios de ${list.length} archivos? Los archivos nuevos irán a la papelera.`,
-      { title: "Descartar cambios", kind: "warning", okLabel: "Descartar", cancelLabel: "Cancelar" },
+        ? t("¿Descartar los cambios de “{0}”? {1}", basename(list[0].path), list[0].index === "?" ? t("El archivo nuevo irá a la papelera.") : t("Volverá a como estaba en el último commit."))
+        : t("¿Descartar los cambios de {0} archivos? Los archivos nuevos irán a la papelera.", list.length),
+      { title: t("Descartar cambios"), kind: "warning", okLabel: t("Descartar"), cancelLabel: t("Cancelar") },
     );
     if (!yes) return;
     await ops.discard(
@@ -190,20 +191,20 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
     const abs = repoPath(repo, f.path);
     const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/")) : "";
     return (
-      <div key={(isStaged ? "s:" : "c:") + f.path} className="git-file" onClick={() => onDiff(repo, f, isStaged)} title={`${f.path} — clic para ver los cambios`}>
+      <div key={(isStaged ? "s:" : "c:") + f.path} className="git-file" onClick={() => onDiff(repo, f, isStaged)} title={t("{0} — clic para ver los cambios", f.path)}>
         <FileIcon name={basename(f.path)} />
         <span className={"git-name" + (letter === "D" ? " deleted" : "")}>{basename(f.path)}</span>
         <span className="git-dir">{dir}</span>
         <span className="git-actions" onClick={(e) => e.stopPropagation()}>
           {letter !== "D" && (
-            <button className="icon-btn" title="Abrir archivo" onClick={() => onOpenFile(abs)}><Codicon name="go-to-file" /></button>
+            <button className="icon-btn" title={t("Abrir archivo")} onClick={() => onOpenFile(abs)}><Codicon name="go-to-file" /></button>
           )}
           {isStaged ? (
-            <button className="icon-btn" title="Quitar de los preparados" onClick={() => ops.unstage([f.path])}><Codicon name="remove" /></button>
+            <button className="icon-btn" title={t("Quitar de los preparados")} onClick={() => ops.unstage([f.path])}><Codicon name="remove" /></button>
           ) : (
             <>
-              <button className="icon-btn" title="Descartar cambios" onClick={() => discard([f])}><Codicon name="discard" /></button>
-              <button className="icon-btn" title="Preparar para el commit" onClick={() => ops.stage([f.path])}><Codicon name="add" /></button>
+              <button className="icon-btn" title={t("Descartar cambios")} onClick={() => discard([f])}><Codicon name="discard" /></button>
+              <button className="icon-btn" title={t("Preparar para el commit")} onClick={() => ops.stage([f.path])}><Codicon name="add" /></button>
             </>
           )}
         </span>
@@ -223,33 +224,33 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
         <span>GIT</span>
         <span className="title-actions always">
           {busy && <Codicon name="loading" spin title={busy} />}
-          <button className="icon-btn" title="Actualizar" onClick={() => git.refresh()}><Codicon name="refresh" /></button>
+          <button className="icon-btn" title={t("Actualizar")} onClick={() => git.refresh()}><Codicon name="refresh" /></button>
           {ghUrl && (
-            <button className="icon-btn" title="Abrir en GitHub" onClick={() => openUrl(ghUrl)}><Codicon name="github" /></button>
+            <button className="icon-btn" title={t("Abrir en GitHub")} onClick={() => openUrl(ghUrl)}><Codicon name="github" /></button>
           )}
         </span>
       </div>
 
       {git.repos.length > 1 && (
-        <select className="git-repo-select" value={repo} onChange={(e) => git.setRepo(e.target.value)} title="Repositorio">
+        <select className="git-repo-select" value={repo} onChange={(e) => git.setRepo(e.target.value)} title={t("Repositorio")}>
           {git.repos.map((r) => <option key={r} value={r}>{basename(r)}</option>)}
         </select>
       )}
 
       {/* ----- Rama y sincronización ----- */}
       <div className="git-branch-row" onMouseDown={(e) => e.stopPropagation()}>
-        <button className="git-branch-btn" onClick={() => setBranchMenu((o) => !o)} title="Ramas: cambiar, crear, combinar o borrar">
+        <button className="git-branch-btn" onClick={() => setBranchMenu((o) => !o)} title={t("Ramas: cambiar, crear, combinar o borrar")}>
           <Codicon name="git-branch" />
-          <span className="git-branch-name">{status.detached ? "(sin rama)" : status.branch ?? "main"}</span>
+          <span className="git-branch-name">{status.detached ? t("(sin rama)") : status.branch ?? "main"}</span>
           <Codicon name="chevron-down" className="muted" />
         </button>
-        <button className="icon-btn" title="Traer cambios del servidor (fetch)" disabled={!!busy || !status.remotes.length} onClick={() => ops.fetch()}>
+        <button className="icon-btn" title={t("Traer cambios del servidor (fetch)")} disabled={!!busy || !status.remotes.length} onClick={() => ops.fetch()}>
           <Codicon name="cloud-download" />
         </button>
-        <button className="git-sync" title="Pull: bajar los cambios del servidor" disabled={!!busy || !status.remotes.length} onClick={() => ops.pull()}>
+        <button className="git-sync" title={t("Pull: bajar los cambios del servidor")} disabled={!!busy || !status.remotes.length} onClick={() => ops.pull()}>
           <Codicon name="arrow-down" />{status.behind > 0 && <span>{status.behind}</span>}
         </button>
-        <button className="git-sync" title={status.upstream ? "Push: subir tus commits" : "Push: publicar esta rama en el servidor"} disabled={!!busy || !status.remotes.length || !status.hasCommits} onClick={() => ops.push()}>
+        <button className="git-sync" title={status.upstream ? t("Push: subir tus commits") : t("Push: publicar esta rama en el servidor")} disabled={!!busy || !status.remotes.length || !status.hasCommits} onClick={() => ops.push()}>
           <Codicon name="arrow-up" />{status.ahead > 0 && <span>{status.ahead}</span>}
         </button>
 
@@ -266,17 +267,17 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
                   await ops.checkout(name, true);
                 }}
               >
-                <div className="menu-header">Nueva rama desde “{status.branch}”</div>
-                <input autoFocus value={newBranch} onChange={(e) => setNewBranch(e.target.value.replace(/\s/g, "-"))} placeholder="nombre-de-la-rama" spellCheck={false} />
+                <div className="menu-header">{t("Nueva rama desde “")}{status.branch}”</div>
+                <input autoFocus value={newBranch} onChange={(e) => setNewBranch(e.target.value.replace(/\s/g, "-"))} placeholder={t("nombre-de-la-rama")} spellCheck={false} />
               </form>
             ) : (
               <>
-                <input className="git-branch-filter" autoFocus value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Buscar rama…" spellCheck={false} />
+                <input className="git-branch-filter" autoFocus value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t("Buscar rama…")} spellCheck={false} />
                 <button className="menu-item" onClick={() => setNewBranch("")}>
-                  <span className="menu-label"><Codicon name="add" /> Nueva rama…</span>
+                  <span className="menu-label"><Codicon name="add" /> {" "}{t("Nueva rama…")}</span>
                 </button>
                 <div className="menu-sep" />
-                <div className="menu-header">Ramas locales</div>
+                <div className="menu-header">{t("Ramas locales")}</div>
                 {local.map((b) => (
                   <div key={b.name} className="git-branch-item">
                     <button className="menu-item" disabled={b.current} onClick={() => { setBranchMenu(false); ops.checkout(b.name); }}>
@@ -288,17 +289,17 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
                     </button>
                     {!b.current && (
                       <span className="git-branch-actions">
-                        <button className="icon-btn" title={`Combinar “${b.name}” en “${status.branch}” (merge)`} onClick={() => { setBranchMenu(false); ops.merge(b.name); }}>
+                        <button className="icon-btn" title={t("Combinar “{0}” en “{1}” (merge)", b.name, status.branch)} onClick={() => { setBranchMenu(false); ops.merge(b.name); }}>
                           <Codicon name="git-merge" />
                         </button>
                         <button
                           className="icon-btn"
-                          title="Borrar rama"
+                          title={t("Borrar rama")}
                           onClick={async () => {
                             setBranchMenu(false);
-                            if (await ask(`¿Borrar la rama “${b.name}”?`, { title: "Borrar rama", kind: "warning", okLabel: "Borrar", cancelLabel: "Cancelar" })) {
+                            if (await ask(t("¿Borrar la rama “{0}”?", b.name), { title: t("Borrar rama"), kind: "warning", okLabel: t("Borrar"), cancelLabel: t("Cancelar") })) {
                               const ok = await ops.deleteBranch(b.name);
-                              if (ok !== true && (await ask(`“${b.name}” tiene commits que no están en otra rama. ¿Borrarla de todos modos? Esos commits se perderán.`, { title: "Borrar rama", kind: "warning", okLabel: "Borrar", cancelLabel: "Cancelar" }))) {
+                              if (ok !== true && (await ask(t("“{0}” tiene commits que no están en otra rama. ¿Borrarla de todos modos? Esos commits se perderán.", b.name), { title: t("Borrar rama"), kind: "warning", okLabel: t("Borrar"), cancelLabel: t("Cancelar") }))) {
                                 await ops.deleteBranch(b.name, true);
                               }
                             }
@@ -313,7 +314,7 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
                 {remote.length > 0 && (
                   <>
                     <div className="menu-sep" />
-                    <div className="menu-header">Ramas del servidor</div>
+                    <div className="menu-header">{t("Ramas del servidor")}</div>
                     {remote.map((b) => (
                       <button key={b.name} className="menu-item" onClick={() => { setBranchMenu(false); ops.checkout(b.name, false, true); }}>
                         <span className="menu-label"><Codicon name="cloud" /> {b.name}</span>
@@ -333,19 +334,19 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
           <div className="git-error">
             <Codicon name="error" />
             <pre>{git.error}</pre>
-            <button className="icon-btn" title="Cerrar" onClick={git.clearError}><Codicon name="close" /></button>
+            <button className="icon-btn" title={t("Cerrar")} onClick={git.clearError}><Codicon name="close" /></button>
           </div>
         )}
         {git.outside.length > 0 && (
           <div className="git-warning" title={git.outside.join("\n")}>
             <Codicon name="warning" />
-            {git.outside.length === 1 ? "Un proyecto abierto está" : `${git.outside.length} proyectos abiertos están`} fuera de este repositorio:{" "}
-            {git.outside.map((p) => basename(p)).join(", ")}. Sus cambios no aparecen aquí.
+            {git.outside.length === 1 ? t("Un proyecto abierto está") : t("{0} proyectos abiertos están", git.outside.length)} {" "}{t("fuera de este repositorio:")}{" "}
+            {git.outside.map((p) => basename(p)).join(", ")}{t(". Sus cambios no aparecen aquí.")}
           </div>
         )}
         {status.inProgress && (
           <div className="git-warning">
-            <Codicon name="warning" /> Hay un {status.inProgress} a medias. Resuelve los conflictos, prepara los archivos y confirma.
+            <Codicon name="warning" /> {" "}{t("Hay un")}{" "}{status.inProgress} {" "}{t("a medias. Resuelve los conflictos, prepara los archivos y confirma.")}
           </div>
         )}
 
@@ -357,7 +358,7 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
             ref={msgRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder={amend ? "Mensaje (vacío = conservar el anterior)" : `Mensaje del commit (${navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter para confirmar)`}
+            placeholder={amend ? t("Mensaje (vacío = conservar el anterior)") : t("Mensaje del commit ({0}+Enter para confirmar)", navigator.platform.includes("Mac") ? "⌘" : "Ctrl")}
             rows={3}
             spellCheck
             onKeyDown={(e) => {
@@ -369,31 +370,31 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
           />
           <div className="git-commit-row" onMouseDown={(e) => e.stopPropagation()}>
             <button className="btn primary git-commit-btn" disabled={!canCommit} onClick={() => doCommit(false)}>
-              <Codicon name="check" /> {amend ? "Modificar último commit" : nothingStaged && files.length ? "Confirmar todo" : "Confirmar"}
+              <Codicon name="check" /> {amend ? t("Modificar último commit") : nothingStaged && files.length ? t("Confirmar todo") : t("Confirmar")}
             </button>
-            <button className="btn primary git-commit-more" disabled={!canCommit && !status.hasCommits} onClick={() => setCommitMenu((o) => !o)} title="Más opciones">
+            <button className="btn primary git-commit-more" disabled={!canCommit && !status.hasCommits} onClick={() => setCommitMenu((o) => !o)} title={t("Más opciones")}>
               <Codicon name="chevron-down" />
             </button>
             {commitMenu && (
               <div className="context-menu dropdown align-right" onMouseDown={(e) => e.stopPropagation()}>
                 <button className="menu-item" disabled={!canCommit || !status.remotes.length} onClick={() => doCommit(true)}>
-                  <span className="menu-label"><Codicon name="arrow-up" /> Confirmar y hacer push</span>
+                  <span className="menu-label"><Codicon name="arrow-up" /> {" "}{t("Confirmar y hacer push")}</span>
                 </button>
                 <button className="menu-item" disabled={!status.hasCommits} onClick={() => { setAmend((a) => !a); setCommitMenu(false); }}>
-                  <span className="menu-label"><Codicon name="check" className={"menu-check" + (amend ? "" : " off")} /> Modificar el último commit (amend)</span>
+                  <span className="menu-label"><Codicon name="check" className={"menu-check" + (amend ? "" : " off")} /> {" "}{t("Modificar el último commit (amend)")}</span>
                 </button>
                 <div className="menu-sep" />
                 <button className="menu-item" disabled={!files.length} onClick={() => { setCommitMenu(false); ops.stash(false); }}>
-                  <span className="menu-label"><Codicon name="archive" /> Guardar cambios temporalmente (stash)</span>
+                  <span className="menu-label"><Codicon name="archive" /> {" "}{t("Guardar cambios temporalmente (stash)")}</span>
                 </button>
                 <button className="menu-item" disabled={!stashCount} onClick={() => { setCommitMenu(false); ops.stash(true); }}>
-                  <span className="menu-label"><Codicon name="unarchive" /> Recuperar cambios guardados{stashCount ? ` (${stashCount})` : ""}</span>
+                  <span className="menu-label"><Codicon name="unarchive" /> {" "}{t("Recuperar cambios guardados")}{stashCount ? ` (${stashCount})` : ""}</span>
                 </button>
               </div>
             )}
           </div>
           {nothingStaged && files.length > 0 && !amend && (
-            <div className="muted small">No preparaste archivos: se confirmarán todos los cambios.</div>
+            <div className="muted small">{t("No preparaste archivos: se confirmarán todos los cambios.")}</div>
           )}
         </div>
 
@@ -402,10 +403,10 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
           <section className="git-section">
             <div className="git-section-head" onClick={() => setOpen((o) => ({ ...o, staged: !o.staged }))}>
               <Codicon name={open.staged ? "chevron-down" : "chevron-right"} />
-              <span>Cambios preparados</span>
+              <span>{t("Cambios preparados")}</span>
               <span className="count">{staged.length}</span>
               <span className="git-actions" onClick={(e) => e.stopPropagation()}>
-                <button className="icon-btn" title="Quitar todos de los preparados" onClick={() => ops.unstage([])}><Codicon name="remove" /></button>
+                <button className="icon-btn" title={t("Quitar todos de los preparados")} onClick={() => ops.unstage([])}><Codicon name="remove" /></button>
               </span>
             </div>
             {open.staged && staged.map((f) => fileRow(f, true))}
@@ -414,17 +415,17 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
         <section className="git-section">
           <div className="git-section-head" onClick={() => setOpen((o) => ({ ...o, changes: !o.changes }))}>
             <Codicon name={open.changes ? "chevron-down" : "chevron-right"} />
-            <span>Cambios</span>
+            <span>{t("Cambios")}</span>
             <span className="count">{changes.length}</span>
             {changes.length > 0 && (
               <span className="git-actions" onClick={(e) => e.stopPropagation()}>
-                <button className="icon-btn" title="Descartar todos los cambios" onClick={() => discard(changes)}><Codicon name="discard" /></button>
-                <button className="icon-btn" title="Preparar todos" onClick={() => ops.stage([])}><Codicon name="add" /></button>
+                <button className="icon-btn" title={t("Descartar todos los cambios")} onClick={() => discard(changes)}><Codicon name="discard" /></button>
+                <button className="icon-btn" title={t("Preparar todos")} onClick={() => ops.stage([])}><Codicon name="add" /></button>
               </span>
             )}
           </div>
           {open.changes && changes.map((f) => fileRow(f, false))}
-          {open.changes && !changes.length && <div className="muted small git-clean">No hay cambios sin confirmar.</div>}
+          {open.changes && !changes.length && <div className="muted small git-clean">{t("No hay cambios sin confirmar.")}</div>}
         </section>
 
         {/* ----- GitHub ----- */}
@@ -432,10 +433,10 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
           <div className="git-github">
             <Codicon name="github" />
             <div>
-              <strong>Sin servidor remoto</strong>
-              <div className="muted small">Publica el proyecto en GitHub para tener una copia en línea y compartirlo.</div>
-              <button className="btn small" onClick={onPublishGitHub} disabled={!status.hasCommits || !!busy} title={status.hasCommits ? "" : "Haz un commit primero"}>
-                <Codicon name="cloud-upload" /> Publicar en GitHub…
+              <strong>{t("Sin servidor remoto")}</strong>
+              <div className="muted small">{t("Publica el proyecto en GitHub para tener una copia en línea y compartirlo.")}</div>
+              <button className="btn small" onClick={onPublishGitHub} disabled={!status.hasCommits || !!busy} title={status.hasCommits ? "" : t("Haz un commit primero")}>
+                <Codicon name="cloud-upload" /> {" "}{t("Publicar en GitHub…")}
               </button>
             </div>
           </div>
@@ -445,10 +446,10 @@ export default function GitPanel({ git, onOpenFile, onDiff, onClone, onPublishGi
         <section className="git-section">
           <div className="git-section-head" onClick={() => setOpen((o) => ({ ...o, history: !o.history }))}>
             <Codicon name={open.history ? "chevron-down" : "chevron-right"} />
-            <span>Historial</span>
+            <span>{t("Historial")}</span>
             <span className="count">{log.length}{log.length === 50 ? "+" : ""}</span>
           </div>
-          {open.history && !log.length && <div className="muted small git-clean">Todavía no hay commits.</div>}
+          {open.history && !log.length && <div className="muted small git-clean">{t("Todavía no hay commits.")}</div>}
           {open.history &&
             log.map((c) => (
               <div key={c.hash} className="git-commit-item" title={`${c.hash}\n${c.author} · ${c.date}`}>
@@ -487,12 +488,12 @@ function IdentityForm({ repo, initial, onSaved }: { repo: string; initial: { nam
         }
       }}
     >
-      <strong><Codicon name="account" /> ¿Quién firma los commits?</strong>
-      <span className="muted small">Git guarda tu nombre y correo en cada commit. Se configura una sola vez.</span>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
+      <strong><Codicon name="account" /> {" "}{t("¿Quién firma los commits?")}</strong>
+      <span className="muted small">{t("Git guarda tu nombre y correo en cada commit. Se configura una sola vez.")}</span>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("Tu nombre")} />
       <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" type="email" />
       {err && <span className="hint err">{err}</span>}
-      <button className="btn small primary" disabled={!name.trim() || !email.includes("@")}>Guardar</button>
+      <button className="btn small primary" disabled={!name.trim() || !email.includes("@")}>{t("Guardar")}</button>
     </form>
   );
 }

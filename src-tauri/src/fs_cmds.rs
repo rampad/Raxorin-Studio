@@ -145,11 +145,93 @@ const SLINT_BUILD: &str = r##"fn main() {
 }
 "##;
 
+// Las mismas plantillas en inglés (el idioma de la interfaz decide cuál se usa).
+const CONSOLE_TEMPLATE_EN: &str = r#"use std::io::{self, Write};
+
+fn main() {
+    println!("Hello from Raxorin Studio!");
+
+    print!("What's your name? ");
+    io::stdout().flush().unwrap();
+
+    let mut name = String::new();
+    io::stdin().read_line(&mut name).unwrap();
+
+    println!("Nice to meet you, {}!", name.trim());
+}
+"#;
+
+const SLINT_UI_EN: &str = r##"import { Button, LineEdit } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "My app";
+    width: 400px;
+    height: 220px;
+
+    in-out property <string> greeting_text <=> greeting.text;
+    in-out property <string> name_text <=> name.text;
+    callback greet_clicked();
+
+    greeting := Text {
+        x: 24px;
+        y: 24px;
+        width: 352px;
+        height: 32px;
+        text: "What's your name?";
+        font-size: 18px;
+    }
+
+    name := LineEdit {
+        x: 24px;
+        y: 72px;
+        width: 352px;
+        height: 36px;
+        placeholder-text: "Type your name";
+    }
+
+    greet := Button {
+        x: 24px;
+        y: 124px;
+        width: 120px;
+        height: 36px;
+        text: "Greet";
+        clicked => {
+            root.greet_clicked();
+        }
+    }
+}
+"##;
+
+const SLINT_MAIN_EN: &str = r##"// The window's code (like WPF's "code-behind").
+// The interface is in ui/app-window.slint: open it to edit it with the designer.
+
+// On Windows, the Release build doesn't open a console behind the window.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+slint::include_modules!();
+
+fn main() -> Result<(), slint::PlatformError> {
+    let ui = AppWindow::new()?;
+
+    ui.on_greet_clicked({
+        let ui_handle = ui.as_weak();
+        move || {
+            let ui = ui_handle.unwrap();
+            let name = ui.get_name_text();
+            ui.set_greeting_text(format!("Hello, {name}!").into());
+        }
+    });
+
+    ui.run()
+}
+"##;
+
 const SLINT_VERSION: &str = "1.19";
 
 /// Crea un proyecto nuevo con `cargo new`. `kind` es "bin" (consola), "lib" o "slint" (ventana).
 #[tauri::command]
-pub fn create_project(parent: String, name: String, kind: String) -> Result<String, String> {
+pub fn create_project(parent: String, name: String, kind: String, lang: Option<String>) -> Result<String, String> {
+    let en = lang.as_deref() == Some("en");
     let valid = !name.is_empty()
         && !name.starts_with(|c: char| c.is_ascii_digit() || c == '-')
         && name
@@ -201,10 +283,10 @@ pub fn create_project(parent: String, name: String, kind: String) -> Result<Stri
             toml.push_str(&format!("\n[build-dependencies]\nslint-build = \"{SLINT_VERSION}\"\n"));
             std::fs::write(&manifest, toml).map_err(|e| e.to_string())?;
             write("build.rs", SLINT_BUILD)?;
-            write("ui/app-window.slint", SLINT_UI)?;
-            write("src/main.rs", SLINT_MAIN)?;
+            write("ui/app-window.slint", if en { SLINT_UI_EN } else { SLINT_UI })?;
+            write("src/main.rs", if en { SLINT_MAIN_EN } else { SLINT_MAIN })?;
         }
-        _ => write("src/main.rs", CONSOLE_TEMPLATE)?,
+        _ => write("src/main.rs", if en { CONSOLE_TEMPLATE_EN } else { CONSOLE_TEMPLATE })?,
     }
     Ok(target.to_string_lossy().into_owned())
 }
@@ -359,10 +441,23 @@ mod tests {
     }
 
     #[test]
+    fn plantillas_en_ingles() {
+        let parent = std::env::temp_dir().join(format!("raxorin-en-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&parent);
+        let p = std::path::PathBuf::from(create_project(parent.to_string_lossy().into(), "my_window".into(), "slint".into(), Some("en".into())).unwrap());
+        let ui = std::fs::read_to_string(p.join("ui/app-window.slint")).unwrap();
+        assert!(ui.contains("What's your name?") && !ui.contains("¿Cómo"), "{ui}");
+        assert!(std::fs::read_to_string(p.join("src/main.rs")).unwrap().contains("on_greet_clicked"));
+        let c = std::path::PathBuf::from(create_project(parent.to_string_lossy().into(), "my_app".into(), "bin".into(), Some("en".into())).unwrap());
+        assert!(std::fs::read_to_string(c.join("src/main.rs")).unwrap().contains("What's your name?"));
+        std::fs::remove_dir_all(&parent).unwrap();
+    }
+
+    #[test]
     fn crea_proyecto_de_ventana() {
         let parent = std::env::temp_dir().join(format!("raxorin-tpl-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&parent);
-        let path = create_project(parent.to_string_lossy().into(), "mi_ventana".into(), "slint".into()).unwrap();
+        let path = create_project(parent.to_string_lossy().into(), "mi_ventana".into(), "slint".into(), None).unwrap();
         let p = Path::new(&path);
         let toml = std::fs::read_to_string(p.join("Cargo.toml")).unwrap();
         assert!(toml.contains("[dependencies]\nslint = \"1.19\""), "{toml}");

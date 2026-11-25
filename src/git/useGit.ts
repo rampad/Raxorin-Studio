@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, type GitStatus } from "../api";
+import { t, tErr } from "../i18n/index.ts";
 
 type Log = (text: string, kind?: "info" | "error" | "warning" | "success" | "muted") => void;
 
@@ -108,7 +109,7 @@ export function useGit(roots: string[], log: Log, base: string | null = null, is
         if (msg) log(msg, "success");
         return res;
       } catch (e) {
-        const msg = String(e);
+        const msg = tErr(e);
         setError(msg);
         log(`Git: ${msg}`, "error");
         return undefined;
@@ -128,16 +129,16 @@ export function useGit(roots: string[], log: Log, base: string | null = null, is
       commit: (message: string, amend: boolean, all: boolean) =>
         run("Confirmando…", (r) => api.gitCommit(r, message, amend, all), (h) => `Commit ${h} creado.`),
       fetch: () => run("Trayendo cambios…", (r) => api.gitFetch(r), () => "Fetch completado."),
-      pull: () => run("Pull…", (r) => api.gitPull(r), (out) => (out.includes("Already up to date") ? "Ya estás al día." : "Pull completado.")),
+      pull: () => run("Pull…", (r) => api.gitPull(r), (out) => (out.includes("Already up to date") ? t("Ya estás al día.") : "Pull completado.")),
       push: () => run("Push…", (r) => api.gitPush(r), () => "Push completado."),
       checkout: (name: string, create = false, remote = false) =>
-        run("Cambiando de rama…", (r) => api.gitCheckout(r, name, create, remote), () => (create ? `Rama “${name}” creada.` : `Ahora en “${name}”.`)),
+        run(t("Cambiando de rama…"), (r) => api.gitCheckout(r, name, create, remote), () => (create ? `Rama “${name}” creada.` : t("Ahora en “{0}”.", name))),
       deleteBranch: (name: string, force = false) =>
         run("Borrando rama…", async (r) => {
           await api.gitDeleteBranch(r, name, force);
           return true; // undefined = falló
         }, () => `Rama “${name}” borrada.`),
-      merge: (name: string) => run("Combinando…", (r) => api.gitMerge(r, name), () => `“${name}” combinada en la rama actual.`),
+      merge: (name: string) => run("Combinando…", (r) => api.gitMerge(r, name), () => t("“{0}” combinada en la rama actual.", name)),
       stash: (pop: boolean) =>
         run(pop ? "Recuperando cambios…" : "Guardando cambios…", (r) => api.gitStash(r, pop), () =>
           pop ? "Cambios recuperados." : "Cambios guardados temporalmente (stash)."),
@@ -145,27 +146,27 @@ export function useGit(roots: string[], log: Log, base: string | null = null, is
         setBusy("Inicializando…");
         try {
           await api.gitInit(dir);
-          log(`Repositorio de Git creado en ${dir}`, "success");
+          log(t("Repositorio de Git creado en {0}", dir), "success");
           await discover();
         } catch (e) {
-          setError(String(e));
+          setError(tErr(e));
           log(`Git: ${e}`, "error");
         } finally {
           setBusy(null);
         }
       },
       publishGitHub: (name: string, priv: boolean, description: string) =>
-        run("Publicando en GitHub…", (r) => api.ghRepoCreate(r, name, priv, description), (url) => `Publicado en GitHub: ${url}`),
+        run(t("Publicando en GitHub…"), (r) => api.ghRepoCreate(r, name, priv, description), (url) => t("Publicado en GitHub: {0}", url)),
       initSolution: async () => {
         if (!base) return;
-        setBusy("Creando el repositorio de la solución…");
+        setBusy(t("Creando el repositorio de la solución…"));
         setError(null);
         try {
           await api.gitInitSolution(base, roots);
-          log(`Repositorio de la solución creado en ${base}`, "success");
+          log(t("Repositorio de la solución creado en {0}", base), "success");
           await discover();
         } catch (e) {
-          setError(String(e));
+          setError(tErr(e));
           log(`Git: ${e}`, "error");
         } finally {
           setBusy(null);

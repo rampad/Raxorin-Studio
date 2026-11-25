@@ -6,6 +6,7 @@ import { languageFor } from "../util";
 import { monacoTheme, useTheme } from "../theme";
 import { useSettings } from "../settings";
 import { repoPath } from "./useGit";
+import { t, tErr } from "../i18n/index.ts";
 
 export interface DiffRequest {
   repo: string;
@@ -35,11 +36,11 @@ export default function DiffView({ req, onClose, onOpenFile }: { req: DiffReques
       // Derecha: el índice (lo preparado) o el archivo en disco.
       const modified = deleted ? "" : staged ? await api.gitShowFile(repo, "", file.path) : await api.readFile(abs);
       setTexts({ original, modified });
-    })().catch((e) => setErr(String(e)));
+    })().catch((e) => setErr(tErr(e)));
   }, [repo, file, staged, abs, untracked, deleted]);
 
-  const left = untracked ? "(archivo nuevo)" : staged ? "Último commit" : "Preparado / último commit";
-  const right = deleted ? "(borrado)" : staged ? "Preparado para el commit" : "Tu copia de trabajo";
+  const left = untracked ? "(archivo nuevo)" : staged ? t("Último commit") : t("Preparado / último commit");
+  const right = deleted ? "(borrado)" : staged ? t("Preparado para el commit") : t("Tu copia de trabajo");
 
   return (
     <div className="diff-view">
@@ -50,10 +51,10 @@ export default function DiffView({ req, onClose, onOpenFile }: { req: DiffReques
         <span className="spacer" />
         {!deleted && (
           <button className="btn small" onClick={() => onOpenFile(abs)}>
-            <Codicon name="go-to-file" /> Abrir archivo
+            <Codicon name="go-to-file" /> {" "}{t("Abrir archivo")}
           </button>
         )}
-        <button className="icon-btn" title="Cerrar diferencias (Esc)" onClick={onClose}><Codicon name="close" /></button>
+        <button className="icon-btn" title={t("Cerrar diferencias (Esc)")} onClick={onClose}><Codicon name="close" /></button>
       </div>
       <div className="diff-body" onKeyDown={(e) => e.key === "Escape" && onClose()}>
         {err ? (

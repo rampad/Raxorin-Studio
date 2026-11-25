@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { ToolchainStatus } from "../api";
 import { Codicon } from "./Icon";
+import { t } from "../i18n/index.ts";
 
 export const COMPONENTS: { key: keyof ToolchainStatus; name: string; what: string }[] = [
-  { key: "rustAnalyzer", name: "rust-analyzer", what: "autocompletado e ir a definición" },
-  { key: "clippy", name: "clippy", what: "sugerencias de código" },
-  { key: "rustfmt", name: "rustfmt", what: "formatear código" },
-  { key: "rustSrc", name: "rust-src", what: "autocompletado de la biblioteca estándar" },
+  { key: "rustAnalyzer", name: "rust-analyzer", what: t("autocompletado e ir a definición") },
+  { key: "clippy", name: "clippy", what: t("sugerencias de código") },
+  { key: "rustfmt", name: "rustfmt", what: t("formatear código") },
+  { key: "rustSrc", name: "rust-src", what: t("autocompletado de la biblioteca estándar") },
 ];
 
 export function missingComponents(s: ToolchainStatus | null) {
@@ -28,7 +29,7 @@ export default function ToolchainBanner({ status, onInstall }: Props) {
     return (
       <div className="banner error">
         <Codicon name="warning" />
-        <span>No se encontró Rust en este equipo. Instálalo desde <strong>https://rustup.rs</strong> y reinicia Raxorin Studio.</span>
+        <span>{t("No se encontró Rust en este equipo. Instálalo desde")}{" "}<strong>https://rustup.rs</strong> {" "}{t("y reinicia Raxorin Studio.")}</span>
       </div>
     );
   }
@@ -39,7 +40,8 @@ export default function ToolchainBanner({ status, onInstall }: Props) {
     <div className="banner">
       <Codicon name="extensions" />
       <span>
-        Faltan herramientas: {missing.map((m) => `${m.name} (${m.what})`).join(", ")}.
+        
+        {t("Faltan herramientas:")}{" "}{missing.map((m) => `${m.name} (${m.what})`).join(", ")}.
       </span>
       <span className="spacer" />
       <button
@@ -50,9 +52,9 @@ export default function ToolchainBanner({ status, onInstall }: Props) {
           await onInstall(missing.map((m) => m.name)).finally(() => setBusy(false));
         }}
       >
-        {busy ? <><Codicon name="loading" spin /> Instalando… (puede tardar un minuto)</> : "Instalar"}
+        {busy ? <><Codicon name="loading" spin /> {" "}{t("Instalando… (puede tardar un minuto)")}</> : t("Instalar")}
       </button>
-      <button className="btn" disabled={busy} onClick={() => setHidden(true)}>Ahora no</button>
+      <button className="btn" disabled={busy} onClick={() => setHidden(true)}>{t("Ahora no")}</button>
     </div>
   );
 }

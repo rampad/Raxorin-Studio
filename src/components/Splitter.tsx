@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { clampSize, type PanelSpec } from "../layout";
+import { t } from "../i18n/index.ts";
 
 interface Props {
   spec: PanelSpec;
@@ -54,7 +55,7 @@ export default function Splitter({ spec, size, onResize, onReset, panel, title }
       role="separator"
       aria-orientation={spec.axis === "x" ? "vertical" : "horizontal"}
       aria-valuenow={size}
-      title={title ?? "Arrastra para cambiar el tamaño · doble clic para restablecer"}
+      title={title ?? t("Arrastra para cambiar el tamaño · doble clic para restablecer")}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={end}

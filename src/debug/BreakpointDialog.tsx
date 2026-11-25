@@ -3,6 +3,7 @@ import { api } from "../api";
 import { Codicon } from "../components/Icon";
 import { joinPath, relative } from "../util";
 import type { BreakpointInfo } from "./breakpoints";
+import { t } from "../i18n/index.ts";
 
 export interface BreakpointDraft {
   path: string;
@@ -25,10 +26,10 @@ interface Props {
 }
 
 const KINDS: { id: Kind; icon: string; title: string; desc: string }[] = [
-  { id: "always", icon: "circle-filled", title: "Detenerse siempre", desc: "Se detiene cada vez que el programa llega a esta línea." },
-  { id: "condition", icon: "debug-breakpoint-conditional", title: "Detenerse si se cumple una condición", desc: "Solo se detiene cuando la expresión es verdadera." },
-  { id: "hit", icon: "debug-breakpoint-function", title: "Detenerse en la vuelta número…", desc: "Útil en ciclos: se detiene a partir de la N-ésima vez." },
-  { id: "log", icon: "debug-breakpoint-log", title: "Mostrar un mensaje sin detenerse", desc: "Como un println! temporal: escribe en la Salida y sigue." },
+  { id: "always", icon: "circle-filled", title: t("Detenerse siempre"), desc: t("Se detiene cada vez que el programa llega a esta línea.") },
+  { id: "condition", icon: "debug-breakpoint-conditional", title: t("Detenerse si se cumple una condición"), desc: t("Solo se detiene cuando la expresión es verdadera.") },
+  { id: "hit", icon: "debug-breakpoint-function", title: t("Detenerse en la vuelta número…"), desc: t("Útil en ciclos: se detiene a partir de la N-ésima vez.") },
+  { id: "log", icon: "debug-breakpoint-log", title: t("Mostrar un mensaje sin detenerse"), desc: t("Como un println! temporal: escribe en la Salida y sigue.") },
 ];
 
 /** Busca archivos .rs (hasta 5 niveles) para sugerirlos. */
@@ -66,12 +67,12 @@ export default function BreakpointDialog({ draft, root, srcDirs, onSave, onDelet
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     const n = parseInt(line, 10);
-    if (!Number.isInteger(n) || n < 1) return setError("Escribe un número de línea válido.");
+    if (!Number.isInteger(n) || n < 1) return setError(t("Escribe un número de línea válido."));
     const path = file.startsWith("/") || /^[A-Za-z]:[\\/]/.test(file) ? file : root ? joinPath(root, file) : file;
-    if (!path.endsWith(".rs")) return setError("Los puntos de interrupción van en archivos .rs.");
-    if (kind === "condition" && !condition.trim()) return setError("Escribe la condición, por ejemplo: i == 5");
-    if (kind === "hit" && !/^\d+$/.test(hit.trim())) return setError("Escribe un número de vuelta, por ejemplo: 3");
-    if (kind === "log" && !log.trim()) return setError("Escribe el mensaje, por ejemplo: i = {i}");
+    if (!path.endsWith(".rs")) return setError(t("Los puntos de interrupción van en archivos .rs."));
+    if (kind === "condition" && !condition.trim()) return setError(t("Escribe la condición, por ejemplo: i == 5"));
+    if (kind === "hit" && !/^\d+$/.test(hit.trim())) return setError(t("Escribe un número de vuelta, por ejemplo: 3"));
+    if (kind === "log" && !log.trim()) return setError(t("Escribe el mensaje, por ejemplo: i = {i}"));
     onSave(
       path,
       n,
@@ -90,19 +91,21 @@ export default function BreakpointDialog({ draft, root, srcDirs, onSave, onDelet
     <div className="modal-backdrop" onMouseDown={onClose}>
       <form className="modal bp-dialog" onMouseDown={(e) => e.stopPropagation()} onSubmit={save}>
         <h2>
-          <Codicon name="debug-alt" /> {ex ? "Editar punto de interrupción" : "Agregar punto de interrupción"}
+          <Codicon name="debug-alt" /> {ex ? t("Editar punto de interrupción") : t("Agregar punto de interrupción")}
         </h2>
 
         <div className="row">
           <label className="grow">
-            Archivo
+            
+            {t("Archivo")}
             <input list="bp-files" value={file} onChange={(e) => setFile(e.target.value)} spellCheck={false} />
             <datalist id="bp-files">
               {files.map((f) => <option key={f} value={relative(root, f) || f} />)}
             </datalist>
           </label>
           <label className="line-field">
-            Línea
+            
+            {t("Línea")}
             <input value={line} onChange={(e) => setLine(e.target.value.replace(/\D/g, ""))} inputMode="numeric" autoFocus={!ex} />
           </label>
         </div>
@@ -121,23 +124,26 @@ export default function BreakpointDialog({ draft, root, srcDirs, onSave, onDelet
 
         {kind === "condition" && (
           <label>
-            Condición (expresión de Rust que devuelve verdadero/falso)
+            
+            {t("Condición (expresión de Rust que devuelve verdadero/falso)")}
             <input className="mono" value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="i == 5" autoFocus spellCheck={false} />
-            <span className="hint muted">Ejemplos: <code>total &gt; 100</code> · <code>nombre == "Ana"</code> · <code>lista.len() == 3</code></span>
+            <span className="hint muted">{t("Ejemplos:")}{" "}<code>total &gt; 100</code> · <code>nombre == "Ana"</code> · <code>lista.len() == 3</code></span>
           </label>
         )}
         {kind === "hit" && (
           <label>
-            Detenerse a partir de la vuelta número
+            
+            {t("Detenerse a partir de la vuelta número")}
             <input className="mono" value={hit} onChange={(e) => setHit(e.target.value.replace(/\D/g, ""))} autoFocus />
-            <span className="hint muted">Con 3, ignora las dos primeras veces y se detiene en la tercera.</span>
+            <span className="hint muted">{t("Con 3, ignora las dos primeras veces y se detiene en la tercera.")}</span>
           </label>
         )}
         {kind === "log" && (
           <label>
-            Mensaje (las expresiones entre llaves se reemplazan por su valor)
+            
+            {t("Mensaje (las expresiones entre llaves se reemplazan por su valor)")}
             <input className="mono" value={log} onChange={(e) => setLog(e.target.value)} placeholder="i = {i}, total = {total}" autoFocus spellCheck={false} />
-            <span className="hint muted">Aparece en la pestaña Salida cada vez que se pasa por la línea, sin pausar el programa.</span>
+            <span className="hint muted">{t("Aparece en la pestaña Salida cada vez que se pasa por la línea, sin pausar el programa.")}</span>
           </label>
         )}
 
@@ -146,12 +152,12 @@ export default function BreakpointDialog({ draft, root, srcDirs, onSave, onDelet
         <div className="actions">
           {onDelete && (
             <button type="button" className="btn danger" onClick={() => { onDelete(); onClose(); }}>
-              <Codicon name="trash" /> Quitar
+              <Codicon name="trash" /> {" "}{t("Quitar")}
             </button>
           )}
           <span className="spacer" />
-          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn primary">{ex ? "Guardar" : "Agregar"}</button>
+          <button type="button" className="btn" onClick={onClose}>{t("Cancelar")}</button>
+          <button type="submit" className="btn primary">{ex ? t("Guardar") : t("Agregar")}</button>
         </div>
       </form>
     </div>

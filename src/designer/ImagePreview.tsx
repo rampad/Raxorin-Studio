@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type CSSProperties } fr
 import { api } from "../api";
 import { Codicon } from "../components/Icon";
 import { resolveImagePath } from "./imagePath";
+import { t } from "../i18n/index.ts";
 
 /** Carpeta del archivo .slint que se está diseñando (las rutas de @image-url son relativas a ella). */
 export const ImageBaseContext = createContext<string | null>(null);
@@ -60,7 +61,7 @@ export default function ImagePreview({ src, fit, colorize, pixelated }: {
   return (
     <div className="w-image">
       <Codicon name={missing ? "warning" : "file-media"} />
-      <span>{src ? (missing ? `No se encontró ${src}` : src) : "sin imagen"}</span>
+      <span>{src ? (missing ? t("No se encontró {0}", src) : src) : t("sin imagen")}</span>
     </div>
   );
 }

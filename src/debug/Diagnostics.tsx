@@ -5,6 +5,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Codicon } from "../components/Icon";
+import { t, lang } from "../i18n/index.ts";
 
 export interface Sample {
   t: number; // ms desde el inicio
@@ -66,7 +67,7 @@ export function useDiagnostics(stop: { n: number; label: string } | null): DiagS
 
 // ---------- Formato ----------
 
-const num = new Intl.NumberFormat("es", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const num = new Intl.NumberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 const fmtPct = (v: number) => `${num.format(v)} %`;
 const fmtMB = (bytes: number) => `${num.format(bytes / (1024 * 1024))} MB`;
 const fmtTime = (ms: number) => {
@@ -191,12 +192,12 @@ export default function DiagnosticsPanel({ state, onClose, width }: { state: Dia
   return (
     <aside className="diag-panel" style={{ width }}>
       <div className="panel-title">
-        <span>HERRAMIENTAS DE DIAGNÓSTICO</span>
-        <button className="icon-btn" title="Cerrar" onClick={onClose}><Codicon name="close" /></button>
+        <span>{t("HERRAMIENTAS DE DIAGNÓSTICO")}</span>
+        <button className="icon-btn" title={t("Cerrar")} onClick={onClose}><Codicon name="close" /></button>
       </div>
       {!state.pid ? (
         <div className="muted small pad">
-          <Codicon name="pulse" /> Ejecuta o depura un programa para ver aquí su uso de CPU y memoria.
+          <Codicon name="pulse" /> {" "}{t("Ejecuta o depura un programa para ver aquí su uso de CPU y memoria.")}
         </div>
       ) : (
         <div className="diag-body">
@@ -205,22 +206,22 @@ export default function DiagnosticsPanel({ state, onClose, width }: { state: Dia
             <strong>{state.name}</strong>
             <span className="muted">pid {state.pid}</span>
             <span className="spacer" />
-            <span className="muted">{state.running ? (state.mode === "debug" ? "Depurando" : "Ejecutando") : "Terminado"} · {fmtTime(last?.t ?? 0)}</span>
+            <span className="muted">{state.running ? (state.mode === "debug" ? t("Depurando") : t("Ejecutando")) : t("Terminado")} · {fmtTime(last?.t ?? 0)}</span>
           </div>
 
           <div className="diag-tiles">
-            <div className="diag-tile"><span className="muted">CPU actual</span><strong>{last ? fmtPct(last.cpu) : "—"}</strong></div>
-            <div className="diag-tile"><span className="muted">CPU promedio</span><strong>{fmtPct(avgCpu)}</strong></div>
-            <div className="diag-tile"><span className="muted">Memoria</span><strong>{last ? fmtMB(last.mem) : "—"}</strong></div>
-            <div className="diag-tile"><span className="muted">Memoria máx.</span><strong>{fmtMB(peakMem)}</strong></div>
+            <div className="diag-tile"><span className="muted">{t("CPU actual")}</span><strong>{last ? fmtPct(last.cpu) : "—"}</strong></div>
+            <div className="diag-tile"><span className="muted">{t("CPU promedio")}</span><strong>{fmtPct(avgCpu)}</strong></div>
+            <div className="diag-tile"><span className="muted">{t("Memoria")}</span><strong>{last ? fmtMB(last.mem) : "—"}</strong></div>
+            <div className="diag-tile"><span className="muted">{t("Memoria máx.")}</span><strong>{fmtMB(peakMem)}</strong></div>
           </div>
 
           <div className="diag-controls">
             <div className="segmented small">
-              <button className={range === "60" ? "active" : ""} onClick={() => setRange("60")}>Últimos 60 s</button>
-              <button className={range === "all" ? "active" : ""} onClick={() => setRange("all")}>Toda la sesión</button>
+              <button className={range === "60" ? "active" : ""} onClick={() => setRange("60")}>{t("Últimos 60 s")}</button>
+              <button className={range === "all" ? "active" : ""} onClick={() => setRange("all")}>{t("Toda la sesión")}</button>
             </div>
-            <button className={"icon-btn" + (table ? " on" : "")} title="Ver como tabla" onClick={() => setTable((t) => !t)}>
+            <button className={"icon-btn" + (table ? " on" : "")} title={t("Ver como tabla")} onClick={() => setTable((t) => !t)}>
               <Codicon name="table" />
             </button>
           </div>
@@ -228,7 +229,7 @@ export default function DiagnosticsPanel({ state, onClose, width }: { state: Dia
           {table ? (
             <div className="diag-table">
               <table>
-                <thead><tr><th>Tiempo</th><th>CPU</th><th>Memoria</th></tr></thead>
+                <thead><tr><th>{t("Tiempo")}</th><th>CPU</th><th>{t("Memoria")}</th></tr></thead>
                 <tbody>
                   {[...inWin].reverse().slice(0, 120).map((p) => (
                     <tr key={p.t}><td>{fmtTime(p.t)}</td><td>{fmtPct(p.cpu)}</td><td>{fmtMB(p.mem)}</td></tr>
@@ -239,17 +240,17 @@ export default function DiagnosticsPanel({ state, onClose, width }: { state: Dia
           ) : (
             <>
               <LineChart
-                title="CPU (% del total)"
+                title={t("CPU (% del total)")}
                 points={s.map((p) => ({ t: p.t, v: p.cpu }))}
                 window={window}
                 yMax={cpuMax}
                 format={fmtPct}
                 colorVar="--series-cpu"
                 markers={state.markers}
-                extra={(i) => (s[i] ? `${num.format(s[i].cpuCore)} % de un núcleo` : null)}
+                extra={(i) => (s[i] ? t("{0} % de un núcleo", num.format(s[i].cpuCore)) : null)}
               />
               <LineChart
-                title="Memoria del proceso"
+                title={t("Memoria del proceso")}
                 points={s.map((p) => ({ t: p.t, v: p.mem }))}
                 window={window}
                 yMax={memMax}
@@ -259,7 +260,7 @@ export default function DiagnosticsPanel({ state, onClose, width }: { state: Dia
               />
               {state.markers.length > 0 && (
                 <div className="diag-markers muted small">
-                  <span className="chart-marker-key" /> Detenciones del depurador ({state.markers.length})
+                  <span className="chart-marker-key" /> {" "}{t("Detenciones del depurador (")}{state.markers.length})
                 </div>
               )}
             </>

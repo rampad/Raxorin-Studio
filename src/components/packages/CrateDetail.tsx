@@ -5,6 +5,7 @@ import type { Recommendation } from "../../recommendations";
 import { Codicon, FileIcon } from "../Icon";
 import Readme from "./Readme";
 import { compareVersions, formatCount, formatDate, isBreaking, libName, stripReq, timeAgo } from "./format";
+import { t } from "../../i18n/index.ts";
 
 export interface DetailActions {
   install: (opts: { version: string; features: string[]; kind: DepKind; defaultFeatures: boolean }) => void;
@@ -24,8 +25,8 @@ interface Props {
 
 const KIND_LABEL: Record<DepKind, string> = {
   normal: "Dependencia normal",
-  dev: "Solo para pruebas (dev)",
-  build: "Para build.rs (build)",
+  dev: t("Solo para pruebas (dev)"),
+  build: t("Para build.rs (build)"),
 };
 const SECTION: Record<DepKind, string> = {
   normal: "[dependencies]",
@@ -93,14 +94,14 @@ export default function CrateDetail({ name, details, detailsError, installed, re
           <FileIcon name={name} project="lib" size={28} />
           <div>
             <h3>{name}</h3>
-            <span className="muted">Proyecto local · {installed.path}</span>
+            <span className="muted">{t("Proyecto local ·")}{" "}{installed.path}</span>
           </div>
         </div>
-        <p className="muted">Esta dependencia apunta a otro proyecto de tu carpeta, así que no tiene versiones en crates.io.</p>
+        <p className="muted">{t("Esta dependencia apunta a otro proyecto de tu carpeta, así que no tiene versiones en crates.io.")}</p>
         <pre className="toml-preview">{`${SECTION[installed.kind]}\n${name} = { path = "…" }`}</pre>
         <div className="detail-actions">
           <button className="btn danger" disabled={busy} onClick={() => actions.remove(installed)}>
-            <Codicon name="trash" /> Quitar referencia
+            <Codicon name="trash" /> {" "}{t("Quitar referencia")}
           </button>
         </div>
       </div>
@@ -119,24 +120,24 @@ export default function CrateDetail({ name, details, detailsError, installed, re
 
       {detailsError && <div className="hint err">{detailsError}</div>}
       {!details && !detailsError && (
-        <div className="muted"><Codicon name="loading" spin /> Consultando crates.io…</div>
+        <div className="muted"><Codicon name="loading" spin /> {" "}{t("Consultando crates.io…")}</div>
       )}
 
       {details && (
         <>
           <div className="stats">
-            <Stat icon="cloud-download" label="Descargas" value={formatCount(details.downloads)} />
-            <Stat icon="graph-line" label="Últimos 90 días" value={formatCount(details.recentDownloads)} />
-            <Stat icon="history" label="Actualizado" value={timeAgo(details.updatedAt)} />
-            <Stat icon="law" label="Licencia" value={versionInfo?.license ?? "—"} />
-            {versionInfo?.rustVersion && <Stat icon="versions" label="Rust mínimo" value={versionInfo.rustVersion} />}
+            <Stat icon="cloud-download" label={t("Descargas")} value={formatCount(details.downloads)} />
+            <Stat icon="graph-line" label={t("Últimos 90 días")} value={formatCount(details.recentDownloads)} />
+            <Stat icon="history" label={t("Actualizado")} value={timeAgo(details.updatedAt)} />
+            <Stat icon="law" label={t("Licencia")} value={versionInfo?.license ?? "—"} />
+            {versionInfo?.rustVersion && <Stat icon="versions" label={t("Rust mínimo")} value={versionInfo.rustVersion} />}
           </div>
 
           <div className="links">
-            <LinkBtn icon="book" label="Documentación" url={details.documentation ?? `https://docs.rs/${name}`} />
-            {details.repository && <LinkBtn icon="github" label="Repositorio" url={details.repository} />}
+            <LinkBtn icon="book" label={t("Documentación")} url={details.documentation ?? `https://docs.rs/${name}`} />
+            {details.repository && <LinkBtn icon="github" label={t("Repositorio")} url={details.repository} />}
             {details.homepage && details.homepage !== details.repository && (
-              <LinkBtn icon="home" label="Sitio web" url={details.homepage} />
+              <LinkBtn icon="home" label={t("Sitio web")} url={details.homepage} />
             )}
             <LinkBtn icon="package" label="crates.io" url={`https://crates.io/crates/${name}`} />
           </div>
@@ -146,7 +147,8 @@ export default function CrateDetail({ name, details, detailsError, installed, re
             {installed && (
               <div className="installed-line">
                 <Codicon name="pass-filled" className="ok" />
-                Instalado <strong>{installedVersion}</strong>
+                
+                {t("Instalado")}{" "}<strong>{installedVersion}</strong>
                 <span className="muted">· {KIND_LABEL[installed.kind]}</span>
                 {details.version && compareVersions(details.version, installedVersion ?? "0") > 0 && (
                   <span className={"update-pill" + (isBreaking(installedVersion ?? "0", details.version) ? " breaking" : "")}>
@@ -157,13 +159,14 @@ export default function CrateDetail({ name, details, detailsError, installed, re
             )}
             <div className="install-row">
               <label>
-                Versión
+                
+                {t("Versión")}
                 <select value={version} onChange={(e) => setVersion(e.target.value)}>
                   {installed && !details.versions.some((v) => v.num === version) && <option value={version}>{version}</option>}
                   {details.versions.map((v, i) => (
                     <option key={v.num} value={v.num}>
                       {v.num}
-                      {i === 0 ? "  (última)" : ""}
+                      {i === 0 ? t("  (última)") : ""}
                       {installedVersion === v.num ? "  · instalada" : ""} — {formatDate(v.createdAt)}
                     </option>
                   ))}
@@ -171,7 +174,8 @@ export default function CrateDetail({ name, details, detailsError, installed, re
               </label>
               {!installed && (
                 <label>
-                  Tipo
+                  
+                  {t("Tipo")}
                   <select value={kind} onChange={(e) => setKind(e.target.value as DepKind)}>
                     {(Object.keys(KIND_LABEL) as DepKind[]).map((k) => (
                       <option key={k} value={k}>{KIND_LABEL[k]}</option>
@@ -187,7 +191,7 @@ export default function CrateDetail({ name, details, detailsError, installed, re
                   disabled={busy}
                   onClick={() => actions.install({ version, features, kind, defaultFeatures })}
                 >
-                  <Codicon name="cloud-download" /> Instalar
+                  <Codicon name="cloud-download" /> {" "}{t("Instalar")}
                 </button>
               )}
               {installed && (
@@ -196,19 +200,19 @@ export default function CrateDetail({ name, details, detailsError, installed, re
                   disabled={busy || !changed}
                   onClick={() => actions.change(installed, { version, features, defaultFeatures })}
                 >
-                  <Codicon name="check" /> Aplicar cambios
+                  <Codicon name="check" /> {" "}{t("Aplicar cambios")}
                 </button>
               )}
               {installed && (
                 <button className="btn danger" disabled={busy} onClick={() => actions.remove(installed)}>
-                  <Codicon name="trash" /> Desinstalar
+                  <Codicon name="trash" /> {" "}{t("Desinstalar")}
                 </button>
               )}
             </div>
           </div>
 
           <div className="detail-tabs">
-            <button className={view === "info" ? "active" : ""} onClick={() => setView("info")}>Detalles</button>
+            <button className={view === "info" ? "active" : ""} onClick={() => setView("info")}>{t("Detalles")}</button>
             <button className={view === "readme" ? "active" : ""} onClick={() => setView("readme")}>README</button>
           </div>
 
@@ -219,21 +223,23 @@ export default function CrateDetail({ name, details, detailsError, installed, re
               {/* ----- Features ----- */}
               <section>
                 <h4>
-                  Features <span className="muted">(funciones opcionales)</span>
+                  
+                  {t("Features")}{" "}<span className="muted">{t("(funciones opcionales)")}</span>
                 </h4>
                 {allFeatures.length === 0 ? (
-                  <p className="muted small">Este crate no tiene features opcionales.</p>
+                  <p className="muted small">{t("Este crate no tiene features opcionales.")}</p>
                 ) : (
                   <>
                     <label className="check-line">
                       <input type="checkbox" checked={defaultFeatures} onChange={(e) => setDefaultFeatures(e.target.checked)} />
-                      Incluir las features por defecto
+                      
+                      {t("Incluir las features por defecto")}
                       {defaults.size > 0 && <span className="muted"> ({[...defaults].join(", ")})</span>}
                     </label>
                     {allFeatures.length > 12 && (
                       <input
                         className="feature-filter"
-                        placeholder={`Filtrar ${allFeatures.length} features…`}
+                        placeholder={t("Filtrar {0} features…", allFeatures.length)}
                         value={featureFilter}
                         onChange={(e) => setFeatureFilter(e.target.value)}
                       />
@@ -261,15 +267,15 @@ export default function CrateDetail({ name, details, detailsError, installed, re
 
               {/* ----- Cómo queda y cómo se usa ----- */}
               <section>
-                <h4>En tu Cargo.toml</h4>
+                <h4>{t("En tu Cargo.toml")}</h4>
                 <pre className="toml-preview">{`${SECTION[installed?.kind ?? kind]}\n${tomlLine}`}</pre>
-                <h4>En tu código</h4>
+                <h4>{t("En tu código")}</h4>
                 <pre className="toml-preview">{usageSnippet(name, features)}</pre>
               </section>
 
               {(details.keywords.length > 0 || details.categories.length > 0) && (
                 <section>
-                  <h4>Etiquetas</h4>
+                  <h4>{t("Etiquetas")}</h4>
                   <div className="chips">
                     {details.categories.map((c) => <span key={c} className="chip static cat">{c}</span>)}
                     {details.keywords.map((k) => <span key={k} className="chip static">#{k}</span>)}
@@ -289,7 +295,7 @@ function usageSnippet(name: string, features: string[]) {
   if (lib === "serde" && features.includes("derive")) {
     return "use serde::{Deserialize, Serialize};\n\n#[derive(Serialize, Deserialize)]\nstruct Persona {\n    nombre: String,\n}";
   }
-  if (lib === "rand") return "let n: u32 = rand::random_range(1..=6); // un dado";
+  if (lib === "rand") return `let n: u32 = rand::random_range(1..=6); // ${t("un dado")}`;
   if (lib === "anyhow") return "fn main() -> anyhow::Result<()> {\n    let texto = std::fs::read_to_string(\"datos.txt\")?;\n    Ok(())\n}";
   if (lib === "clap" && features.includes("derive")) {
     return "use clap::Parser;\n\n#[derive(Parser)]\nstruct Args {\n    nombre: String,\n}\n\nlet args = Args::parse();";

@@ -7,6 +7,7 @@ import {
   type Element,
 } from "./slintDoc";
 import { RUST_TYPE, type Bindable, type EventDef, type PropDef, type WidgetDef } from "./widgets";
+import { t } from "../i18n/index.ts";
 
 interface Props {
   el: Element;
@@ -25,7 +26,7 @@ interface Props {
   extra?: React.ReactNode;
 }
 
-const GROUPS = ["Diseño", "Contenido", "Apariencia", "Comportamiento"] as const;
+const GROUPS = [t("Diseño"), "Contenido", "Apariencia", "Comportamiento"] as const;
 
 export default function PropertyPanel(p: Props) {
   const [tab, setTab] = useState<"props" | "events">("props");
@@ -36,25 +37,25 @@ export default function PropertyPanel(p: Props) {
       <div className="prop-head">
         <Codicon name={def?.icon ?? "symbol-misc"} className="prop-head-icon" />
         <div className="prop-head-text">
-          {p.isRoot ? <strong>Ventana</strong> : <IdField id={p.el.id} rename={p.rename} />}
+          {p.isRoot ? <strong>{t("Ventana")}</strong> : <IdField id={p.el.id} rename={p.rename} />}
           <span className="muted small">{p.el.type}</span>
         </div>
         {!p.isRoot && (
-          <button className="icon-btn" title="Eliminar (Supr)" onClick={p.onDelete}><Codicon name="trash" /></button>
+          <button className="icon-btn" title={t("Eliminar (Supr)")} onClick={p.onDelete}><Codicon name="trash" /></button>
         )}
       </div>
 
       <div className="prop-tabs">
         <button className={tab === "props" ? "active" : ""} onClick={() => setTab("props")}>
-          <Codicon name="symbol-property" /> Propiedades
+          <Codicon name="symbol-property" /> {" "}{t("Propiedades")}
         </button>
         <button className={tab === "events" ? "active" : ""} onClick={() => setTab("events")} disabled={!def?.events.length}>
-          <Codicon name="symbol-event" /> Eventos {def?.events.length ? `(${def.events.length})` : ""}
+          <Codicon name="symbol-event" /> {" "}{t("Eventos")}{" "}{def?.events.length ? `(${def.events.length})` : ""}
         </button>
       </div>
 
       <div className="prop-body">
-        {!def && <p className="muted small pad">Este elemento ({p.el.type}) se edita en la vista de código.</p>}
+        {!def && <p className="muted small pad">{t("Este elemento (")}{p.el.type}{t(") se edita en la vista de código.")}</p>}
 
         {def && tab === "props" && (
           <>
@@ -64,7 +65,7 @@ export default function PropertyPanel(p: Props) {
               if (!props.length) return null;
               return (
                 <section key={g}>
-                  <h5>{g}</h5>
+                  <h5>{t(g)}</h5>
                   {props.map((pd) => (
                     <PropField key={pd.name} pd={pd} value={getProp(p.el, pd.name)} slintDir={p.slintDir}
                       onChange={(v) => p.setProp(pd.name, v)} />
@@ -75,15 +76,16 @@ export default function PropertyPanel(p: Props) {
 
             {def.bindable && !p.isRoot && (
               <section>
-                <h5>Usar desde Rust</h5>
-                {!p.el.id && <p className="muted small">Ponle un nombre al control para usarlo desde Rust.</p>}
+                <h5>{t("Usar desde Rust")}</h5>
+                {!p.el.id && <p className="muted small">{t("Ponle un nombre al control para usarlo desde Rust.")}</p>}
                 {p.el.id && def.bindable.map((b) => {
                   const name = p.exposedName(b);
                   return (
                     <div key={b.prop} className="expose">
                       <label className="check-line">
                         <input type="checkbox" checked={!!name} onChange={() => p.toggleExpose(b)} />
-                        Leer y cambiar <code>{b.prop}</code> desde Rust
+                        
+                        {t("Leer y cambiar")}{" "}<code>{b.prop}</code> {" "}{t("desde Rust")}
                       </label>
                       {name && (
                         <pre className="snippet">{`let v = ui.get_${name}();  // ${RUST_TYPE[b.slint]}\nui.set_${name}(${example(b.slint)});`}</pre>
@@ -99,7 +101,8 @@ export default function PropertyPanel(p: Props) {
         {def && tab === "events" && (
           <section>
             <p className="muted small">
-              Como en WPF: al conectar un evento se crea la función en <code>main.rs</code>, donde escribes qué pasa.
+              
+              {t("Como en WPF: al conectar un evento se crea la función en")}{" "}<code>main.rs</code>{t(", donde escribes qué pasa.")}
             </p>
             {def.events.map((ev) => {
               const cb = p.eventCallback(ev);
@@ -111,12 +114,12 @@ export default function PropertyPanel(p: Props) {
                     {cb && <div className="small ok"><Codicon name="arrow-right" /> ui.on_{cb}(…)</div>}
                   </div>
                   <button className={"btn small" + (cb ? "" : " primary")} onClick={() => p.onEvent(ev)} disabled={!p.el.id}>
-                    {cb ? <><Codicon name="go-to-file" /> Ir al código</> : <><Codicon name="add" /> Crear</>}
+                    {cb ? <><Codicon name="go-to-file" /> {" "}{t("Ir al código")}</> : <><Codicon name="add" /> {" "}{t("Crear")}</>}
                   </button>
                 </div>
               );
             })}
-            {!p.el.id && <p className="small warn-text">Ponle un nombre al control para conectar eventos.</p>}
+            {!p.el.id && <p className="small warn-text">{t("Ponle un nombre al control para conectar eventos.")}</p>}
           </section>
         )}
       </div>
@@ -146,9 +149,9 @@ function IdField({ id, rename }: { id: string | null; rename: (v: string) => str
       <input
         className="id-input"
         value={value}
-        placeholder="sin nombre"
+        placeholder={t("sin nombre")}
         spellCheck={false}
-        title="Nombre del control (para usarlo desde Rust y en eventos)"
+        title={t("Nombre del control (para usarlo desde Rust y en eventos)")}
         onChange={(e) => setValue(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
@@ -172,19 +175,19 @@ function PropField({ pd, value, onChange, slintDir }: {
       <label title={pd.name}>{pd.label}</label>
       <div className="prop-control">
         {expr ? (
-          <TextInput mono value={value ?? ""} onCommit={(v) => onChange(v.trim() || undefined)} placeholder="expresión de Slint" />
+          <TextInput mono value={value ?? ""} onCommit={(v) => onChange(v.trim() || undefined)} placeholder={t("expresión de Slint")} />
         ) : (
           <Editor pd={pd} value={value} onChange={onChange} slintDir={slintDir} />
         )}
         <button
           className={"icon-btn fx" + (expr ? " on" : "")}
-          title={expr ? "Usar editor simple" : "Escribir una expresión (p. ej. root.width - 20px)"}
+          title={expr ? t("Usar editor simple") : t("Escribir una expresión (p. ej. root.width - 20px)")}
           onClick={() => setExpr((x) => !x)}
         >
           fx
         </button>
         {value !== undefined && (
-          <button className="icon-btn" title="Restablecer al valor por defecto" onClick={() => onChange(undefined)}>
+          <button className="icon-btn" title={t("Restablecer al valor por defecto")} onClick={() => onChange(undefined)}>
             <Codicon name="discard" />
           </button>
         )}
@@ -230,7 +233,7 @@ function Editor({ pd, value, onChange, slintDir }: {
       );
     }
     case "string":
-      return <TextInput value={parseString(value) ?? ""} placeholder={value === undefined ? "(vacío)" : ""}
+      return <TextInput value={parseString(value) ?? ""} placeholder={value === undefined ? t("(vacío)") : ""}
         onCommit={(v) => onChange(formatString(v))} />;
     case "text":
       return <TextInput multiline value={parseString(value) ?? ""} onCommit={(v) => onChange(formatString(v))} />;
@@ -239,7 +242,7 @@ function Editor({ pd, value, onChange, slintDir }: {
       return (
         <label className="check-line">
           <input type="checkbox" checked={b} onChange={(e) => onChange(String(e.target.checked))} />
-          <span className="muted small">{b ? "sí" : "no"}</span>
+          <span className="muted small">{b ? t("sí") : "no"}</span>
         </label>
       );
     }
@@ -255,13 +258,13 @@ function Editor({ pd, value, onChange, slintDir }: {
     case "enum":
       return (
         <select value={value?.trim() ?? ""} onChange={(e) => onChange(e.target.value || undefined)}>
-          <option value="">{pd.fallback ? `${pd.fallback} (por defecto)` : "(por defecto)"}</option>
+          <option value="">{pd.fallback ? t("{0} (por defecto)", pd.fallback) : t("(por defecto)")}</option>
           {pd.options?.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
       );
     case "strings":
       return (
-        <TextInput multiline value={(parseStringArray(value) ?? []).join("\n")} placeholder="Una opción por línea"
+        <TextInput multiline value={(parseStringArray(value) ?? []).join("\n")} placeholder={t("Una opción por línea")}
           onCommit={(v) => onChange(formatStringArray(v.split("\n").map((x) => x.trim()).filter(Boolean)))} />
       );
     case "duration":
@@ -269,18 +272,18 @@ function Editor({ pd, value, onChange, slintDir }: {
         onCommit={(n) => onChange(n === null ? undefined : formatDuration(Math.max(0, n)))} />;
     case "items":
       return (
-        <TextInput multiline value={(parseItems(value) ?? []).join("\n")} placeholder="Un elemento por línea"
+        <TextInput multiline value={(parseItems(value) ?? []).join("\n")} placeholder={t("Un elemento por línea")}
           onCommit={(v) => onChange(formatItems(v.split("\n").map((x) => x.trim()).filter(Boolean)))} />
       );
     case "image": {
       const path = parseImage(value);
       return (
         <div className="row-inline">
-          <TextInput mono value={path ?? ""} placeholder="ruta/imagen.png" onCommit={(v) => onChange(v.trim() ? formatImage(v.trim()) : undefined)} />
+          <TextInput mono value={path ?? ""} placeholder={t("ruta/imagen.png")} onCommit={(v) => onChange(v.trim() ? formatImage(v.trim()) : undefined)} />
           <button
             className="btn small"
             onClick={async () => {
-              const f = await open({ filters: [{ name: "Imágenes", extensions: ["png", "jpg", "jpeg", "svg", "gif", "webp"] }], defaultPath: slintDir });
+              const f = await open({ filters: [{ name: t("Imágenes"), extensions: ["png", "jpg", "jpeg", "svg", "gif", "webp"] }], defaultPath: slintDir });
               if (typeof f === "string") onChange(formatImage(relativePath(slintDir, f)));
             }}
           >

@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { DapClient, type StackFrame, type Variable } from "./dap";
 import type { BreakpointStore } from "./breakpoints";
+import { t, tErr } from "../i18n/index.ts";
 
 export type DebugStatus = "idle" | "starting" | "running" | "stopped";
 
@@ -123,14 +124,14 @@ export class DebugController {
         await this.sendAllBreakpoints();
         await client.request("configurationDone");
       } catch (e) {
-        this.host.output(`No se pudo configurar el depurador: ${e}\n`, "error");
+        this.host.output(t("No se pudo configurar el depurador: {0}\n", tErr(e)), "error");
       }
     });
     client.on("stopped", (b: { reason: string; threadId?: number; description?: string; text?: string }) => this.onStopped(b));
     client.on("continued", () => this.markRunning());
     client.on("exited", (b: { exitCode: number }) => {
       this.host.output(
-        `\n${b.exitCode === 0 ? "✔" : "✖"} El programa terminó con código ${b.exitCode}\n`,
+        t("\n{0} El programa terminó con código {1}\n", b.exitCode === 0 ? "✔" : "✖", b.exitCode),
         b.exitCode === 0 ? "success" : "error",
       );
     });
@@ -185,9 +186,9 @@ export class DebugController {
       const n = this.breakpoints.all().filter((b) => b.enabled).length;
       this.host.output(
         n > 0
-          ? `▶ Depurando. Se detendrá al llegar a uno de tus ${n} punto(s) de interrupción ` +
-              `(si está dentro de un evento, como el clic de un botón, primero usa ese control en la ventana).\n`
-          : "▶ Depurando. No hay puntos de interrupción: pon uno con clic en el margen o F9.\n",
+          ? t("▶ Depurando. Se detendrá al llegar a uno de tus {0} punto(s) de interrupción ", n) +
+              t("(si está dentro de un evento, como el clic de un botón, primero usa ese control en la ventana).\n")
+          : t("▶ Depurando. No hay puntos de interrupción: pon uno con clic en el margen o F9.\n"),
         "info",
       );
       const windows = navigator.userAgent.includes("Windows");
@@ -195,12 +196,12 @@ export class DebugController {
         stdinPath
           ? ""
           : windows && codelldb
-            ? "(En Windows el programa se abre en su propia ventana de consola: ahí ves lo que imprime y puedes escribirle.)\n"
-            : "(La entrada por teclado no está disponible al depurar en este sistema)\n",
+            ? t("(En Windows el programa se abre en su propia ventana de consola: ahí ves lo que imprime y puedes escribirle.)\n")
+            : t("(La entrada por teclado no está disponible al depurar en este sistema)\n"),
         "muted",
       );
     } catch (e) {
-      this.host.output(`No se pudo iniciar la depuración: ${e}\n`, "error");
+      this.host.output(t("No se pudo iniciar la depuración: {0}\n", tErr(e)), "error");
       await this.end();
     }
   }
@@ -231,14 +232,14 @@ export class DebugController {
     this.update({
       status: "stopped",
       reason,
-      description: panic ? "El programa entró en pánico (panic!)" : describe(b.reason, b.description),
+      description: panic ? t("El programa entró en pánico (panic!)") : describe(b.reason, b.description),
       threadId,
       viewThreadId: threadId,
       threads,
       frames: stackFrames,
       stopCount: this.snap.stopCount + 1,
     });
-    if (panic) this.host.output("\n✖ El programa entró en pánico. Revisa la pila de llamadas y las variables.\n", "error");
+    if (panic) this.host.output(t("\n✖ El programa entró en pánico. Revisa la pila de llamadas y las variables.\n"), "error");
     if (frame) await this.selectFrame(frame.id);
     this.host.onStopped();
   }
@@ -276,7 +277,7 @@ export class DebugController {
 
   /** Cambia el valor de una variable mientras el programa está detenido. */
   async setVariable(parentRef: number, name: string, value: string): Promise<string | null> {
-    if (!this.client || this.snap.status !== "stopped") return "El programa no está detenido";
+    if (!this.client || this.snap.status !== "stopped") return t("El programa no está detenido");
     try {
       await this.client.request("setVariable", { variablesReference: parentRef, name, value });
       // Las referencias cambian: volver a leer todo (y reiniciar los árboles expandidos).
@@ -285,7 +286,7 @@ export class DebugController {
       this.host.output(`✎ ${name} = ${value}\n`, "info");
       return null;
     } catch (e) {
-      return String(e).replace(/^.*?Error:\s*/, "");
+      return tErr(e).replace(/^.*?Error:\s*/, "");
     }
   }
 
@@ -306,7 +307,7 @@ export class DebugController {
    */
   async repl(input: string): Promise<{ ok: boolean; text: string }> {
     if (!this.client || this.snap.status !== "stopped") {
-      return { ok: false, text: "Detén el programa en un punto de interrupción para evaluar expresiones." };
+      return { ok: false, text: t("Detén el programa en un punto de interrupción para evaluar expresiones.") };
     }
     try {
       const r = await this.client.request<{ result: string; type?: string }>("evaluate", {
@@ -323,7 +324,7 @@ export class DebugController {
       }
       return { ok: true, text };
     } catch (e) {
-      return { ok: false, text: String(e).replace(/^.*?Error:\s*/, "") };
+      return { ok: false, text: tErr(e).replace(/^.*?Error:\s*/, "") };
     }
   }
 
@@ -337,7 +338,7 @@ export class DebugController {
   }
 
   async evaluate(expression: string, context: "watch" | "hover" | "repl" = "watch") {
-    if (!this.client || this.snap.status !== "stopped") throw new Error("El programa no está detenido");
+    if (!this.client || this.snap.status !== "stopped") throw new Error(t("El programa no está detenido"));
     return this.client.request<{ result: string; type?: string; variablesReference: number }>("evaluate", {
       expression,
       frameId: this.snap.frameId,
@@ -354,7 +355,7 @@ export class DebugController {
           const r = await this.evaluate(expr, "watch");
           return { expr, value: r.result, type: r.type, ref: r.variablesReference };
         } catch (e) {
-          return { expr, error: String(e).replace(/^.*?:\s*/, ""), ref: 0 };
+          return { expr, error: tErr(e).replace(/^.*?:\s*/, ""), ref: 0 };
         }
       }),
     );
@@ -435,7 +436,7 @@ export class DebugController {
       await this.client.request("evaluate", { expression: "`" + oneShot(path, line), frameId: this.snap.frameId, context: "repl" });
       await this.continue();
     } catch (e) {
-      this.host.output(`No se pudo ejecutar hasta el cursor: ${e}\n`, "error");
+      this.host.output(t("No se pudo ejecutar hasta el cursor: {0}\n", tErr(e)), "error");
     }
   }
 
@@ -461,18 +462,18 @@ export class DebugController {
     this.breakpoints.setCurrentLine(null);
     this.breakpoints.clearVerified();
     this.update({ status: "idle", frames: [], locals: [], frameId: undefined, reason: undefined, description: undefined, stdin: false });
-    this.host.output("■ Depuración finalizada\n", "muted");
+    this.host.output(t("■ Depuración finalizada\n"), "muted");
     this.host.onEnded();
   }
 }
 
 function describe(reason: string, description?: string) {
   switch (reason) {
-    case "breakpoint": return "Detenido en un punto de interrupción";
+    case "breakpoint": return t("Detenido en un punto de interrupción");
     case "step": return "Paso a paso";
-    case "pause": return "En pausa";
-    case "exception": return description ? `Excepción: ${description}` : "Excepción";
-    case "entry": return "Al inicio del programa";
+    case "pause": return t("En pausa");
+    case "exception": return description ? t("Excepción: {0}", description) : t("Excepción");
+    case "entry": return t("Al inicio del programa");
     default: return description ?? reason;
   }
 }

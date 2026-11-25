@@ -6,6 +6,7 @@ import { languageFor } from "../util";
 import { Codicon, FileIcon } from "./Icon";
 import { monacoTheme, useTheme } from "../theme";
 import { useSettings } from "../settings";
+import { t } from "../i18n/index.ts";
 
 export interface Tab {
   path: string;
@@ -42,18 +43,18 @@ export default function EditorArea({ tabs, active, onSelect, onClose, onReorder,
   return (
     <div className="editor-area">
       <div className="tabs">
-        {tabs.map((t, i) => (
+        {tabs.map((it, i) => (
           <div
-            key={t.path}
+            key={it.path}
             className={
-              "tab" + (t.path === active ? " active" : "") + (drag?.from === i ? " dragging" : "") +
+              "tab" + (it.path === active ? " active" : "") + (drag?.from === i ? " dragging" : "") +
               (drag && drag.over === i && drag.from !== i && drag.from !== i - 1 ? " drop-before" : "") +
               (drag && drag.over === tabs.length && i === tabs.length - 1 && drag.from !== i ? " drop-after" : "")
             }
             draggable
             onDragStart={(e) => {
               e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("text/plain", t.path);
+              e.dataTransfer.setData("text/plain", it.path);
               setDrag({ from: i, over: null });
             }}
             onDragOver={(e) => {
@@ -73,28 +74,28 @@ export default function EditorArea({ tabs, active, onSelect, onClose, onReorder,
               setDrag(null);
             }}
             onDragEnd={() => setDrag(null)}
-            onClick={() => onSelect(t.path)}
-            onAuxClick={(e) => e.button === 1 && onClose(t.path)}
-            title={t.path}
+            onClick={() => onSelect(it.path)}
+            onAuxClick={(e) => e.button === 1 && onClose(it.path)}
+            title={it.path}
           >
-            <FileIcon name={t.name} />
-            <span>{t.name}</span>
-            {t.content !== t.saved ? (
-              <Codicon name="circle-filled" className="dirty" title="Sin guardar" />
+            <FileIcon name={it.name} />
+            <span>{it.name}</span>
+            {it.content !== it.saved ? (
+              <Codicon name="circle-filled" className="dirty" title={t("Sin guardar")} />
             ) : null}
             <button
               className="tab-close"
-              title="Cerrar"
+              title={t("Cerrar")}
               onClick={(e) => {
                 e.stopPropagation();
-                onClose(t.path);
+                onClose(it.path);
               }}
             >
               <Codicon name="close" />
             </button>
           </div>
         ))}
-        <button className="tabs-new" title="Nuevo archivo (Ctrl/⌘+N)" onClick={onNewFile}>
+        <button className="tabs-new" title={t("Nuevo archivo (Ctrl/⌘+N)")} onClick={onNewFile}>
           <Codicon name="add" />
         </button>
       </div>
@@ -102,14 +103,14 @@ export default function EditorArea({ tabs, active, onSelect, onClose, onReorder,
         <div className="view-switch">
           <div className="segmented small">
             <button className={mode === "design" ? "active" : ""} onClick={() => setMode("design")}>
-              <Codicon name="layout" /> Diseño
+              <Codicon name="layout" /> {" "}{t("Diseño")}
             </button>
             <button className={mode === "code" ? "active" : ""} onClick={() => setMode("code")}>
-              <Codicon name="code" /> Código
+              <Codicon name="code" /> {" "}{t("Código")}
             </button>
           </div>
           <span className="muted small">
-            {mode === "design" ? "Los cambios del diseñador se escriben en el archivo .slint" : "Edita el .slint a mano; el diseñador se actualiza al volver"}
+            {mode === "design" ? t("Los cambios del diseñador se escriben en el archivo .slint") : t("Edita el .slint a mano; el diseñador se actualiza al volver")}
           </span>
         </div>
       )}
@@ -145,7 +146,7 @@ export default function EditorArea({ tabs, active, onSelect, onClose, onReorder,
             }}
           />
         ) : (
-          <div className="empty-editor">Abre un archivo desde el explorador</div>
+          <div className="empty-editor">{t("Abre un archivo desde el explorador")}</div>
         )}
       </div>
     </div>

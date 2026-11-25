@@ -2,6 +2,7 @@
 // según lo que el proyecto ya tiene instalado.
 
 import type { DepKind, Dependency } from "./api";
+import { t } from "./i18n/index.ts";
 
 export interface Recommendation {
   name: string;
@@ -23,93 +24,93 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   {
     id: "basics",
-    title: "Esenciales para empezar",
+    title: t("Esenciales para empezar"),
     icon: "star-full",
     items: [
-      { name: "rand", why: "Números aleatorios: dados, sorteos, juegos.", starter: true },
-      { name: "anyhow", why: "Manejo de errores sencillo en aplicaciones (usa `?` en todas partes).", starter: true },
-      { name: "serde", why: "Convertir tus structs a JSON, TOML, etc. y viceversa.", features: ["derive"], starter: true },
-      { name: "serde_json", why: "Leer y escribir JSON (junto con serde).", starter: true },
-      { name: "chrono", why: "Fechas y horas: hoy, diferencias, formatos." },
-      { name: "regex", why: "Expresiones regulares para buscar patrones en texto." },
-      { name: "itertools", why: "Herramientas extra para iteradores (agrupar, combinar…)." },
-      { name: "thiserror", why: "Definir tus propios tipos de error en bibliotecas." },
+      { name: "rand", why: t("Números aleatorios: dados, sorteos, juegos."), starter: true },
+      { name: "anyhow", why: t("Manejo de errores sencillo en aplicaciones (usa `?` en todas partes)."), starter: true },
+      { name: "serde", why: t("Convertir tus structs a JSON, TOML, etc. y viceversa."), features: ["derive"], starter: true },
+      { name: "serde_json", why: t("Leer y escribir JSON (junto con serde)."), starter: true },
+      { name: "chrono", why: t("Fechas y horas: hoy, diferencias, formatos.") },
+      { name: "regex", why: t("Expresiones regulares para buscar patrones en texto.") },
+      { name: "itertools", why: t("Herramientas extra para iteradores (agrupar, combinar…).") },
+      { name: "thiserror", why: t("Definir tus propios tipos de error en bibliotecas.") },
     ],
   },
   {
     id: "cli",
-    title: "Programas de consola",
+    title: t("Programas de consola"),
     icon: "terminal",
     items: [
-      { name: "clap", why: "Leer argumentos de la línea de comandos (`mi_app --ayuda`).", features: ["derive"], starter: true },
-      { name: "colored", why: "Texto de colores en la terminal.", starter: true },
-      { name: "dialoguer", why: "Preguntas interactivas: menús, confirmaciones, contraseñas." },
-      { name: "indicatif", why: "Barras de progreso y spinners." },
-      { name: "crossterm", why: "Control total de la terminal: teclas, cursor, colores." },
-      { name: "ratatui", why: "Interfaces completas en modo texto (paneles, tablas, gráficos)." },
+      { name: "clap", why: t("Leer argumentos de la línea de comandos (`mi_app --ayuda`)."), features: ["derive"], starter: true },
+      { name: "colored", why: t("Texto de colores en la terminal."), starter: true },
+      { name: "dialoguer", why: t("Preguntas interactivas: menús, confirmaciones, contraseñas.") },
+      { name: "indicatif", why: t("Barras de progreso y spinners.") },
+      { name: "crossterm", why: t("Control total de la terminal: teclas, cursor, colores.") },
+      { name: "ratatui", why: t("Interfaces completas en modo texto (paneles, tablas, gráficos).") },
     ],
   },
   {
     id: "gui",
-    title: "Ventanas e interfaces gráficas",
+    title: t("Ventanas e interfaces gráficas"),
     icon: "window",
     items: [
-      { name: "slint", why: "Interfaces declarativas tipo XAML/WPF (lo usará el diseñador de Raxorin Studio)." },
-      { name: "eframe", why: "egui: interfaces inmediatas, muy fáciles para herramientas y prototipos." },
-      { name: "rfd", why: "Diálogos nativos para abrir/guardar archivos." },
+      { name: "slint", why: t("Interfaces declarativas tipo XAML/WPF (lo usará el diseñador de Raxorin Studio).") },
+      { name: "eframe", why: t("egui: interfaces inmediatas, muy fáciles para herramientas y prototipos.") },
+      { name: "rfd", why: t("Diálogos nativos para abrir/guardar archivos.") },
     ],
   },
   {
     id: "web",
-    title: "Internet y web",
+    title: t("Internet y web"),
     icon: "globe",
     items: [
-      { name: "reqwest", why: "Hacer peticiones HTTP (descargar páginas, usar APIs).", features: ["json", "blocking"] },
-      { name: "tokio", why: "Programación asíncrona: base de la mayoría del código de red.", features: ["full"] },
-      { name: "axum", why: "Crear tu propio servidor web o API." },
-      { name: "url", why: "Analizar y construir URLs correctamente." },
+      { name: "reqwest", why: t("Hacer peticiones HTTP (descargar páginas, usar APIs)."), features: ["json", "blocking"] },
+      { name: "tokio", why: t("Programación asíncrona: base de la mayoría del código de red."), features: ["full"] },
+      { name: "axum", why: t("Crear tu propio servidor web o API.") },
+      { name: "url", why: t("Analizar y construir URLs correctamente.") },
     ],
   },
   {
     id: "data",
-    title: "Datos y archivos",
+    title: t("Datos y archivos"),
     icon: "database",
     items: [
-      { name: "csv", why: "Leer y escribir archivos CSV (hojas de cálculo)." },
-      { name: "toml", why: "Archivos de configuración .toml." },
-      { name: "rusqlite", why: "Base de datos SQLite en un solo archivo.", features: ["bundled"] },
-      { name: "walkdir", why: "Recorrer carpetas y subcarpetas." },
-      { name: "directories", why: "Rutas estándar del sistema (Documentos, configuración…)." },
+      { name: "csv", why: t("Leer y escribir archivos CSV (hojas de cálculo).") },
+      { name: "toml", why: t("Archivos de configuración .toml.") },
+      { name: "rusqlite", why: t("Base de datos SQLite en un solo archivo."), features: ["bundled"] },
+      { name: "walkdir", why: t("Recorrer carpetas y subcarpetas.") },
+      { name: "directories", why: t("Rutas estándar del sistema (Documentos, configuración…).") },
     ],
   },
   {
     id: "games",
-    title: "Juegos y gráficos",
+    title: t("Juegos y gráficos"),
     icon: "game",
     items: [
-      { name: "macroquad", why: "Juegos 2D simples con muy poco código.", starter: true },
-      { name: "bevy", why: "Motor de juegos completo (2D y 3D)." },
-      { name: "image", why: "Abrir, editar y guardar imágenes (PNG, JPG…)." },
+      { name: "macroquad", why: t("Juegos 2D simples con muy poco código."), starter: true },
+      { name: "bevy", why: t("Motor de juegos completo (2D y 3D).") },
+      { name: "image", why: t("Abrir, editar y guardar imágenes (PNG, JPG…).") },
     ],
   },
   {
     id: "speed",
-    title: "Rendimiento",
+    title: t("Rendimiento"),
     icon: "rocket",
     items: [
-      { name: "rayon", why: "Usar todos los núcleos del procesador cambiando `iter()` por `par_iter()`." },
-      { name: "dashmap", why: "HashMap que se puede usar desde varios hilos." },
+      { name: "rayon", why: t("Usar todos los núcleos del procesador cambiando `iter()` por `par_iter()`.") },
+      { name: "dashmap", why: t("HashMap que se puede usar desde varios hilos.") },
     ],
   },
   {
     id: "tests",
-    title: "Pruebas (solo para tests)",
+    title: t("Pruebas (solo para tests)"),
     icon: "beaker",
     items: [
-      { name: "pretty_assertions", why: "Muestra diferencias claras cuando falla un assert_eq!.", kind: "dev", starter: true },
-      { name: "proptest", why: "Pruebas con muchos datos generados al azar.", kind: "dev" },
-      { name: "insta", why: "Pruebas de “instantánea”: compara la salida con una guardada.", kind: "dev" },
-      { name: "criterion", why: "Medir la velocidad de tu código (benchmarks).", kind: "dev" },
+      { name: "pretty_assertions", why: t("Muestra diferencias claras cuando falla un assert_eq!."), kind: "dev", starter: true },
+      { name: "proptest", why: t("Pruebas con muchos datos generados al azar."), kind: "dev" },
+      { name: "insta", why: t("Pruebas de “instantánea”: compara la salida con una guardada."), kind: "dev" },
+      { name: "criterion", why: t("Medir la velocidad de tu código (benchmarks)."), kind: "dev" },
     ],
   },
 ];
@@ -123,18 +124,18 @@ export function contextual(deps: Dependency[], projectKind: "bin" | "lib"): (Rec
   const add = (cond: boolean, r: Recommendation, because: string) => {
     if (cond && !has(r.name) && !out.some((o) => o.name === r.name)) out.push({ ...r, because });
   };
-  add(has("serde"), { name: "serde_json", why: "Guardar y leer tus structs como JSON." }, "Usas serde");
-  add(has("tokio"), { name: "reqwest", why: "Cliente HTTP asíncrono para tokio.", features: ["json"] }, "Usas tokio");
-  add(has("reqwest"), { name: "tokio", why: "reqwest (asíncrono) necesita un runtime.", features: ["full"] }, "Usas reqwest");
-  add(has("reqwest") || has("axum"), { name: "serde", why: "Convertir las respuestas JSON en structs.", features: ["derive"] }, "Trabajas con la web");
+  add(has("serde"), { name: "serde_json", why: t("Guardar y leer tus structs como JSON.") }, "Usas serde");
+  add(has("tokio"), { name: "reqwest", why: t("Cliente HTTP asíncrono para tokio."), features: ["json"] }, "Usas tokio");
+  add(has("reqwest"), { name: "tokio", why: t("reqwest (asíncrono) necesita un runtime."), features: ["full"] }, "Usas reqwest");
+  add(has("reqwest") || has("axum"), { name: "serde", why: t("Convertir las respuestas JSON en structs."), features: ["derive"] }, t("Trabajas con la web"));
   add(has("axum"), { name: "tokio", why: "axum funciona sobre tokio.", features: ["full"] }, "Usas axum");
-  add(has("clap"), { name: "anyhow", why: "Errores fáciles de mostrar en programas de consola." }, "Usas clap");
-  add(has("chrono") && has("serde"), { name: "chrono", why: "Activa la feature `serde` de chrono para guardar fechas.", features: ["serde"] }, "Usas chrono y serde");
-  add(has("csv"), { name: "serde", why: "Leer cada fila del CSV directamente como struct.", features: ["derive"] }, "Usas csv");
-  add(has("slint"), { name: "slint-build", why: "Compila los archivos .slint en build.rs.", kind: "build" }, "Usas slint");
-  add(has("ratatui"), { name: "crossterm", why: "El backend de terminal más usado con ratatui." }, "Usas ratatui");
-  add(projectKind === "bin" && deps.length > 0, { name: "anyhow", why: "Simplifica el manejo de errores en `main`." }, "Es una aplicación");
-  add(projectKind === "lib", { name: "thiserror", why: "Errores propios y claros para quien use tu biblioteca." }, "Es una biblioteca");
-  add(!deps.some((d) => d.kind === "dev"), { name: "pretty_assertions", why: "Fallos de tests más legibles.", kind: "dev" }, "Aún no tienes dependencias de prueba");
+  add(has("clap"), { name: "anyhow", why: t("Errores fáciles de mostrar en programas de consola.") }, "Usas clap");
+  add(has("chrono") && has("serde"), { name: "chrono", why: t("Activa la feature `serde` de chrono para guardar fechas."), features: ["serde"] }, t("Usas chrono y serde"));
+  add(has("csv"), { name: "serde", why: t("Leer cada fila del CSV directamente como struct."), features: ["derive"] }, "Usas csv");
+  add(has("slint"), { name: "slint-build", why: t("Compila los archivos .slint en build.rs."), kind: "build" }, "Usas slint");
+  add(has("ratatui"), { name: "crossterm", why: t("El backend de terminal más usado con ratatui.") }, "Usas ratatui");
+  add(projectKind === "bin" && deps.length > 0, { name: "anyhow", why: t("Simplifica el manejo de errores en `main`.") }, t("Es una aplicación"));
+  add(projectKind === "lib", { name: "thiserror", why: t("Errores propios y claros para quien use tu biblioteca.") }, t("Es una biblioteca"));
+  add(!deps.some((d) => d.kind === "dev"), { name: "pretty_assertions", why: t("Fallos de tests más legibles."), kind: "dev" }, t("Aún no tienes dependencias de prueba"));
   return out;
 }

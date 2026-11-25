@@ -61,6 +61,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { PANELS, usePanelSize, usePanelVisible } from "./layout";
 import raxorinMark from "./assets/brand/raxorin-mark.svg";
+import { t, tErr, tb } from "./i18n/index.ts";
 
 const LAST_PROJECT_KEY = "raxorinstudio.lastProject";
 const RECENT_KEY = "raxorinstudio.recent";
@@ -83,9 +84,9 @@ const TASK_LABEL: Partial<Record<Task, string>> = {
   check: "Revisando…",
   test: "Ejecutando pruebas…",
   run: "Ejecutando…",
-  debug: "Compilando para depurar…",
+  debug: t("Compilando para depurar…"),
   publish: "Publicando (Release)…",
-  "setup-target": "Instalando soporte de plataforma…",
+  "setup-target": t("Instalando soporte de plataforma…"),
 };
 
 const uriOf = (path: string) => monaco.Uri.file(path).toString();
@@ -233,7 +234,7 @@ export default function App() {
 
   // Herramientas de diagnóstico (CPU/memoria) y consola de depuración.
   const stopInfo = useMemo(
-    () => (debugSnap.status === "stopped" ? { n: debugSnap.stopCount, label: debugSnap.description ?? "Detenido" } : null),
+    () => (debugSnap.status === "stopped" ? { n: debugSnap.stopCount, label: debugSnap.description ?? t("Detenido") } : null),
     [debugSnap.status, debugSnap.stopCount, debugSnap.description],
   );
   const diag = useDiagnostics(stopInfo);
@@ -259,7 +260,9 @@ export default function App() {
   const diagRef = useRef(diagnostics);
   diagRef.current = diagnostics;
 
-  const append = useCallback((chunk: OutputChunk) => {
+  const append = useCallback((raw: OutputChunk) => {
+    // Los mensajes del IDE (en español en el backend) se traducen; la salida del programa, nunca.
+    const chunk = raw.kind === "stdout" || raw.kind === "stderr" ? raw : { ...raw, text: tb(raw.text) };
     setOutput((o) => {
       const next = [...o, chunk];
       return next.length > MAX_CHUNKS ? next.slice(-MAX_CHUNKS) : next;
@@ -368,7 +371,7 @@ export default function App() {
             monaco.editor.createModel(content, languageFor(path), monaco.Uri.file(path));
           }
         } catch (err) {
-          log(String(err), "error");
+          log(tErr(err), "error");
           return;
         }
       }
@@ -395,7 +398,7 @@ export default function App() {
       try {
         for (const p of await api.findProjects(root)) if (!list.some((x) => x.dir === p.dir)) list.push(p);
       } catch (e) {
-        log(String(e), "error");
+        log(tErr(e), "error");
       }
     }
     let saved: string | null = null;
@@ -431,11 +434,11 @@ export default function App() {
       // En una solución, el proyecto de inicio se guarda en el .rxsln (se comparte con git).
       const sol = solutionRef.current;
       if (sol) {
-        api.solutionSetStartup(sol.file, dir).catch((e) => log(String(e), "error"));
+        api.solutionSetStartup(sol.file, dir).catch((e) => log(tErr(e), "error"));
         setSolution({ ...sol, startup: dir });
       }
       const p = projects.find((x) => x.dir === dir);
-      if (p) log(`Proyecto de inicio: ${p.name}`);
+      if (p) log(t("Proyecto de inicio: {0}", p.name));
     },
     [project, projects, log],
   );
@@ -475,9 +478,9 @@ export default function App() {
       setSolution(info);
       setProject(info.dir);
       const roots = info.projects.filter((p) => p.exists).map((p) => p.path);
-      log(`Solución abierta: ${info.name} (${roots.length} ${roots.length === 1 ? "proyecto" : "proyectos"})`);
+      log(t("Solución abierta: {0} ({1} {2})", info.name, roots.length, roots.length === 1 ? t("proyecto") : t("proyectos")));
       for (const p of info.projects.filter((x) => !x.exists)) {
-        log(`Aviso: no se encontró el proyecto “${p.ruta}” (${p.path}).`, "warning");
+        log(t("Aviso: no se encontró el proyecto “{0}” ({1}).", p.ruta, p.path), "warning");
       }
       const found = await refreshProjects(roots, info.file);
       if (found.startup) await openMainFile(found.startup.dir);
@@ -491,7 +494,7 @@ export default function App() {
       // Si la carpeta tiene una solución, abrir la solución (como Visual Studio).
       const sln = await api.solutionFind(path).catch(() => null);
       if (sln) {
-        log(`Se encontró la solución ${basename(sln)} en la carpeta.`, "muted");
+        log(t("Se encontró la solución {0} en la carpeta.", basename(sln)), "muted");
         return openSolution(sln);
       }
       await api.listDir(path);
@@ -502,9 +505,9 @@ export default function App() {
       log(`Carpeta abierta: ${path}`);
       const found = await refreshProjects([path], path);
       if (found.list.length === 0) {
-        log("No se encontraron proyectos de Rust en esta carpeta. Crea uno con “Nuevo”.", "warning");
+        log(t("No se encontraron proyectos de Rust en esta carpeta. Crea uno con “Nuevo”."), "warning");
       } else if (found.list.length > 1) {
-        log(`Se encontraron ${found.list.length} proyectos. Proyecto de inicio: ${found.startup?.name ?? "ninguno"}`);
+        log(t("Se encontraron {0} proyectos. Proyecto de inicio: {1}", found.list.length, found.startup?.name ?? t("ninguno")));
       }
       if (found.startup) await openMainFile(found.startup.dir);
     },
@@ -527,12 +530,12 @@ export default function App() {
               setSolution(info);
               const roots = info.projects.filter((p) => p.exists).map((p) => p.path);
               refreshProjects(roots, info.file);
-              log("Solución actualizada.", "muted");
+              log(t("Solución actualizada."), "muted");
             })
-            .catch((e) => log(String(e), "error"));
+            .catch((e) => log(tErr(e), "error"));
         }
       } catch (err) {
-        log(String(err), "error");
+        log(tErr(err), "error");
         throw err;
       }
     },
@@ -553,11 +556,11 @@ export default function App() {
     const tab = tabsRef.current.find((t) => t.path === path);
     if (!tab) return;
     if (tab.content !== tab.saved) {
-      const discard = await ask(`“${tab.name}” tiene cambios sin guardar. ¿Cerrar de todos modos?`, {
-        title: "Cambios sin guardar",
+      const discard = await ask(t("“{0}” tiene cambios sin guardar. ¿Cerrar de todos modos?", tab.name), {
+        title: t("Cambios sin guardar"),
         kind: "warning",
-        okLabel: "Cerrar sin guardar",
-        cancelLabel: "Cancelar",
+        okLabel: t("Cerrar sin guardar"),
+        cancelLabel: t("Cancelar"),
       });
       if (!discard) return;
     }
@@ -619,7 +622,7 @@ export default function App() {
       return;
     }
     if (!toolchain.rustAnalyzer) {
-      setLspStatus("Sin autocompletado (falta rust-analyzer)");
+      setLspStatus(t("Sin autocompletado (falta rust-analyzer)"));
       return;
     }
     let cancelled = false;
@@ -640,7 +643,7 @@ export default function App() {
         c.on("$/exit", () => {
           if (lspRef.current === c) {
             setLspReady(false);
-            setLspStatus("rust-analyzer se detuvo (clic para reiniciar)");
+            setLspStatus(t("rust-analyzer se detuvo (clic para reiniciar)"));
           }
         });
         c.on("textDocument/publishDiagnostics", (p: L.PublishDiagnosticsParams) => {
@@ -651,7 +654,7 @@ export default function App() {
       .catch((e) => {
         if (cancelled) return;
         setLspStatus("rust-analyzer: error");
-        log(`No se pudo iniciar rust-analyzer: ${e}`, "error");
+        log(t("No se pudo iniciar rust-analyzer: {0}", tErr(e)), "error");
       });
     return () => {
       cancelled = true;
@@ -688,8 +691,8 @@ export default function App() {
 
   // ---------- Proyecto ----------
   const openFolder = useCallback(async () => {
-    const dir = await open({ directory: true, title: "Abrir proyecto de Rust" });
-    if (typeof dir === "string") await openProject(dir).catch((e) => log(String(e), "error"));
+    const dir = await open({ directory: true, title: t("Abrir proyecto de Rust") });
+    if (typeof dir === "string") await openProject(dir).catch((e) => log(tErr(e), "error"));
   }, [openProject, log]);
 
   const createProject = useCallback(
@@ -704,7 +707,7 @@ export default function App() {
       const fromSample = start ? await api.sampleCreate(start.sample, parent, name, start.online) : null;
       if (fromSample && kind === "solution") {
         setShowNew(false);
-        log(`Solución creada desde el ejemplo «${start!.sample.nombre}»: ${fromSample.open}`, "success");
+        log(t("Solución creada desde el ejemplo «{0}»: {1}", start!.sample.nombre, fromSample.open), "success");
         await openSolution(fromSample.open);
         await openFile(fromSample.file).catch(() => {});
         return;
@@ -714,7 +717,7 @@ export default function App() {
         const dir = await join(parent, name);
         const file = await api.solutionCreate(dir, name, []);
         setShowNew(false);
-        log(`Solución creada: ${file}`, "success");
+        log(t("Solución creada: {0}", file), "success");
         await openSolution(file);
         return;
       }
@@ -722,13 +725,13 @@ export default function App() {
       const openDesigner = async () => {
         if (fromSample) {
           await openFile(fromSample.file).catch(() => {});
-          log(`Basado en el ejemplo «${start!.sample.nombre}»: lee los comentarios del código y pulsa F5 para ejecutarlo.`, "muted");
-          if (kind === "slint") log("La primera compilación de una ventana (Slint) tarda un par de minutos.", "muted");
+          log(t("Basado en el ejemplo «{0}»: lee los comentarios del código y pulsa F5 para ejecutarlo.", start!.sample.nombre), "muted");
+          if (kind === "slint") log(t("La primera compilación de una ventana (Slint) tarda un par de minutos."), "muted");
           return;
         }
         if (kind !== "slint") return;
         await openFile(await join(path, "ui", "app-window.slint"));
-        log("Ventana creada: diseña en app-window.slint y escribe el código en main.rs. La primera compilación de Slint tarda un poco.", "muted");
+        log(t("Ventana creada: diseña en app-window.slint y escribe el código en main.rs. La primera compilación de Slint tarda un poco."), "muted");
       };
       setShowNew(false);
       const sol = solutionRef.current;
@@ -741,15 +744,15 @@ export default function App() {
           setSolution(info);
           roots = info.projects.filter((p) => p.exists).map((p) => p.path);
         }
-        const kindName = { bin: "aplicación de consola", lib: "biblioteca", slint: "aplicación de ventana" }[kind];
-        log(`Proyecto agregado a la ${sol ? "solución" : "carpeta"}: ${name} (${kindName})`, "success");
+        const kindName = { bin: t("aplicación de consola"), lib: t("biblioteca"), slint: t("aplicación de ventana") }[kind];
+        log((sol ? t("Proyecto agregado a la solución: {0} ({1})") : t("Proyecto agregado a la carpeta: {0} ({1})")).replace("{0}", name).replace("{1}", kindName), "success");
         // Si aún no hay un ejecutable de inicio, el nuevo pasa a serlo.
         const prefer = kind !== "lib" && startupProject?.kind !== "bin" ? path : startupDir ?? undefined;
         await refreshProjects(roots, sol?.file ?? project, prefer);
         await openMainFile(path);
         await openDesigner();
         if (kind === "lib") {
-          log("Consejo: clic derecho sobre un proyecto → “Agregar referencia a proyecto…” para usar esta biblioteca.", "muted");
+          log(t("Consejo: clic derecho sobre un proyecto → “Agregar referencia a proyecto…” para usar esta biblioteca."), "muted");
         }
       } else {
         log(`Proyecto creado: ${path}`, "success");
@@ -764,7 +767,7 @@ export default function App() {
     try {
       setToolchain(await api.toolchainStatus());
     } catch (e) {
-      log(String(e), "error");
+      log(tErr(e), "error");
     }
   }, [log]);
 
@@ -776,7 +779,7 @@ export default function App() {
         if (out.trim()) log(out.trim(), "muted");
         log("✔ Herramientas instaladas", "success");
       } catch (e) {
-        log(String(e), "error");
+        log(tErr(e), "error");
       }
       await refreshToolchain();
     },
@@ -795,7 +798,7 @@ export default function App() {
         monaco.editor.getModel(monaco.Uri.file(manifest))?.setValue(text);
         setTabs((ts) => ts.map((t) => (t.path === manifest ? { ...t, content: text, saved: text } : t)));
       } else if (tab) {
-        log("Cargo.toml tiene cambios sin guardar en el editor; ciérralo y vuelve a abrirlo para ver la nueva dependencia.", "warning");
+        log(t("Cargo.toml tiene cambios sin guardar en el editor; ciérralo y vuelve a abrirlo para ver la nueva dependencia."), "warning");
       }
       lspRef.current?.reloadWorkspace();
     },
@@ -823,7 +826,7 @@ export default function App() {
 
   // Vigilar cambios en disco de la carpeta abierta (para el explorador).
   useEffect(() => {
-    if (roots.length) api.watchProject(roots).catch((e) => log(String(e), "error"));
+    if (roots.length) api.watchProject(roots).catch((e) => log(tErr(e), "error"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootsKey, log]);
 
@@ -882,14 +885,14 @@ export default function App() {
         .filter((p) => isInside(slintPath, p.dir))
         .sort((a, b) => b.dir.length - a.dir.length)[0];
       if (!owner) {
-        log("Este archivo .slint no está dentro de un proyecto de Rust.", "warning");
+        log(t("Este archivo .slint no está dentro de un proyecto de Rust."), "warning");
         return null;
       }
       const main = await join(owner.dir, "src", "main.rs");
       await openFile(main);
       const model = monaco.editor.getModel(monaco.Uri.file(main));
       if (!model) {
-        log(`No se encontró ${main}.`, "warning");
+        log(t("No se encontró {0}.", main), "warning");
         return null;
       }
       return { main, model };
@@ -904,7 +907,7 @@ export default function App() {
       const lines = r.model.getLinesContent();
       const i = lines.findIndex((l) => l.includes(`on_${callback}(`));
       if (i < 0) {
-        log(`No se encontró ui.on_${callback}(…) en main.rs. Puedes escribirlo a mano o volver a crear el evento.`, "warning");
+        log(t("No se encontró ui.on_{0}(…) en main.rs. Puedes escribirlo a mano o volver a crear el evento.", callback), "warning");
         return;
       }
       const body = lines.findIndex((l, j) => j > i && /move\s*\|/.test(l));
@@ -934,7 +937,7 @@ export default function App() {
         `${ind}    let ui_handle = ui.as_weak();`,
         `${ind}    move |${args}| {`,
         `${ind}        let ui = ui_handle.unwrap();`,
-        `${ind}        // Escribe aquí lo que debe pasar. Por ejemplo: ui.set_…(…);`,
+        `${ind}        // ${t("Escribe aquí lo que debe pasar. Por ejemplo: ui.set_…(…);")}`,
         `${ind}        ${print}`,
         `${ind}        let _ = ui;`,
         `${ind}    }`,
@@ -942,13 +945,13 @@ export default function App() {
         "",
       ].join("\n");
       if (runIdx < 0) {
-        log("No encontré `ui.run()` en main.rs. Pega este código antes de mostrar la ventana:", "warning");
+        log(t("No encontré `ui.run()` en main.rs. Pega este código antes de mostrar la ventana:"), "warning");
         log(snippet, "stdout");
         return;
       }
       r.model.pushEditOperations([], [{ range: new monaco.Range(runIdx + 1, 1, runIdx + 1, 1), text: snippet + "\n" }], () => null);
       setReveal({ path: r.main, line: runIdx + 6, column: ind.length + 9 });
-      log(`Evento conectado: ui.on_${callback}(…) en main.rs`, "success");
+      log(t("Evento conectado: ui.on_{0}(…) en main.rs", callback), "success");
     },
     [rustMainFor, gotoHandler, log],
   );
@@ -1018,8 +1021,8 @@ export default function App() {
       const crateRoot = entries.find((e) => e.name === "main.rs") ?? entries.find((e) => e.name === "lib.rs");
       if (!crateRoot) return;
       const yes = await ask(
-        `Para usar “${basename(path)}” hay que declararlo con \`mod ${stem};\` en ${crateRoot.name}. ¿Lo agrego?`,
-        { title: "Nuevo módulo", okLabel: "Agregar", cancelLabel: "No" },
+        t("Para usar “{0}” hay que declararlo con `mod {1};` en {2}. ¿Lo agrego?", basename(path), stem, crateRoot.name),
+        { title: t("Nuevo módulo"), okLabel: t("Agregar"), cancelLabel: t("No") },
       );
       if (!yes) return;
       const insert = (text: string) => {
@@ -1040,7 +1043,7 @@ export default function App() {
         const text = await api.readFile(crateRoot.path);
         await api.writeFile(crateRoot.path, insert(text));
       }
-      log(`Se agregó \`mod ${stem};\` a ${crateRoot.name}`, "success");
+      log(t("Se agregó `mod {0};` a {1}", stem, crateRoot.name), "success");
     },
     [project, startupDir, refreshProjects, openFile, log],
   );
@@ -1071,18 +1074,18 @@ export default function App() {
   );
 
   const openSolutionDialog = useCallback(async () => {
-    const file = await open({ title: "Abrir solución", filters: [{ name: "Solución de Raxorin Studio", extensions: ["rxsln"] }] });
-    if (typeof file === "string") await openSolution(file).catch((e) => log(String(e), "error"));
+    const file = await open({ title: t("Abrir solución"), filters: [{ name: t("Solución de Raxorin Studio"), extensions: ["rxsln"] }] });
+    if (typeof file === "string") await openSolution(file).catch((e) => log(tErr(e), "error"));
   }, [openSolution, log]);
 
   const askOpenSolution = useCallback(
     async (file: string) => {
-      const yes = await ask(`¿Abrir “${basename(file)}” como solución?`, {
-        title: "Solución de Raxorin Studio",
-        okLabel: "Abrir solución",
-        cancelLabel: "Editar como texto",
+      const yes = await ask(t("¿Abrir “{0}” como solución?", basename(file)), {
+        title: t("Solución de Raxorin Studio"),
+        okLabel: t("Abrir solución"),
+        cancelLabel: t("Editar como texto"),
       });
-      if (yes) await openSolution(file).catch((e) => log(String(e), "error"));
+      if (yes) await openSolution(file).catch((e) => log(tErr(e), "error"));
       else await openFile(file);
     },
     [openSolution, openFile, log],
@@ -1095,16 +1098,16 @@ export default function App() {
         if (action === "new-project") {
           setShowNew(true);
         } else if (action === "add-existing" && sol) {
-          const dir = await open({ directory: true, title: "Agregar proyecto existente (carpeta con Cargo.toml)" });
+          const dir = await open({ directory: true, title: t("Agregar proyecto existente (carpeta con Cargo.toml)") });
           if (typeof dir !== "string") return;
           await applySolution(await api.solutionAddProject(sol.file, dir));
-          log(`Proyecto agregado a la solución: ${basename(dir)}`, "success");
+          log(t("Proyecto agregado a la solución: {0}", basename(dir)), "success");
         } else if (action === "remove" && sol && path) {
-          const yes = await ask(`¿Quitar “${basename(path)}” de la solución? Sus archivos no se borran.`, {
-            title: "Quitar de la solución",
+          const yes = await ask(t("¿Quitar “{0}” de la solución? Sus archivos no se borran.", basename(path)), {
+            title: t("Quitar de la solución"),
             kind: "warning",
-            okLabel: "Quitar",
-            cancelLabel: "Cancelar",
+            okLabel: t("Quitar"),
+            cancelLabel: t("Cancelar"),
           });
           if (!yes) return;
           // Cerrar sus pestañas (sin borrar nada en disco).
@@ -1113,15 +1116,15 @@ export default function App() {
           setTabs(remaining);
           setActive((a) => (a && isInside(a, path) ? remaining[remaining.length - 1]?.path ?? null : a));
           await applySolution(await api.solutionRemoveProject(sol.file, path));
-          log(`Proyecto quitado de la solución: ${basename(path)}`, "muted");
+          log(t("Proyecto quitado de la solución: {0}", basename(path)), "muted");
         } else if (action === "edit-file" && sol) {
           await openFile(sol.file);
         } else if (action === "save-as" && project) {
           // Convertir la carpeta abierta en una solución con sus proyectos.
           const file = await save({
-            title: "Guardar como solución",
+            title: t("Guardar como solución"),
             defaultPath: await join(project, `${basename(project)}.rxsln`),
-            filters: [{ name: "Solución de Raxorin Studio", extensions: ["rxsln"] }],
+            filters: [{ name: t("Solución de Raxorin Studio"), extensions: ["rxsln"] }],
           });
           if (!file) return;
           const name = basename(file).replace(/\.rxsln$/, "");
@@ -1129,11 +1132,11 @@ export default function App() {
           const dirs = [...new Set(projectsRef.current.map((p) => dirname(p.workspaceManifest)))];
           const created = await api.solutionCreate(dirname(file), name, dirs);
           if (startupRef.current) await api.solutionSetStartup(created, startupRef.current);
-          log(`Solución creada: ${created}`, "success");
+          log(t("Solución creada: {0}", created), "success");
           await openSolution(created);
         }
       } catch (e) {
-        log(String(e), "error");
+        log(tErr(e), "error");
       }
     },
     [applySolution, openFile, openSolution, project, log],
@@ -1143,16 +1146,16 @@ export default function App() {
   const runTask = useCallback(
     async (task: Task, publish?: { dir: string; opts: PublishOptions }) => {
       if (!project) {
-        log("Abre o crea un proyecto primero.", "warning");
+        log(t("Abre o crea un proyecto primero."), "warning");
         return;
       }
       if (!startupProject) {
-        log("No hay un proyecto de inicio. Crea uno o elígelo en la barra de herramientas.", "warning");
+        log(t("No hay un proyecto de inicio. Crea uno o elígelo en la barra de herramientas."), "warning");
         return;
       }
       if (running) return;
       if (debugActive) {
-        log("Hay una sesión de depuración en curso. Detenla primero (Shift+F5).", "warning");
+        log(t("Hay una sesión de depuración en curso. Detenla primero (Shift+F5)."), "warning");
         return;
       }
       try {
@@ -1166,18 +1169,18 @@ export default function App() {
       setRunning(task);
       const target = publish ? projects.find((p) => p.dir === publish.dir) ?? startupProject : startupProject;
       if (projects.length > 1 || publish) log(`Proyecto: ${target.name}`, "muted");
-      if (task === "publish") log("Publicando en modo Release (optimizado)…", "muted");
-      else if (buildConfig === "release" && task !== "debug") log("Configuración: Release (optimizado)", "muted");
+      if (task === "publish") log(t("Publicando en modo Release (optimizado)…"), "muted");
+      else if (buildConfig === "release" && task !== "debug") log(t("Configuración: Release (optimizado)"), "muted");
       // Como en Visual Studio, "sin depurar" no se detiene en los puntos: avisarlo.
       const bps = bpStore.all().filter((b) => b.enabled && isInside(b.path, startupProject.dir)).length;
       if (task === "run" && bps > 0) {
-        log(`Aviso: tienes ${bps} punto(s) de interrupción, pero “Sin depurar” los ignora. Para que se detenga usa ▶ Depurar (F5).`, "warning");
+        log(t("Aviso: tienes {0} punto(s) de interrupción, pero “Sin depurar” los ignora. Para que se detenga usa ▶ Depurar (F5).", bps), "warning");
       }
       try {
         await api.startTask(target.dir, task, task === "run" && runExternal, buildConfig === "release", publish?.opts ?? null);
       } catch (err) {
         setRunning(null);
-        log(String(err), "error");
+        log(tErr(err), "error");
       }
     },
     [project, startupProject, projects, running, saveAll, log, runExternal, debugActive, bpStore, buildConfig],
@@ -1193,14 +1196,14 @@ export default function App() {
   }, []);
 
   const stop = useCallback(() => {
-    api.stopTask().catch((e) => log(String(e), "error"));
+    api.stopTask().catch((e) => log(tErr(e), "error"));
   }, [log]);
 
   const sendStdin = useCallback(
     (text: string) => {
       append({ text: text + "\n", kind: "input" });
       const send = debugActive ? api.debugStdinWrite(text) : api.sendStdin(text);
-      send.catch((e) => log(String(e), "error"));
+      send.catch((e) => log(tErr(e), "error"));
     },
     [append, log, debugActive],
   );
@@ -1211,16 +1214,16 @@ export default function App() {
     const runTo = target && typeof target.path === "string" && Number.isInteger(target.line) ? target : undefined;
     if (debugSnap.status === "stopped") return runTo ? debug.runToCursor(runTo.path, runTo.line) : debug.continue();
     if (debugActive || running) return;
-    if (!startupProject) return log("No hay un proyecto de inicio para depurar.", "warning");
-    if (startupProject.kind !== "bin") return log("Solo se pueden depurar aplicaciones, no bibliotecas.", "warning");
+    if (!startupProject) return log(t("No hay un proyecto de inicio para depurar."), "warning");
+    if (startupProject.kind !== "bin") return log(t("Solo se pueden depurar aplicaciones, no bibliotecas."), "warning");
     const info = debuggerInfo ?? (await api.debuggerInfo().catch(() => null));
     setDebuggerInfo(info);
     if (!info?.adapter) {
-      log("No se encontró el depurador (lldb-dap).", "warning");
+      log(t("No se encontró el depurador (lldb-dap)."), "warning");
       log("  macOS: ejecuta `xcode-select --install` · Linux: instala `lldb` (sudo apt install lldb) · Windows: instala LLVM.", "muted");
       return;
     }
-    if (runExternal) log("Al depurar, el programa usa el panel de salida (la entrada se escribe abajo).", "muted");
+    if (runExternal) log(t("Al depurar, el programa usa el panel de salida (la entrada se escribe abajo)."), "muted");
     pendingRunTo.current = runTo ?? null;
     await runTask("debug");
   }, [debugSnap.status, debug, debugActive, running, startupProject, debuggerInfo, runExternal, runTask, log]);
@@ -1244,9 +1247,9 @@ export default function App() {
     if (!dirty.length) return;
     const yes = await ask(
       dirty.length === 1
-        ? `“${dirty[0].name}” tiene cambios sin guardar. ¿Guardarlos?`
-        : `Hay ${dirty.length} archivos con cambios sin guardar. ¿Guardarlos?`,
-      { title: "Cambios sin guardar", kind: "warning", okLabel: "Guardar", cancelLabel: "No guardar" },
+        ? t("“{0}” tiene cambios sin guardar. ¿Guardarlos?", dirty[0].name)
+        : t("Hay {0} archivos con cambios sin guardar. ¿Guardarlos?", dirty.length),
+      { title: t("Cambios sin guardar"), kind: "warning", okLabel: t("Guardar"), cancelLabel: t("No guardar") },
     );
     if (yes) await saveAll();
   }, [saveAll]);
@@ -1260,19 +1263,19 @@ export default function App() {
 
   const newFile = useCallback(async () => {
     const dir = await suggestDir();
-    const path = await save({ title: "Nuevo archivo", defaultPath: dir ? await join(dir, "nuevo.rs") : "nuevo.rs" });
+    const path = await save({ title: t("Nuevo archivo"), defaultPath: dir ? await join(dir, "nuevo.rs") : "nuevo.rs" });
     if (!path) return;
     try {
       await api.createFile(path);
       await openFile(path);
       log(`Archivo creado: ${path}`, "success");
     } catch (e) {
-      log(String(e), "error");
+      log(tErr(e), "error");
     }
   }, [suggestDir, openFile, log]);
 
   const openFileDialog = useCallback(async () => {
-    const picked = await open({ title: "Abrir archivo", multiple: true, defaultPath: (await suggestDir()) ?? undefined });
+    const picked = await open({ title: t("Abrir archivo"), multiple: true, defaultPath: (await suggestDir()) ?? undefined });
     const files = Array.isArray(picked) ? picked : picked ? [picked] : [];
     for (const f of files) {
       if (f.endsWith(".rxsln")) await askOpenSolution(f);
@@ -1284,14 +1287,14 @@ export default function App() {
   const saveAs = useCallback(async () => {
     const tab = tabsRef.current.find((t) => t.path === active);
     if (!tab) return;
-    const target = await save({ title: "Guardar como", defaultPath: tab.path });
+    const target = await save({ title: t("Guardar como"), defaultPath: tab.path });
     if (!target) return;
     if (target === tab.path) return saveTab(tab).catch(() => {});
     const content = monaco.editor.getModel(monaco.Uri.file(tab.path))?.getValue() ?? tab.content;
     try {
       await api.writeFile(target, content);
     } catch (e) {
-      return log(String(e), "error");
+      return log(tErr(e), "error");
     }
     // Si el destino ya estaba abierto, se reemplaza por el contenido nuevo.
     const drop = [tab.path, target];
@@ -1300,7 +1303,7 @@ export default function App() {
     setTabs(remaining);
     for (const p of drop) monaco.editor.getModel(monaco.Uri.file(p))?.dispose();
     await openFile(target);
-    log(`Guardado como: ${target}`, "success");
+    log(t("Guardado como: {0}", target), "success");
   }, [active, saveTab, openFile, log]);
 
   const closeAllTabs = useCallback(async () => {
@@ -1333,7 +1336,7 @@ export default function App() {
     async (path: string) => {
       await offerSaveAll();
       (path.endsWith(".rxsln") ? openSolution(path) : openProject(path)).catch((e) => {
-        log(`No se pudo abrir ${path}: ${e}`, "error");
+        log(t("No se pudo abrir {0}: {1}", path, tErr(e)), "error");
         setRecent((r) => r.filter((x) => x !== path));
       });
     },
@@ -1387,8 +1390,10 @@ export default function App() {
       if (!dirty.length || !getSettings().confirmUnsaved) return;
       e.preventDefault();
       const yes = await ask(
-        `Hay ${dirty.length === 1 ? `cambios sin guardar en “${dirty[0].name}”` : `${dirty.length} archivos sin guardar`}. ¿Guardar antes de salir?`,
-        { title: "Salir de Raxorin Studio", kind: "warning", okLabel: "Guardar y salir", cancelLabel: "Salir sin guardar" },
+        dirty.length === 1
+          ? t("Hay cambios sin guardar en “{0}”. ¿Guardar antes de salir?", dirty[0].name)
+          : t("Hay {0} archivos sin guardar. ¿Guardar antes de salir?", dirty.length),
+        { title: t("Salir de Raxorin Studio"), kind: "warning", okLabel: t("Guardar y salir"), cancelLabel: t("Salir sin guardar") },
       );
       if (yes) {
         for (const t of tabsRef.current) if (t.content !== t.saved) await saveTab(t).catch(() => {});
@@ -1406,17 +1411,17 @@ export default function App() {
 
   const menus: Menu[] = [
     {
-      label: "Archivo",
+      label: t("Archivo"),
       items: [
-        { label: "Nuevo proyecto o solución…", icon: "new-folder", shortcut: "Mod+Shift+N", onClick: () => setShowNew(true) },
-        { label: "Nuevo archivo…", icon: "new-file", shortcut: "Mod+N", onClick: newFile, disabled: !project },
-        { label: "Ejemplos…", icon: "beaker", onClick: () => setShowSamples(true) },
+        { label: t("Nuevo proyecto o solución…"), icon: "new-folder", shortcut: "Mod+Shift+N", onClick: () => setShowNew(true) },
+        { label: t("Nuevo archivo…"), icon: "new-file", shortcut: "Mod+N", onClick: newFile, disabled: !project },
+        { label: t("Ejemplos…"), icon: "beaker", onClick: () => setShowSamples(true) },
         "sep",
-        { label: "Abrir archivo…", icon: "go-to-file", shortcut: "Mod+O", onClick: openFileDialog },
-        { label: "Abrir carpeta…", icon: "folder-opened", onClick: () => void offerSaveAll().then(openFolder) },
-        { label: "Abrir solución…", icon: "layers", onClick: () => void offerSaveAll().then(openSolutionDialog) },
+        { label: t("Abrir archivo…"), icon: "go-to-file", shortcut: "Mod+O", onClick: openFileDialog },
+        { label: t("Abrir carpeta…"), icon: "folder-opened", onClick: () => void offerSaveAll().then(openFolder) },
+        { label: t("Abrir solución…"), icon: "layers", onClick: () => void offerSaveAll().then(openSolutionDialog) },
         {
-          label: "Abrir reciente",
+          label: t("Abrir reciente"),
           icon: "history",
           submenu: recent.length
             ? [
@@ -1427,143 +1432,143 @@ export default function App() {
                   onClick: () => void openRecent(p),
                 })),
                 "sep" as const,
-                { label: "Borrar la lista", icon: "clear-all", onClick: clearRecent },
+                { label: t("Borrar la lista"), icon: "clear-all", onClick: clearRecent },
               ]
             : [],
         },
         "sep",
-        { label: "Guardar", icon: "save", shortcut: "Mod+S", onClick: saveCurrent, disabled: !curTab || (curTab.content === curTab.saved && !settings.formatOnSave) },
-        { label: "Guardar como…", icon: "save-as", shortcut: "Mod+Shift+S", onClick: saveAs, disabled: !curTab },
-        { label: "Guardar todo", icon: "save-all", shortcut: "Mod+Alt+S", onClick: () => void saveAll(), disabled: !tabs.some((t) => t.content !== t.saved) },
+        { label: t("Guardar"), icon: "save", shortcut: "Mod+S", onClick: saveCurrent, disabled: !curTab || (curTab.content === curTab.saved && !settings.formatOnSave) },
+        { label: t("Guardar como…"), icon: "save-as", shortcut: "Mod+Shift+S", onClick: saveAs, disabled: !curTab },
+        { label: t("Guardar todo"), icon: "save-all", shortcut: "Mod+Alt+S", onClick: () => void saveAll(), disabled: !tabs.some((t) => t.content !== t.saved) },
         "sep",
-        { label: "Cerrar pestaña", icon: "close", onClick: () => active && void closeTab(active), disabled: !curTab },
-        { label: "Cerrar todas las pestañas", icon: "close-all", onClick: () => void closeAllTabs(), disabled: !tabs.length },
-        { label: solution ? "Cerrar solución" : "Cerrar carpeta", icon: "folder", onClick: () => void closeWorkspace(), disabled: !project },
+        { label: t("Cerrar pestaña"), icon: "close", onClick: () => active && void closeTab(active), disabled: !curTab },
+        { label: t("Cerrar todas las pestañas"), icon: "close-all", onClick: () => void closeAllTabs(), disabled: !tabs.length },
+        { label: solution ? t("Cerrar solución") : t("Cerrar carpeta"), icon: "folder", onClick: () => void closeWorkspace(), disabled: !project },
         "sep",
-        { label: "Configuración…", icon: "settings-gear", shortcut: "Mod+,", onClick: () => setSettingsOpen(true) },
-        { label: "Salir", icon: "sign-out", onClick: () => void getCurrentWindow().close() },
+        { label: t("Configuración…"), icon: "settings-gear", shortcut: "Mod+,", onClick: () => setSettingsOpen(true) },
+        { label: t("Salir"), icon: "sign-out", onClick: () => void getCurrentWindow().close() },
       ],
     },
     {
-      label: "Editar",
+      label: t("Editar"),
       items: [
-        { label: "Deshacer", icon: "discard", shortcut: "Mod+Z", onClick: editorAction("undo"), disabled: !hasEditor },
-        { label: "Rehacer", icon: "redo", shortcut: "Mod+Shift+Z", onClick: editorAction("redo"), disabled: !hasEditor },
+        { label: t("Deshacer"), icon: "discard", shortcut: "Mod+Z", onClick: editorAction("undo"), disabled: !hasEditor },
+        { label: t("Rehacer"), icon: "redo", shortcut: "Mod+Shift+Z", onClick: editorAction("redo"), disabled: !hasEditor },
         "sep",
-        { label: "Buscar", icon: "search", shortcut: "Mod+F", onClick: editorAction("actions.find"), disabled: !hasEditor },
-        { label: "Reemplazar", icon: "replace", onClick: editorAction("editor.action.startFindReplaceAction"), disabled: !hasEditor },
-        { label: "Ir a la línea…", icon: "go-to-file", shortcut: "Ctrl+G", onClick: editorAction("editor.action.gotoLine"), disabled: !hasEditor },
+        { label: t("Buscar"), icon: "search", shortcut: "Mod+F", onClick: editorAction("actions.find"), disabled: !hasEditor },
+        { label: t("Reemplazar"), icon: "replace", onClick: editorAction("editor.action.startFindReplaceAction"), disabled: !hasEditor },
+        { label: t("Ir a la línea…"), icon: "go-to-file", shortcut: "Ctrl+G", onClick: editorAction("editor.action.gotoLine"), disabled: !hasEditor },
         "sep",
-        { label: "Comentar / descomentar línea", icon: "comment", shortcut: "Mod+/", onClick: editorAction("editor.action.commentLine"), disabled: !hasEditor },
-        { label: "Formatear documento", icon: "wand", shortcut: "Shift+Alt+F", onClick: format, disabled: !curTab || !lspReady || !curTab.path.endsWith(".rs") },
+        { label: t("Comentar / descomentar línea"), icon: "comment", shortcut: "Mod+/", onClick: editorAction("editor.action.commentLine"), disabled: !hasEditor },
+        { label: t("Formatear documento"), icon: "wand", shortcut: "Shift+Alt+F", onClick: format, disabled: !curTab || !lspReady || !curTab.path.endsWith(".rs") },
       ],
     },
     {
-      label: "Ver",
+      label: t("Ver"),
       items: [
-        { label: "Explorador", checked: sidebarVisible, shortcut: "Mod+B", onClick: () => setSidebarVisible((v) => !v) },
-        { label: "Panel inferior", checked: bottomVisible, shortcut: "Mod+J", onClick: () => setBottomVisible((v) => !v) },
-        { label: "Herramientas de diagnóstico", checked: diagOpen, onClick: () => setDiagOpen((o) => !o) },
+        { label: t("Explorador"), checked: sidebarVisible, shortcut: "Mod+B", onClick: () => setSidebarVisible((v) => !v) },
+        { label: t("Panel inferior"), checked: bottomVisible, shortcut: "Mod+J", onClick: () => setBottomVisible((v) => !v) },
+        { label: t("Herramientas de diagnóstico"), checked: diagOpen, onClick: () => setDiagOpen((o) => !o) },
         "sep",
-        { label: "Salida", icon: "output", onClick: () => { setBottomVisible(true); setBottomTab("output"); } },
-        { label: "Lista de errores", icon: "list-unordered", onClick: () => { setBottomVisible(true); setBottomTab("errors"); } },
-        { label: "Terminal", icon: "terminal", shortcut: "Ctrl+`", onClick: () => { setBottomVisible(true); setBottomTab("terminal"); } },
-        { label: "Puntos de interrupción", icon: "circle-filled", onClick: () => { setBottomVisible(true); setBottomTab("breakpoints"); } },
+        { label: t("Salida"), icon: "output", onClick: () => { setBottomVisible(true); setBottomTab("output"); } },
+        { label: t("Lista de errores"), icon: "list-unordered", onClick: () => { setBottomVisible(true); setBottomTab("errors"); } },
+        { label: t("Terminal"), icon: "terminal", shortcut: "Ctrl+`", onClick: () => { setBottomVisible(true); setBottomTab("terminal"); } },
+        { label: t("Puntos de interrupción"), icon: "circle-filled", onClick: () => { setBottomVisible(true); setBottomTab("breakpoints"); } },
         "sep",
         {
-          label: "Tema",
+          label: t("Tema"),
           icon: "color-mode",
           submenu: [
-            { label: "Oscuro", checked: themePref === "dark", onClick: () => setThemePref("dark") },
-            { label: "Claro", checked: themePref === "light", onClick: () => setThemePref("light") },
-            { label: "Según el sistema", checked: themePref === "system", onClick: () => setThemePref("system") },
+            { label: t("Oscuro"), checked: themePref === "dark", onClick: () => setThemePref("dark") },
+            { label: t("Claro"), checked: themePref === "light", onClick: () => setThemePref("light") },
+            { label: t("Según el sistema"), checked: themePref === "system", onClick: () => setThemePref("system") },
           ],
         },
-        { label: "Personalizar barra de herramientas…", icon: "settings", onClick: () => setCustomizeOpen(true) },
-        { label: "Restablecer tamaños de los paneles", icon: "discard", onClick: resetLayout },
+        { label: t("Personalizar barra de herramientas…"), icon: "settings", onClick: () => setCustomizeOpen(true) },
+        { label: t("Restablecer tamaños de los paneles"), icon: "discard", onClick: resetLayout },
       ],
     },
     {
-      label: "Proyecto",
+      label: t("Proyecto"),
       items: [
-        { label: "Compilar", icon: "tools", shortcut: "Mod+Shift+B", onClick: () => runTask("build"), disabled: noTask },
-        { label: "Revisar con Clippy", icon: "check-all", onClick: () => runTask("check"), disabled: noTask },
-        { label: "Ejecutar pruebas", icon: "beaker", onClick: () => runTask("test"), disabled: noTask },
-        { label: "Ejecutar sin depurar", icon: "play-circle", shortcut: "Mod+F5", onClick: () => runTask("run"), disabled: noTask },
-        { label: "Detener", icon: "debug-stop", shortcut: "Shift+F5", onClick: stop, disabled: running === null },
+        { label: t("Compilar"), icon: "tools", shortcut: "Mod+Shift+B", onClick: () => runTask("build"), disabled: noTask },
+        { label: t("Revisar con Clippy"), icon: "check-all", onClick: () => runTask("check"), disabled: noTask },
+        { label: t("Ejecutar pruebas"), icon: "beaker", onClick: () => runTask("test"), disabled: noTask },
+        { label: t("Ejecutar sin depurar"), icon: "play-circle", shortcut: "Mod+F5", onClick: () => runTask("run"), disabled: noTask },
+        { label: t("Detener"), icon: "debug-stop", shortcut: "Shift+F5", onClick: stop, disabled: running === null },
         "sep",
         {
-          label: "Configuración",
+          label: t("Configuración"),
           icon: "settings",
           submenu: [
-            { label: "Debug (rápido de compilar, para probar)", checked: buildConfig === "debug", onClick: () => setBuildConfig("debug") },
-            { label: "Release (optimizado, para entregar)", checked: buildConfig === "release", onClick: () => setBuildConfig("release") },
+            { label: t("Debug (rápido de compilar, para probar)"), checked: buildConfig === "debug", onClick: () => setBuildConfig("debug") },
+            { label: t("Release (optimizado, para entregar)"), checked: buildConfig === "release", onClick: () => setBuildConfig("release") },
           ],
         },
-        { label: "Publicar…", icon: "package", onClick: () => setPublishOpen(true), disabled: !project || running !== null || !projects.some((p) => p.kind === "bin") },
+        { label: t("Publicar…"), icon: "package", onClick: () => setPublishOpen(true), disabled: !project || running !== null || !projects.some((p) => p.kind === "bin") },
         "sep",
-        { label: "Administrar paquetes…", icon: "package", onClick: () => startupDir && setPackagesFor(startupDir), disabled: !startupProject },
+        { label: t("Administrar paquetes…"), icon: "package", onClick: () => startupDir && setPackagesFor(startupDir), disabled: !startupProject },
         {
-          label: "Proyecto de inicio",
+          label: t("Proyecto de inicio"),
           icon: "rocket",
           submenu: projects.map((p) => ({ label: p.name, checked: p.dir === startupDir, onClick: () => setStartup(p.dir) })),
         },
       ],
     },
     {
-      label: "Depurar",
+      label: t("Depurar"),
       items: [
-        { label: debugActive ? "Continuar" : "Iniciar depuración", icon: "debug-start", shortcut: "F5", onClick: () => (debugActive ? debug.continue() : void startDebug()), disabled: !debugActive && (noTask || startupProject?.kind !== "bin") },
-        { label: "Detener depuración", icon: "debug-stop", shortcut: "Shift+F5", onClick: () => void debug.stop(), disabled: !debugActive },
-        { label: "Reiniciar", icon: "debug-restart", shortcut: "Mod+Shift+F5", onClick: () => void debug.restart(), disabled: !debugActive },
+        { label: debugActive ? t("Continuar") : t("Iniciar depuración"), icon: "debug-start", shortcut: "F5", onClick: () => (debugActive ? debug.continue() : void startDebug()), disabled: !debugActive && (noTask || startupProject?.kind !== "bin") },
+        { label: t("Detener depuración"), icon: "debug-stop", shortcut: "Shift+F5", onClick: () => void debug.stop(), disabled: !debugActive },
+        { label: t("Reiniciar"), icon: "debug-restart", shortcut: "Mod+Shift+F5", onClick: () => void debug.restart(), disabled: !debugActive },
         "sep",
-        { label: "Paso a paso por procedimientos", icon: "debug-step-over", shortcut: "F10", onClick: debug.stepOver, disabled: debugSnap.status !== "stopped" },
-        { label: "Paso a paso por instrucciones", icon: "debug-step-into", shortcut: "F11", onClick: debug.stepInto, disabled: debugSnap.status !== "stopped" },
-        { label: "Paso a paso para salir", icon: "debug-step-out", shortcut: "Shift+F11", onClick: debug.stepOut, disabled: debugSnap.status !== "stopped" },
+        { label: t("Paso a paso por procedimientos"), icon: "debug-step-over", shortcut: "F10", onClick: debug.stepOver, disabled: debugSnap.status !== "stopped" },
+        { label: t("Paso a paso por instrucciones"), icon: "debug-step-into", shortcut: "F11", onClick: debug.stepInto, disabled: debugSnap.status !== "stopped" },
+        { label: t("Paso a paso para salir"), icon: "debug-step-out", shortcut: "Shift+F11", onClick: debug.stepOut, disabled: debugSnap.status !== "stopped" },
         "sep",
-        { label: "Alternar punto de interrupción", icon: "circle-filled", shortcut: "F9", onClick: toggleBreakpointAtCursor, disabled: !curTab?.path.endsWith(".rs") },
-        { label: "Nuevo punto de interrupción…", icon: "add", onClick: () => { const loc = cursorLocation(); setBpDraft({ path: loc?.path ?? "", line: loc?.line ?? 1 }); }, disabled: !project },
+        { label: t("Alternar punto de interrupción"), icon: "circle-filled", shortcut: "F9", onClick: toggleBreakpointAtCursor, disabled: !curTab?.path.endsWith(".rs") },
+        { label: t("Nuevo punto de interrupción…"), icon: "add", onClick: () => { const loc = cursorLocation(); setBpDraft({ path: loc?.path ?? "", line: loc?.line ?? 1 }); }, disabled: !project },
       ],
     },
     {
-      label: "Git",
+      label: t("Git"),
       items: git.status?.repo
         ? [
-            { label: "Confirmar cambios (commit)…", icon: "check", shortcut: "Mod+Shift+G", onClick: () => showGit("commit") },
+            { label: t("Confirmar cambios (commit)…"), icon: "check", shortcut: "Mod+Shift+G", onClick: () => showGit("commit") },
             "sep",
-            { label: "Pull (bajar cambios)", icon: "arrow-down", onClick: () => void git.ops.pull(), disabled: !git.status.remotes.length || !!git.busy },
-            { label: "Push (subir commits)", icon: "arrow-up", onClick: () => void git.ops.push(), disabled: !git.status.remotes.length || !git.status.hasCommits || !!git.busy },
-            { label: "Fetch (traer sin combinar)", icon: "cloud-download", onClick: () => void git.ops.fetch(), disabled: !git.status.remotes.length || !!git.busy },
+            { label: t("Pull (bajar cambios)"), icon: "arrow-down", onClick: () => void git.ops.pull(), disabled: !git.status.remotes.length || !!git.busy },
+            { label: t("Push (subir commits)"), icon: "arrow-up", onClick: () => void git.ops.push(), disabled: !git.status.remotes.length || !git.status.hasCommits || !!git.busy },
+            { label: t("Fetch (traer sin combinar)"), icon: "cloud-download", onClick: () => void git.ops.fetch(), disabled: !git.status.remotes.length || !!git.busy },
             "sep",
-            { label: "Nueva rama…", icon: "git-branch", onClick: () => showGit("new-branch"), disabled: !git.status.hasCommits },
-            { label: "Cambiar de rama…", icon: "git-compare", onClick: () => showGit("branches") },
+            { label: t("Nueva rama…"), icon: "git-branch", onClick: () => showGit("new-branch"), disabled: !git.status.hasCommits },
+            { label: t("Cambiar de rama…"), icon: "git-compare", onClick: () => showGit("branches") },
             "sep",
-            { label: "Guardar cambios temporalmente (stash)", icon: "archive", onClick: () => void git.ops.stash(false), disabled: !git.status.files.length },
-            { label: "Recuperar cambios guardados", icon: "unarchive", onClick: () => void git.ops.stash(true) },
+            { label: t("Guardar cambios temporalmente (stash)"), icon: "archive", onClick: () => void git.ops.stash(false), disabled: !git.status.files.length },
+            { label: t("Recuperar cambios guardados"), icon: "unarchive", onClick: () => void git.ops.stash(true) },
             "sep",
             githubUrl(git.status.remotes[0]?.url)
-              ? { label: "Abrir en GitHub", icon: "github", onClick: () => void openUrl(githubUrl(git.status!.remotes.find((r) => r.name === "origin")?.url ?? git.status!.remotes[0].url)!) }
-              : { label: "Publicar en GitHub…", icon: "cloud-upload", onClick: () => setGhPublishOpen(true), disabled: !git.status.hasCommits || git.status.remotes.length > 0 },
-            { label: "Clonar repositorio…", icon: "repo-clone", onClick: () => setCloneOpen(true) },
+              ? { label: t("Abrir en GitHub"), icon: "github", onClick: () => void openUrl(githubUrl(git.status!.remotes.find((r) => r.name === "origin")?.url ?? git.status!.remotes[0].url)!) }
+              : { label: t("Publicar en GitHub…"), icon: "cloud-upload", onClick: () => setGhPublishOpen(true), disabled: !git.status.hasCommits || git.status.remotes.length > 0 },
+            { label: t("Clonar repositorio…"), icon: "repo-clone", onClick: () => setCloneOpen(true) },
           ]
         : [
-            { label: "Inicializar repositorio", icon: "repo", onClick: () => git.untrackedRoots[0] && void git.ops.init(git.untrackedRoots[0]), disabled: !git.untrackedRoots.length },
-            { label: "Clonar repositorio…", icon: "repo-clone", onClick: () => setCloneOpen(true) },
+            { label: t("Inicializar repositorio"), icon: "repo", onClick: () => git.untrackedRoots[0] && void git.ops.init(git.untrackedRoots[0]), disabled: !git.untrackedRoots.length },
+            { label: t("Clonar repositorio…"), icon: "repo-clone", onClick: () => setCloneOpen(true) },
           ],
     },
     {
-      label: "Ayuda",
+      label: t("Ayuda"),
       items: [
-        { label: "Documentación", icon: "book", shortcut: "F1", onClick: () => void openUrl("https://raxorin.dev") },
-        { label: "Ejemplos…", icon: "beaker", onClick: () => setShowSamples(true) },
+        { label: t("Documentación"), icon: "book", shortcut: "F1", onClick: () => void openUrl("https://raxorin.dev") },
+        { label: t("Ejemplos…"), icon: "beaker", onClick: () => setShowSamples(true) },
         "sep",
-        { label: "Repositorio en GitHub", icon: "github", onClick: () => void openUrl(GITHUB_URL) },
-        { label: "Reportar un problema", icon: "bug", onClick: () => void openUrl(GITHUB_URL + "/issues/new") },
-        { label: "Licencia (MIT)", icon: "law", onClick: () => setAboutOpen(true) },
-        { label: "Buscar actualizaciones…", icon: "cloud-download", onClick: () => void updates.check(true) },
-        { label: "Herramientas necesarias…", icon: "tools", onClick: () => setSetupOpen("manual") },
+        { label: t("Repositorio en GitHub"), icon: "github", onClick: () => void openUrl(GITHUB_URL) },
+        { label: t("Reportar un problema"), icon: "bug", onClick: () => void openUrl(GITHUB_URL + "/issues/new") },
+        { label: t("Licencia (MIT)"), icon: "law", onClick: () => setAboutOpen(true) },
+        { label: t("Buscar actualizaciones…"), icon: "cloud-download", onClick: () => void updates.check(true) },
+        { label: t("Herramientas necesarias…"), icon: "tools", onClick: () => setSetupOpen("manual") },
         "sep",
-        { label: "Acerca de Raxorin Studio", icon: "info", onClick: () => setAboutOpen(true) },
+        { label: t("Acerca de Raxorin Studio"), icon: "info", onClick: () => setAboutOpen(true) },
       ],
     },
   ];
@@ -1630,7 +1635,7 @@ export default function App() {
   const openPathRef = useRef<(p: string) => void>(() => {});
   openPathRef.current = (p: string) => {
     api.takePendingOpen().catch(() => null);
-    (p.endsWith(".rxsln") ? openSolution(p) : openProject(p)).catch((e) => log(String(e), "error"));
+    (p.endsWith(".rxsln") ? openSolution(p) : openProject(p)).catch((e) => log(tErr(e), "error"));
   };
   useEffect(() => {
     const un = listen<string>("open-path", (e) => openPathRef.current(e.payload));
@@ -1648,11 +1653,11 @@ export default function App() {
         if (!loc.needsMove) return;
         const yes = await ask(
           loc.reason === "dmg"
-            ? "Raxorin Studio se está ejecutando desde el instalador (.dmg), así que no está instalada: no aparece en Aplicaciones ni en Launchpad, se cierra al expulsar el disco y no se puede actualizar.\n\n¿La muevo a la carpeta Aplicaciones? Se volverá a abrir desde allí."
-            : "Raxorin Studio no está en la carpeta Aplicaciones, así que macOS la ejecuta desde una copia temporal y no se puede actualizar.\n\n¿La muevo a la carpeta Aplicaciones? Se volverá a abrir desde allí.",
-          { title: "Instalar Raxorin Studio", kind: "info", okLabel: "Mover a Aplicaciones", cancelLabel: "Ahora no" },
+            ? t("Raxorin Studio se está ejecutando desde el instalador (.dmg), así que no está instalada: no aparece en Aplicaciones ni en Launchpad, se cierra al expulsar el disco y no se puede actualizar.\n\n¿La muevo a la carpeta Aplicaciones? Se volverá a abrir desde allí.")
+            : t("Raxorin Studio no está en la carpeta Aplicaciones, así que macOS la ejecuta desde una copia temporal y no se puede actualizar.\n\n¿La muevo a la carpeta Aplicaciones? Se volverá a abrir desde allí."),
+          { title: t("Instalar Raxorin Studio"), kind: "info", okLabel: t("Mover a Aplicaciones"), cancelLabel: t("Ahora no") },
         );
-        if (yes) await api.moveToApplications().catch((e) => void message(String(e), { title: "No se pudo mover", kind: "error" }));
+        if (yes) await api.moveToApplications().catch((e) => void message(tErr(e), { title: t("No se pudo mover"), kind: "error" }));
       })
       .catch(() => {});
     refreshToolchain();
@@ -1673,7 +1678,7 @@ export default function App() {
       .catch(() => null)
       .then((pending) => {
         const target = pending ?? (getSettings().reopenLast ? last : null);
-        if (target) (target.endsWith(".rxsln") ? openSolution(target) : openProject(target)).catch((e) => log(String(e), "error"));
+        if (target) (target.endsWith(".rxsln") ? openSolution(target) : openProject(target)).catch((e) => log(tErr(e), "error"));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1704,7 +1709,7 @@ export default function App() {
           range: new monaco.Range(line, 1, line, 1),
           options: {
             glyphMarginClassName: "bp-glyph hint",
-            glyphMarginHoverMessage: { value: "Clic: agregar punto de interrupción · Clic derecho: condicional o mensaje" },
+            glyphMarginHoverMessage: { value: t("Clic: agregar punto de interrupción · Clic derecho: condicional o mensaje") },
           },
         },
       ]);
@@ -1730,13 +1735,13 @@ export default function App() {
           if (loc && isRust()) actions.current.openBreakpointDialog(loc.path, loc.line, kind);
         },
       });
-    addBp("raxorin.bp.add", "Agregar punto de interrupción…", 1);
-    addBp("raxorin.bp.cond", "Agregar punto de interrupción condicional…", 2, "condition");
-    addBp("raxorin.bp.log", "Agregar punto de registro (mensaje sin detenerse)…", 3, "log");
+    addBp("raxorin.bp.add", t("Agregar punto de interrupción…"), 1);
+    addBp("raxorin.bp.cond", t("Agregar punto de interrupción condicional…"), 2, "condition");
+    addBp("raxorin.bp.log", t("Agregar punto de registro (mensaje sin detenerse)…"), 3, "log");
     // Como "Agregar inspección" de Visual Studio: la selección o la variable bajo el cursor.
     editor.addAction({
       id: "raxorin.addWatch",
-      label: "Agregar a Inspección",
+      label: t("Agregar a Inspección"),
       contextMenuGroupId: "0_debug",
       contextMenuOrder: 0,
       keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.F9],
@@ -1763,7 +1768,7 @@ export default function App() {
     });
     editor.addAction({
       id: "raxorin.runToCursor",
-      label: "Ejecutar hasta el cursor",
+      label: t("Ejecutar hasta el cursor"),
       contextMenuGroupId: "0_debug",
       contextMenuOrder: 4,
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.F10],
@@ -1889,7 +1894,7 @@ export default function App() {
               return true;
             } catch (e) {
               setRunning(null);
-              log(String(e), "error");
+              log(tErr(e), "error");
               return false;
             }
           }}
@@ -1905,7 +1910,7 @@ export default function App() {
         <CloneDialog
           defaultParent={homeProjects}
           onCloned={(dir) => {
-            log(`Repositorio clonado en ${dir}`, "success");
+            log(t("Repositorio clonado en {0}", dir), "success");
             void offerSaveAll().then(() => openProject(dir));
           }}
           onClose={() => setCloneOpen(false)}
@@ -1913,7 +1918,7 @@ export default function App() {
       )}
       {ghPublishOpen && (
         <PublishGitHubDialog
-          defaultName={solution?.name ?? basename(git.repo ?? project ?? "proyecto")}
+          defaultName={solution?.name ?? basename(git.repo ?? project ?? t("proyecto"))}
           onPublish={(name, priv, desc) => git.ops.publishGitHub(name, priv, desc)}
           onClose={() => setGhPublishOpen(false)}
         />
@@ -1940,11 +1945,11 @@ export default function App() {
         <>
         <aside className="sidebar" style={{ width: sidebarSize.size }}>
           <div className="side-tabs" role="tablist">
-            <button role="tab" aria-selected={sideView === "explorer"} className={sideView === "explorer" ? "active" : ""} onClick={() => setSideView("explorer")} title="Explorador (Ctrl/⌘+Shift+E)">
-              <Codicon name="files" /> Explorador
+            <button role="tab" aria-selected={sideView === "explorer"} className={sideView === "explorer" ? "active" : ""} onClick={() => setSideView("explorer")} title={t("Explorador (Ctrl/⌘+Shift+E)")}>
+              <Codicon name="files" /> {" "}{t("Explorador")}
             </button>
-            <button role="tab" aria-selected={sideView === "git"} className={sideView === "git" ? "active" : ""} onClick={() => setSideView("git")} title="Git: cambios, commits y ramas (Ctrl/⌘+Shift+G)">
-              <Codicon name="source-control" /> Git
+            <button role="tab" aria-selected={sideView === "git"} className={sideView === "git" ? "active" : ""} onClick={() => setSideView("git")} title={t("Git: cambios, commits y ramas (Ctrl/⌘+Shift+G)")}>
+              <Codicon name="source-control" /> {" "}{t("Git")}
               {!!git.status?.files.length && <span className="count">{git.status.files.length}</span>}
             </button>
           </div>
@@ -2075,19 +2080,19 @@ export default function App() {
               <Codicon name={debugSnap.status === "stopped" ? "debug-pause" : "debug-alt"} />
               {debugSnap.status === "stopped"
                 ? `Depurando — ${debugSnap.description ?? "detenido"}`
-                : debugSnap.status === "starting" ? "Iniciando el depurador…" : "Depurando — en ejecución"}
+                : debugSnap.status === "starting" ? t("Iniciando el depurador…") : t("Depurando — en ejecución")}
             </>
           ) : (
             <>
               {running ? <Codicon name="loading" spin /> : <Codicon name="check" />}
-              {running ? TASK_LABEL[running] ?? (running.startsWith("setup:") ? "Instalando herramientas…" : "Trabajando…") : "Listo"}
+              {running ? TASK_LABEL[running] ?? (running.startsWith("setup:") ? t("Instalando herramientas…") : t("Trabajando…")) : t("Listo")}
             </>
           )}
         </span>
         {git.status?.repo && (
-          <button className="status-btn" title="Git: ramas y cambios" onClick={() => showGit("branches")}>
+          <button className="status-btn" title={t("Git: ramas y cambios")} onClick={() => showGit("branches")}>
             <Codicon name={git.busy ? "sync" : "git-branch"} spin={!!git.busy} />
-            {git.status.detached ? "(sin rama)" : git.status.branch}
+            {git.status.detached ? t("(sin rama)") : git.status.branch}
             {git.status.files.length > 0 && "*"}
             {(git.status.behind > 0 || git.status.ahead > 0) && (
               <span className="status-sync">
@@ -2096,12 +2101,12 @@ export default function App() {
             )}
           </button>
         )}
-        <span className="status-path">{project ?? "Sin proyecto"}</span>
+        <span className="status-path">{project ?? t("Sin proyecto")}</span>
         <span className="spacer" />
         {project && lspStatus && (
           <button
             className="status-btn"
-            title="Reiniciar rust-analyzer"
+            title={t("Reiniciar rust-analyzer")}
             onClick={() => setLspGeneration((g) => g + 1)}
           >
             <Codicon
@@ -2112,12 +2117,12 @@ export default function App() {
           </button>
         )}
         {(updates.status === "available" || updates.status === "installed") && !updates.open && (
-          <button className="status-btn status-update" title="Ver la actualización" onClick={() => updates.setOpen(true)}>
+          <button className="status-btn status-update" title={t("Ver la actualización")} onClick={() => updates.setOpen(true)}>
             <Codicon name="cloud-download" />
-            {updates.status === "installed" ? "Reiniciar para actualizar" : `Versión ${updates.info?.version} disponible`}
+            {updates.status === "installed" ? t("Reiniciar para actualizar") : t("Versión {0} disponible", updates.info?.version)}
           </button>
         )}
-        {activeTab && <span>Ln {cursor.line}, Col {cursor.column}</span>}
+        {activeTab && <span>{t("Ln")}{" "}{cursor.line}{t(", Col")}{" "}{cursor.column}</span>}
         <span>{toolchain?.cargo ?? ""}</span>
       </footer>
       {bpDraft && (
@@ -2130,7 +2135,7 @@ export default function App() {
             bpStore.upsert(path, line, patch);
             const short = `${basename(path)}:${line}`;
             log(
-              patch.logMessage ? `Punto de registro en ${short}` : patch.condition ? `Punto condicional en ${short} (si ${patch.condition})` : patch.hitCondition ? `Punto en ${short} (a partir de la vuelta ${patch.hitCondition})` : `Punto de interrupción en ${short}`,
+              patch.logMessage ? t("Punto de registro en {0}", short) : patch.condition ? t("Punto condicional en {0} (si {1})", short, patch.condition) : patch.hitCondition ? t("Punto en {0} (a partir de la vuelta {1})", short, patch.hitCondition) : t("Punto de interrupción en {0}", short),
               "muted",
             );
           }}
@@ -2146,8 +2151,8 @@ export default function App() {
             setShowSamples(false);
             await (sample.tipo === "solucion" ? openSolution(created.open) : openProject(created.open));
             await openFile(created.file).catch(() => {});
-            log(`Ejemplo «${sample.nombre}» creado en ${created.open}. Pulsa F5 para ejecutarlo.`, "success");
-            if (sample.tipo === "ventana") log("La primera compilación de una ventana (Slint) tarda un par de minutos.", "muted");
+            log(t("Ejemplo «{0}» creado en {1}. Pulsa F5 para ejecutarlo.", sample.nombre, created.open), "success");
+            if (sample.tipo === "ventana") log(t("La primera compilación de una ventana (Slint) tarda un par de minutos."), "muted");
           }}
         />
       )}
@@ -2198,43 +2203,43 @@ function Welcome({
     <div className="welcome">
       <img className="welcome-logo" src={raxorinMark} height={96} alt="" />
       <h1 className="wordmark">
-        <span className="brand-accent">Raxorin</span> Studio
+        <span className="brand-accent">{t("Raxorin")}</span> {" "}{t("Studio")}
       </h1>
-      <p className="muted">Crea programas en Rust de forma fácil.</p>
+      <p className="muted">{t("Crea programas en Rust de forma fácil.")}</p>
       <div className="welcome-actions">
         <button className="welcome-card" onClick={onNew}>
           <Codicon name="new-file" className="welcome-icon" />
-          <strong>Nuevo proyecto</strong>
-          <small>Consola, ventana o biblioteca</small>
+          <strong>{t("Nuevo proyecto")}</strong>
+          <small>{t("Consola, ventana o biblioteca")}</small>
         </button>
         <button className="welcome-card" onClick={onOpen}>
           <Codicon name="folder-opened" className="welcome-icon" />
-          <strong>Abrir proyecto</strong>
-          <small>Una carpeta con Cargo.toml</small>
+          <strong>{t("Abrir proyecto")}</strong>
+          <small>{t("Una carpeta con Cargo.toml")}</small>
         </button>
         <button className="welcome-card" onClick={onOpenSolution}>
           <Codicon name="layers" className="welcome-icon" />
-          <strong>Abrir solución</strong>
-          <small>Varios proyectos (.rxsln)</small>
+          <strong>{t("Abrir solución")}</strong>
+          <small>{t("Varios proyectos (.rxsln)")}</small>
         </button>
         <button className="welcome-card" onClick={onSamples}>
           <Codicon name="beaker" className="welcome-icon" />
-          <strong>Ejemplos</strong>
-          <small>Aplicaciones listas para probar</small>
+          <strong>{t("Ejemplos")}</strong>
+          <small>{t("Aplicaciones listas para probar")}</small>
         </button>
       </div>
       <div className="shortcuts muted">
-        <div><kbd>F5</kbd> Depurar</div>
-        <div><kbd>Ctrl/⌘</kbd>+<kbd>F5</kbd> Ejecutar sin depurar</div>
-        <div><kbd>F9</kbd> Punto de interrupción</div>
-        <div><kbd>F10</kbd> / <kbd>F11</kbd> Paso a paso</div>
-        <div><kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> Compilar</div>
-        <div><kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> Guardar</div>
-        <div><kbd>Shift</kbd>+<kbd>F5</kbd> Detener</div>
-        <div><kbd>F12</kbd> Ir a definición</div>
-        <div><kbd>F2</kbd> Renombrar</div>
-        <div><kbd>Ctrl/⌘</kbd>+<kbd>.</kbd> Acciones rápidas</div>
-        <div><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> Formatear</div>
+        <div><kbd>F5</kbd> {" "}{t("Depurar")}</div>
+        <div><kbd>Ctrl/⌘</kbd>+<kbd>F5</kbd> {" "}{t("Ejecutar sin depurar")}</div>
+        <div><kbd>F9</kbd> {" "}{t("Punto de interrupción")}</div>
+        <div><kbd>F10</kbd> / <kbd>F11</kbd> {" "}{t("Paso a paso")}</div>
+        <div><kbd>Ctrl/⌘</kbd>+<kbd>{t("Shift")}</kbd>+<kbd>B</kbd> {" "}{t("Compilar")}</div>
+        <div><kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> {" "}{t("Guardar")}</div>
+        <div><kbd>{t("Shift")}</kbd>+<kbd>F5</kbd> {" "}{t("Detener")}</div>
+        <div><kbd>F12</kbd> {" "}{t("Ir a definición")}</div>
+        <div><kbd>F2</kbd> {" "}{t("Renombrar")}</div>
+        <div><kbd>Ctrl/⌘</kbd>+<kbd>.</kbd> {" "}{t("Acciones rápidas")}</div>
+        <div><kbd>{t("Shift")}</kbd>+<kbd>{t("Alt")}</kbd>+<kbd>F</kbd> {" "}{t("Formatear")}</div>
       </div>
     </div>
   );

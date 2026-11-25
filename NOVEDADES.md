@@ -1,26 +1,23 @@
-## Diseñador visual: más controles, opciones y eventos
-- **Controles nuevos**:
-  - **Botón estándar** (OK, Cancel, Apply…).
-  - **Lista** (StandardListView), con su evento *al cambiar la selección*.
-  - **Área clicable** (TouchArea): convierte cualquier zona en un botón, con *clic*, *doble clic* y el cursor que elijas.
-  - **Temporizador** (Timer): ejecuta un evento cada cierto tiempo. Aparece en la nueva bandeja **Componentes**, debajo del lienzo.
-- **Opciones nuevas**:
-  - **Texto:** fuente, cursiva, espaciado entre letras, "…" cuando no cabe y contorno.
-  - **Panel:** sombra y recortar el contenido.
-  - **Botón:** ícono.
-  - **Imagen:** colorear (para íconos) y escalado pixelado.
-  - **Deslizador:** vertical.
-  - **Número:** tamaño del paso.
-  - **Ventana:** ícono, siempre encima, sin marco y fuente por defecto.
-  - **Todos los controles:** opacidad. **Dentro de los layouts:** tamaños mínimos y máximos.
-- **Eventos nuevos**: deslizador *al soltar*, área con desplazamiento *al desplazarse*, más los de la lista, el área clicable y el temporizador.
-- Todas las propiedades y eventos del diseñador se comprueban con el compilador de Slint.
-- Nuevo ejemplo **Galería de controles** (*Archivo → Ejemplos…*).
-
-## Documentación
-- Nueva sección **Ventanas con Slint** en [raxorin.dev](https://raxorin.dev/slint/introduccion/): conectar con Rust, listas y modelos, animaciones y estados, estilos y temas, y la referencia de todos los controles.
+## Raxorin Studio en inglés
+- **La interfaz está en español y en inglés.** Sigue el idioma del sistema y se cambia en **Configuración → Apariencia → Idioma**.
+- También se traducen las plantillas de proyecto nuevo, las fichas del hub de ejemplos, el catálogo del diseñador y los mensajes del IDE en el panel Salida.
+- La documentación de [raxorin.dev](https://raxorin.dev/en/) está completa en inglés.
 
 ## Instalar
 - macOS: `.dmg` (Apple Silicon o Intel). Arrastra la app a Aplicaciones.
 - Windows: `_x64-setup.exe` o `.msi` (x64), `_arm64-setup.exe` (ARM64)
 - Linux: `.AppImage` (se actualiza sola), `.deb` o `.rpm`
+
+---
+
+<!-- English -->
+
+## Raxorin Studio in English
+- **The interface is now available in English and Spanish.** It follows your system's language and can be changed in **Settings → Appearance → Language**.
+- New project templates, the samples hub cards, the designer catalog and the IDE's messages in the Output panel are translated too.
+- The documentation at [raxorin.dev](https://raxorin.dev/en/) is fully available in English.
+
+## Install
+- macOS: `.dmg` (Apple Silicon or Intel). Drag the app to Applications.
+- Windows: `_x64-setup.exe` or `.msi` (x64), `_arm64-setup.exe` (ARM64)
+- Linux: `.AppImage` (updates itself), `.deb` or `.rpm`

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Diagnostic, OutputChunk, Task } from "../api";
 import { relative } from "../util";
 import { Codicon } from "./Icon";
+import { t } from "../i18n/index.ts";
 
 export type BottomTab = "output" | "errors" | "terminal" | "debug" | "console" | "breakpoints";
 
@@ -53,41 +54,47 @@ export default function BottomPanel(p: Props) {
       <div className="panel-tabs">
         <button className={p.tab === "output" ? "active" : ""} onClick={() => p.setTab("output")}>
           <Codicon name="output" />
-          Salida
+          
+          {t("Salida")}
         </button>
         <button className={p.tab === "errors" ? "active" : ""} onClick={() => p.setTab("errors")}>
           <Codicon name="list-unordered" />
-          Lista de errores
+          
+          {t("Lista de errores")}
           <span className="badge err"><Codicon name="error" /> {errors}</span>
           <span className="badge warn"><Codicon name="warning" /> {warnings}</span>
         </button>
         <button className={p.tab === "terminal" ? "active" : ""} onClick={() => p.setTab("terminal")}>
           <Codicon name="terminal" />
-          Terminal
+          
+          {t("Terminal")}
         </button>
         {p.debugActive && (
           <button className={p.tab === "debug" ? "active" : ""} onClick={() => p.setTab("debug")}>
             <Codicon name="debug-alt" />
-            Depuración
+            
+            {t("Depuración")}
           </button>
         )}
         {p.debugActive && (
           <button className={p.tab === "console" ? "active" : ""} onClick={() => p.setTab("console")}>
             <Codicon name="debug-console" />
-            Consola de depuración
+            
+            {t("Consola de depuración")}
           </button>
         )}
         <button className={p.tab === "breakpoints" ? "active" : ""} onClick={() => p.setTab("breakpoints")}>
           <Codicon name="circle-filled" className="bp-tab-icon" />
-          Puntos de interrupción
+          
+          {t("Puntos de interrupción")}
           {p.breakpointCount > 0 && <span className="count">{p.breakpointCount}</span>}
         </button>
         <div className="spacer" />
         {p.tab === "output" && (
-          <button className="icon-btn" onClick={p.onClear} title="Limpiar salida"><Codicon name="clear-all" /></button>
+          <button className="icon-btn" onClick={p.onClear} title={t("Limpiar salida")}><Codicon name="clear-all" /></button>
         )}
         {p.onHide && (
-          <button className="icon-btn" onClick={p.onHide} title="Ocultar panel (Ctrl/⌘+J)"><Codicon name="chevron-down" /></button>
+          <button className="icon-btn" onClick={p.onHide} title={t("Ocultar panel (Ctrl/⌘+J)")}><Codicon name="chevron-down" /></button>
         )}
       </div>
 
@@ -116,7 +123,7 @@ export default function BottomPanel(p: Props) {
               setInput("");
             }}
           >
-            <span className="stdin-label"><Codicon name="chevron-right" /> Entrada</span>
+            <span className="stdin-label"><Codicon name="chevron-right" /> {" "}{t("Entrada")}</span>
             <input
               ref={inputRef}
               value={input}
@@ -124,8 +131,8 @@ export default function BottomPanel(p: Props) {
               disabled={!programRunning}
               placeholder={
                 programRunning
-                  ? "Escribe y presiona Enter para enviarlo al programa"
-                  : "Disponible mientras el programa se ejecuta"
+                  ? t("Escribe y presiona Enter para enviarlo al programa")
+                  : t("Disponible mientras el programa se ejecuta")
               }
             />
           </form>
@@ -133,21 +140,21 @@ export default function BottomPanel(p: Props) {
       ) : (
         <div className="errors">
           {p.diagnostics.length === 0 ? (
-            <div className="muted pad"><Codicon name="pass" className="ok" /> No hay errores ni advertencias.</div>
+            <div className="muted pad"><Codicon name="pass" className="ok" /> {" "}{t("No hay errores ni advertencias.")}</div>
           ) : (
             <table>
               <thead>
                 <tr>
                   <th style={{ width: 28 }}></th>
-                  <th style={{ width: 70 }}>Código</th>
-                  <th>Descripción</th>
-                  <th style={{ width: 200 }}>Archivo</th>
-                  <th style={{ width: 70 }}>Línea</th>
+                  <th style={{ width: 70 }}>{t("Código")}</th>
+                  <th>{t("Descripción")}</th>
+                  <th style={{ width: 200 }}>{t("Archivo")}</th>
+                  <th style={{ width: 70 }}>{t("Línea")}</th>
                 </tr>
               </thead>
               <tbody>
                 {p.diagnostics.map((d, i) => (
-                  <tr key={i} onClick={() => p.onGoto(d)} title="Clic para ir al error">
+                  <tr key={i} onClick={() => p.onGoto(d)} title={t("Clic para ir al error")}>
                     <td>{d.level.startsWith("error") ? <Codicon name="error" className="err" /> : <Codicon name="warning" className="warn" />}</td>
                     <td className="muted">{d.code ?? ""}</td>
                     <td>{d.message}</td>

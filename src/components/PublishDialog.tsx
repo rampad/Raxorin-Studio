@@ -4,6 +4,7 @@ import { join } from "@tauri-apps/api/path";
 import { api, type CrossStatus, type GithubPublishInfo, type ProjectInfo, type PublishOptions, type RustTargets } from "../api";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Codicon, FileIcon } from "./Icon";
+import { t, tErr } from "../i18n/index.ts";
 
 const KEY = "raxorinstudio.publish";
 /** Windows de 64 bits, compilable desde macOS/Linux con MinGW-w64. */
@@ -46,10 +47,10 @@ function ModeSwitch({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
   return (
     <div className="segmented">
       <button type="button" className={mode === "local" ? "active" : ""} onClick={() => setMode("local")}>
-        <Codicon name="device-desktop" /> En esta computadora
+        <Codicon name="device-desktop" /> {" "}{t("En esta computadora")}
       </button>
       <button type="button" className={mode === "github" ? "active" : ""} onClick={() => setMode("github")}>
-        <Codicon name="github" /> En GitHub (Windows, Linux y macOS)
+        <Codicon name="github" /> {" "}{t("En GitHub (Windows, Linux y macOS)")}
       </button>
     </div>
   );
@@ -124,20 +125,21 @@ export default function PublishDialog(props: Props) {
     <div className="modal-backdrop" onMouseDown={onClose}>
       <form className="modal publish" onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
         <h2>
-          <Codicon name="package" /> Publicar
+          <Codicon name="package" /> {" "}{t("Publicar")}
         </h2>
         <ModeSwitch mode={mode} setMode={setMode} />
         <p className="muted small">
-          Compila en modo <strong>Release</strong> (optimizado) y deja el ejecutable en una carpeta lista para copiar o
-          compartir. Quien lo use no necesita tener Rust instalado.
+          
+          {t("Compila en modo")}{" "}<strong>{t("Release")}</strong> {" "}{t("(optimizado) y deja el ejecutable en una carpeta lista para copiar o compartir. Quien lo use no necesita tener Rust instalado.")}
         </p>
 
         {!bins.length ? (
-          <div className="hint err">No hay proyectos ejecutables (de consola o ventana) para publicar.</div>
+          <div className="hint err">{t("No hay proyectos ejecutables (de consola o ventana) para publicar.")}</div>
         ) : (
           <>
             <label>
-              Proyecto
+              
+              {t("Proyecto")}
               <div className="publish-projects">
                 {bins.map((p) => (
                   <button type="button" key={p.dir} className={"template" + (dir === p.dir ? " selected" : "")} onClick={() => setDir(p.dir)}>
@@ -151,26 +153,28 @@ export default function PublishDialog(props: Props) {
             </label>
 
             <label>
-              Carpeta de destino
+              
+              {t("Carpeta de destino")}
               <div className="row">
                 <input className="grow" value={outDir} onChange={(e) => setOutDir(e.target.value)} spellCheck={false} />
                 <button
                   type="button"
                   className="btn"
                   onClick={async () => {
-                    const d = await open({ directory: true, title: "Carpeta de destino", defaultPath: outDir || dir });
+                    const d = await open({ directory: true, title: t("Carpeta de destino"), defaultPath: outDir || dir });
                     if (typeof d === "string") setOutDir(d);
                   }}
                 >
-                  <Codicon name="folder-opened" /> Elegir…
+                  <Codicon name="folder-opened" /> {" "}{t("Elegir…")}
                 </button>
               </div>
             </label>
 
             <label>
-              Plataforma
+              
+              {t("Plataforma")}
               <select value={validTarget ? target : ""} onChange={(e) => setTarget(e.target.value)}>
-                <option value="">Esta computadora{targets?.host ? ` — ${platformName(targets.host)}` : ""}</option>
+                <option value="">{t("Esta computadora")}{targets?.host ? ` — ${platformName(targets.host)}` : ""}</option>
                 {others.map((t) => (
                   <option key={t} value={t}>
                     {platformName(t)} — {t}
@@ -181,23 +185,23 @@ export default function PublishDialog(props: Props) {
             {target && validTarget && (
               <div className={"cross-status" + (ready ? " ok" : "")}>
                 {!cross ? (
-                  <span className="muted"><Codicon name="loading" spin /> Revisando…</span>
+                  <span className="muted"><Codicon name="loading" spin /> {" "}{t("Revisando…")}</span>
                 ) : ready ? (
-                  <span><Codicon name="pass" /> Listo para compilar para {platformName(target)}.</span>
+                  <span><Codicon name="pass" /> {" "}{t("Listo para compilar para")}{" "}{platformName(target)}.</span>
                 ) : (
                   <>
-                    <div>Para compilar para {platformName(target)} desde esta computadora falta:</div>
+                    <div>{t("Para compilar para")}{" "}{platformName(target)} {" "}{t("desde esta computadora falta:")}</div>
                     <ul>
-                      {!cross.rustTarget && <li>La plataforma de Rust <code>{target}</code></li>}
-                      {!cross.linkerFound && cross.linker && <li>El enlazador <code>{cross.linker}</code> (MinGW-w64)</li>}
+                      {!cross.rustTarget && <li>{t("La plataforma de Rust")}{" "}<code>{target}</code></li>}
+                      {!cross.linkerFound && cross.linker && <li>{t("El enlazador")}{" "}<code>{cross.linker}</code> {" "}{t("(MinGW-w64)")}</li>}
                     </ul>
                     {cross.manual && <div className="muted small">{cross.manual}</div>}
                     {cross.canInstall && (
                       <button type="button" className="btn" onClick={() => { onSetupTarget(dir, target); onClose(); }}>
-                        <Codicon name="cloud-download" /> Instalar soporte para {platformName(target).split(" ")[0]}
+                        <Codicon name="cloud-download" /> {" "}{t("Instalar soporte para")}{" "}{platformName(target).split(" ")[0]}
                       </button>
                     )}
-                    <div className="muted small">Se instala una sola vez (puede tardar unos minutos). Verás el progreso en la Salida.</div>
+                    <div className="muted small">{t("Se instala una sola vez (puede tardar unos minutos). Verás el progreso en la Salida.")}</div>
                   </>
                 )}
               </div>
@@ -205,11 +209,13 @@ export default function PublishDialog(props: Props) {
 
             <label className="check-line">
               <input type="checkbox" checked={zip} onChange={(e) => setZip(e.target.checked)} />
-              Crear también un archivo .zip
+              
+              {t("Crear también un archivo .zip")}
             </label>
             <label className="check-line">
               <input type="checkbox" checked={openAfter} onChange={(e) => setOpenAfter(e.target.checked)} />
-              Mostrar el resultado al terminar
+              
+              {t("Mostrar el resultado al terminar")}
             </label>
           </>
         )}
@@ -217,10 +223,11 @@ export default function PublishDialog(props: Props) {
         <div className="actions">
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>
-            Cancelar
+            
+            {t("Cancelar")}
           </button>
           <button type="submit" className="btn primary" disabled={!dir || !outDir || !ready}>
-            <Codicon name="package" /> Publicar
+            <Codicon name="package" /> {" "}{t("Publicar")}
           </button>
         </div>
       </form>
@@ -253,25 +260,25 @@ function GithubPublish({ bins, solution, workspace, startup, onShowGit, log, onC
         while (i.tags.includes(v)) v = v.replace(/(\d+)$/, (n) => String(Number(n) + 1));
         setTag(v);
       })
-      .catch((e) => setErr(String(e)));
+      .catch((e) => setErr(tErr(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, name, listKey]);
 
   const run = async (withTag: boolean) => {
-    setBusy(withTag ? "Subiendo la versión…" : "Escribiendo el workflow…");
+    setBusy(withTag ? t("Subiendo la versión…") : t("Escribiendo el workflow…"));
     setErr("");
     try {
       const res = await api.githubPublish(base, name, list, withTag ? tag.trim() : null);
       if (withTag) {
-        log(`Versión ${tag} subida: GitHub está compilando ${name} para Windows, Linux y macOS. Sigue el progreso en ${res}`, "success");
+        log(t("Versión {0} subida: GitHub está compilando {1} para Windows, Linux y macOS. Sigue el progreso en {2}", tag, name, res), "success");
         await openUrl(res);
         onClose();
       } else {
-        log(`Workflow escrito en ${res}. Confírmalo y súbelo (panel Git) para usarlo.`, "success");
+        log(t("Workflow escrito en {0}. Confírmalo y súbelo (panel Git) para usarlo.", res), "success");
         onClose();
       }
     } catch (e) {
-      setErr(String(e));
+      setErr(tErr(e));
     } finally {
       setBusy(null);
     }
@@ -284,18 +291,18 @@ function GithubPublish({ bins, solution, workspace, startup, onShowGit, log, onC
     <div className="modal-backdrop" onMouseDown={() => !busy && onClose()}>
       <div className="modal publish" onMouseDown={(e) => e.stopPropagation()}>
         <h2>
-          <Codicon name="package" /> Publicar
+          <Codicon name="package" /> {" "}{t("Publicar")}
         </h2>
         <ModeSwitch mode={mode} setMode={setMode} />
         <p className="muted small">
-          GitHub compila {solution ? <>todos los programas de la solución <strong>{solution.name}</strong></> : <>el programa</>} en
-          sus propias máquinas con Windows, Linux y macOS (Apple Silicon e Intel) y deja un .zip por sistema en una
-          versión (Release) del repositorio. Tarda unos minutos.
+          
+          {t("GitHub compila")}{" "}{solution ? <>{t("todos los programas de la solución")}{" "}<strong>{solution.name}</strong></> : <>{t("el programa")}</>} {" "}{t("en sus propias máquinas con Windows, Linux y macOS (Apple Silicon e Intel) y deja un .zip por sistema en una versión (Release) del repositorio. Tarda unos minutos.")}
         </p>
 
         {!solution && bins.length > 1 && (
           <label>
-            Programa
+            
+            {t("Programa")}
             <select value={dir} onChange={(e) => setDir(e.target.value)}>
               {bins.map((b) => <option key={b.dir} value={b.dir}>{b.name}</option>)}
             </select>
@@ -303,18 +310,18 @@ function GithubPublish({ bins, solution, workspace, startup, onShowGit, log, onC
         )}
 
         {!bins.length ? (
-          <div className="hint err">No hay programas ejecutables (de consola o ventana) para publicar.</div>
+          <div className="hint err">{t("No hay programas ejecutables (de consola o ventana) para publicar.")}</div>
         ) : !info && !err ? (
-          <div className="muted"><Codicon name="loading" spin /> Revisando el repositorio…</div>
+          <div className="muted"><Codicon name="loading" spin /> {" "}{t("Revisando el repositorio…")}</div>
         ) : info && !info.repo ? (
           <div className="cross-status">
-            <div>{solution ? "La solución" : "El proyecto"} todavía no usa Git. Inicializa el repositorio y publícalo en GitHub desde el panel Git.</div>
-            <button type="button" className="btn" onClick={onShowGit}><Codicon name="source-control" /> Ir al panel Git</button>
+            <div>{solution ? t("La solución") : t("El proyecto")} {" "}{t("todavía no usa Git. Inicializa el repositorio y publícalo en GitHub desde el panel Git.")}</div>
+            <button type="button" className="btn" onClick={onShowGit}><Codicon name="source-control" /> {" "}{t("Ir al panel Git")}</button>
           </div>
         ) : info && !info.githubUrl ? (
           <div className="cross-status">
-            <div>El repositorio todavía no está en GitHub. Publícalo desde el panel Git (botón “Publicar en GitHub…”).</div>
-            <button type="button" className="btn" onClick={onShowGit}><Codicon name="source-control" /> Ir al panel Git</button>
+            <div>{t("El repositorio todavía no está en GitHub. Publícalo desde el panel Git (botón “Publicar en GitHub…”).")}</div>
+            <button type="button" className="btn" onClick={onShowGit}><Codicon name="source-control" /> {" "}{t("Ir al panel Git")}</button>
           </div>
         ) : info?.problem ? (
           <pre className="hint err git-dialog-err">{info.problem}</pre>
@@ -323,22 +330,24 @@ function GithubPublish({ bins, solution, workspace, startup, onShowGit, log, onC
             <div className="cross-status ok">
               <span><Codicon name="github" /> {info.githubUrl!.replace("https://github.com/", "")}</span>
               <span className="muted small">
-                Se compilará{info.programs.length > 1 ? "n" : ""}: {info.programs.join(", ")}
+                
+                {t("Se compilará")}{info.programs.length > 1 ? "n" : ""}: {info.programs.join(", ")}
               </span>
             </div>
             <label>
-              Versión
+              
+              {t("Versión")}
               <input value={tag} onChange={(e) => setTag(e.target.value)} spellCheck={false} />
               <span className="hint muted">
                 {info.tags.includes(tag.trim())
-                  ? "Esa versión ya existe: usa un número nuevo."
+                  ? t("Esa versión ya existe: usa un número nuevo.")
                   : info.tags.length
-                    ? `Versiones anteriores: ${info.tags.slice(-3).join(", ")}`
-                    : "Se creará la etiqueta y GitHub empezará a compilar."}
+                    ? t("Versiones anteriores: {0}", info.tags.slice(-3).join(", "))
+                    : t("Se creará la etiqueta y GitHub empezará a compilar.")}
               </span>
             </label>
             <span className="muted small">
-              {info.workflowExists ? "Se actualizará" : "Se agregará"} <code>{info.workflow}</code> al repositorio (solo ese archivo se confirma).
+              {info.workflowExists ? t("Se actualizará") : t("Se agregará")} <code>{info.workflow}</code> {" "}{t("al repositorio (solo ese archivo se confirma).")}
             </span>
           </>
         ) : null}
@@ -347,14 +356,15 @@ function GithubPublish({ bins, solution, workspace, startup, onShowGit, log, onC
 
         <div className="actions">
           {ready && (
-            <button type="button" className="btn" disabled={!!busy} onClick={() => run(false)} title="Solo escribir el archivo del workflow, sin crear la versión">
-              Solo agregar el workflow
+            <button type="button" className="btn" disabled={!!busy} onClick={() => run(false)} title={t("Solo escribir el archivo del workflow, sin crear la versión")}>
+              
+              {t("Solo agregar el workflow")}
             </button>
           )}
           <span className="spacer" />
-          <button type="button" className="btn" onClick={onClose} disabled={!!busy}>Cancelar</button>
+          <button type="button" className="btn" onClick={onClose} disabled={!!busy}>{t("Cancelar")}</button>
           <button type="button" className="btn primary" disabled={!ready || !tagOk || !!busy} onClick={() => run(true)}>
-            {busy ? <><Codicon name="loading" spin /> {busy}</> : <><Codicon name="cloud-upload" /> Crear versión y publicar</>}
+            {busy ? <><Codicon name="loading" spin /> {busy}</> : <><Codicon name="cloud-upload" /> {" "}{t("Crear versión y publicar")}</>}
           </button>
         </div>
       </div>

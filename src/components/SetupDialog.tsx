@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, type SetupTool } from "../api";
 import { Codicon } from "./Icon";
+import { t, tb } from "../i18n/index.ts";
 
 interface Props {
   /** Instala una herramienta (tarea "setup:<id>"); la salida va al panel. */
@@ -108,74 +109,74 @@ export default function SetupDialog({ onInstall, busy, onChanged, onClose, first
     <div className="modal-backdrop" onMouseDown={() => !installing && onClose()}>
       <div className="modal setup-dialog" onMouseDown={(e) => e.stopPropagation()}>
         <h2>
-          <Codicon name="tools" /> Herramientas necesarias
+          <Codicon name="tools" /> {" "}{t("Herramientas necesarias")}
         </h2>
         <p className="muted small">
           {firstRun
-            ? "Para compilar y ejecutar programas en Rust faltan algunas herramientas. Raxorin Studio puede instalarlas por ti."
-            : "Lo que Raxorin Studio usa en tu computadora. Puedes instalar lo que falte desde aquí."}
+            ? t("Para compilar y ejecutar programas en Rust faltan algunas herramientas. Raxorin Studio puede instalarlas por ti.")
+            : t("Lo que Raxorin Studio usa en tu computadora. Puedes instalar lo que falte desde aquí.")}
         </p>
 
         {!tools ? (
-          <p><Codicon name="loading" spin /> Revisando…</p>
+          <p><Codicon name="loading" spin /> {" "}{t("Revisando…")}</p>
         ) : (
           <div className="setup-list">
-            {tools.map((t) => {
-              const state = t.unavailable ? "na" : t.installed ? "ok" : t.required ? "missing" : "optional";
-              const manualIsUrl = t.manual?.startsWith("http");
+            {tools.map((it) => {
+              const state = it.unavailable ? "na" : it.installed ? "ok" : it.required ? "missing" : "optional";
+              const manualIsUrl = it.manual?.startsWith("http");
               return (
-                <div key={t.id} className={"setup-row " + state}>
+                <div key={it.id} className={"setup-row " + state}>
                   <Codicon
                     name={state === "ok" ? "pass-filled" : state === "na" ? "circle-slash" : state === "missing" ? "error" : "circle-large-outline"}
                     className="setup-icon"
                   />
                   <div className="setup-text">
                     <div className="setup-name">
-                      {t.name}
-                      {t.required && !t.installed && <span className="setup-tag">Imprescindible</span>}
-                      {!t.required && !t.installed && !t.unavailable && <span className="setup-tag opt">Opcional</span>}
+                      {tb(it.name)}
+                      {it.required && !it.installed && <span className="setup-tag">{t("Imprescindible")}</span>}
+                      {!it.required && !it.installed && !it.unavailable && <span className="setup-tag opt">{t("Opcional")}</span>}
                     </div>
-                    <div className="muted small">{t.unavailable ?? (t.installed ? t.version ?? "Instalado" : t.description)}</div>
-                    {t.problem && (
+                    <div className="muted small">{it.unavailable ? tb(it.unavailable) : it.installed ? it.version ? tb(it.version) : t("Instalado") : tb(it.description)}</div>
+                    {it.problem && (
                       <div className="setup-problem small">
-                        <Codicon name="warning" /> {t.problem}
+                        <Codicon name="warning" /> {tb(it.problem)}
                       </div>
                     )}
-                    {!t.installed && !t.unavailable && !t.canInstall && t.manual && (
+                    {!it.installed && !it.unavailable && !it.canInstall && it.manual && (
                       <div className="setup-manual small">
                         {manualIsUrl ? (
-                          <button className="link-btn" onClick={() => openUrl(t.manual!.split(" ")[0])}>
-                            <Codicon name="link-external" /> Instrucciones
+                          <button className="link-btn" onClick={() => openUrl(it.manual!.split(" ")[0])}>
+                            <Codicon name="link-external" /> {" "}{t("Instrucciones")}
                           </button>
                         ) : (
                           <>
-                            <code>{t.manual}</code>
-                            <button className="icon-btn" title="Copiar" onClick={() => copy(t.manual!)}>
-                              <Codicon name={copied === t.manual ? "check" : "copy"} />
+                            <code>{it.manual}</code>
+                            <button className="icon-btn" title={t("Copiar")} onClick={() => copy(it.manual!)}>
+                              <Codicon name={copied === it.manual ? "check" : "copy"} />
                             </button>
                           </>
                         )}
                       </div>
                     )}
                   </div>
-                  {!t.installed && !t.unavailable && t.canInstall && (
+                  {!it.installed && !it.unavailable && it.canInstall && (
                     <button
-                      className={"btn small" + (t.required ? " primary" : "")}
+                      className={"btn small" + (it.required ? " primary" : "")}
                       disabled={busy || !!installing}
                       onClick={() => {
-                        queue.current = [t.id];
+                        queue.current = [it.id];
                         void next();
                       }}
-                      title={t.needsAdmin ? "El sistema pedirá permiso de administrador" : undefined}
+                      title={it.needsAdmin ? t("El sistema pedirá permiso de administrador") : undefined}
                     >
-                      {installing === t.id ? (
-                        <><Codicon name="loading" spin /> Instalando…</>
-                      ) : t.problem ? (
-                        <><Codicon name="tools" /> Reparar</>
+                      {installing === it.id ? (
+                        <><Codicon name="loading" spin /> {" "}{t("Instalando…")}</>
+                      ) : it.problem ? (
+                        <><Codicon name="tools" /> {" "}{t("Reparar")}</>
                       ) : (
-                        <><Codicon name="cloud-download" /> Instalar</>
+                        <><Codicon name="cloud-download" /> {" "}{t("Instalar")}</>
                       )}
-                      {t.needsAdmin && installing !== t.id && <Codicon name="shield" />}
+                      {it.needsAdmin && installing !== it.id && <Codicon name="shield" />}
                     </button>
                   )}
                 </div>
@@ -186,22 +187,21 @@ export default function SetupDialog({ onInstall, busy, onChanged, onClose, first
 
         {installing && (
           <p className="muted small">
-            <Codicon name="info" /> Mira el progreso en el panel <strong>Salida</strong>. Si el sistema pide permiso o una
-            contraseña, acéptalo en su ventana.
+            <Codicon name="info" /> {" "}{t("Mira el progreso en el panel")}{" "}<strong>{t("Salida")}</strong>{t(". Si el sistema pide permiso o una contraseña, acéptalo en su ventana.")}
           </p>
         )}
 
         <div className="actions">
           <button className="btn" onClick={() => void refresh()} disabled={!!installing}>
-            <Codicon name="refresh" /> Revisar de nuevo
+            <Codicon name="refresh" /> {" "}{t("Revisar de nuevo")}
           </button>
           <span className="spacer" />
           <button className="btn" onClick={onClose} disabled={!!installing}>
-            {requiredMissing.length ? "Más tarde" : "Cerrar"}
+            {requiredMissing.length ? t("Más tarde") : t("Cerrar")}
           </button>
           {installable.length > 0 && (
             <button className="btn primary" onClick={installAll} disabled={busy || !!installing}>
-              <Codicon name="cloud-download" /> Instalar todo lo que falta ({installable.length})
+              <Codicon name="cloud-download" /> {" "}{t("Instalar todo lo que falta (")}{installable.length})
             </button>
           )}
         </div>

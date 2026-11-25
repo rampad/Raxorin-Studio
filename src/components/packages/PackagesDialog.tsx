@@ -5,6 +5,7 @@ import { Codicon, FileIcon } from "../Icon";
 import { COMPONENTS } from "../ToolchainBanner";
 import CrateDetail, { type DetailActions } from "./CrateDetail";
 import { compareVersions, formatCount, isBreaking, stripReq, timeAgo } from "./format";
+import { t, tErr } from "../../i18n/index.ts";
 
 type Tab = "browse" | "installed" | "updates" | "recommended" | "essentials";
 
@@ -51,7 +52,7 @@ export default function PackagesDialog(p: Props) {
       const names = deps.filter((d) => !d.path).map((d) => d.name);
       if (names.length) api.crateLatest(names).then(setLatest).catch(() => {});
     } catch (e) {
-      setStatus({ text: String(e), error: true });
+      setStatus({ text: tErr(e), error: true });
     } finally {
       setLoadingInstalled(false);
     }
@@ -71,7 +72,7 @@ export default function PackagesDialog(p: Props) {
       setResults((r) => (pg === 1 ? res : [...r, ...res]));
       setPage(pg);
     } catch (e) {
-      if (seq === searchSeq.current) setSearchError(String(e));
+      if (seq === searchSeq.current) setSearchError(tErr(e));
     } finally {
       if (seq === searchSeq.current) setSearching(false);
     }
@@ -106,7 +107,7 @@ export default function PackagesDialog(p: Props) {
         cache.current.set(selected.name, d);
         if (alive) setDetails(d);
       })
-      .catch((e) => alive && setDetailsError(String(e)));
+      .catch((e) => alive && setDetailsError(tErr(e)));
     return () => {
       alive = false;
     };
@@ -123,7 +124,7 @@ export default function PackagesDialog(p: Props) {
       p.onChanged(typeof out === "string" && out.trim() ? out.trim() : done);
       await loadInstalled();
     } catch (e) {
-      setStatus({ text: String(e), error: true });
+      setStatus({ text: tErr(e), error: true });
     } finally {
       setBusy(null);
     }
@@ -207,14 +208,14 @@ export default function PackagesDialog(p: Props) {
       <div className="pkg-row-main">
         <div className="pkg-row-top">
           <strong>{d.name}</strong>
-          {d.path ? <span className="pill local">proyecto local</span> : <span className="muted">{d.req}</span>}
+          {d.path ? <span className="pill local">{t("proyecto local")}</span> : <span className="muted">{d.req}</span>}
           <span className="spacer" />
           {!d.path && installedBadge(d.name)}
         </div>
         <div className="pkg-meta muted">
-          {d.resolved ? <span>en uso: {d.resolved}</span> : !d.path && <span>se resolverá al compilar</span>}
+          {d.resolved ? <span>{t("en uso:")}{" "}{d.resolved}</span> : !d.path && <span>{t("se resolverá al compilar")}</span>}
           {d.features.length > 0 && <span>features: {d.features.join(", ")}</span>}
-          {!d.defaultFeatures && <span>sin features por defecto</span>}
+          {!d.defaultFeatures && <span>{t("sin features por defecto")}</span>}
           {d.optional && <span>opcional</span>}
         </div>
       </div>
@@ -227,7 +228,7 @@ export default function PackagesDialog(p: Props) {
       <div className="pkg-row-main">
         <div className="pkg-row-top">
           <strong>{r.name}</strong>
-          {r.starter && <span className="pill starter">ideal para empezar</span>}
+          {r.starter && <span className="pill starter">{t("ideal para empezar")}</span>}
           {r.kind === "dev" && <span className="pill">pruebas</span>}
           {r.kind === "build" && <span className="pill">build</span>}
           <span className="spacer" />
@@ -244,7 +245,7 @@ export default function PackagesDialog(p: Props) {
     </div>
   );
 
-  const groups: [DepKind, string][] = [["normal", "Dependencias"], ["dev", "Solo para pruebas (dev)"], ["build", "Para build.rs (build)"]];
+  const groups: [DepKind, string][] = [["normal", "Dependencias"], ["dev", t("Solo para pruebas (dev)")], ["build", t("Para build.rs (build)")]];
   const suggestions = contextual(installed, p.projectKind);
 
   const list = () => {
@@ -252,24 +253,24 @@ export default function PackagesDialog(p: Props) {
       case "browse":
         return (
           <>
-            {!query && <div className="list-header">Más descargados recientemente</div>}
+            {!query && <div className="list-header">{t("Más descargados recientemente")}</div>}
             {results.map(summaryRow)}
             {searchError && <div className="pad hint err">{searchError}</div>}
-            {searching && <div className="pad muted"><Codicon name="loading" spin /> Buscando en crates.io…</div>}
-            {!searching && results.length === 0 && !searchError && <div className="pad muted">Sin resultados para “{query}”.</div>}
+            {searching && <div className="pad muted"><Codicon name="loading" spin /> {" "}{t("Buscando en crates.io…")}</div>}
+            {!searching && results.length === 0 && !searchError && <div className="pad muted">{t("Sin resultados para “")}{query}”.</div>}
             {!searching && results.length >= page * 30 && (
-              <button className="btn load-more" onClick={() => search(query, page + 1)}>Cargar más</button>
+              <button className="btn load-more" onClick={() => search(query, page + 1)}>{t("Cargar más")}</button>
             )}
           </>
         );
       case "installed":
-        if (loadingInstalled && installed.length === 0) return <div className="pad muted"><Codicon name="loading" spin /> Leyendo Cargo.toml…</div>;
+        if (loadingInstalled && installed.length === 0) return <div className="pad muted"><Codicon name="loading" spin /> {" "}{t("Leyendo Cargo.toml…")}</div>;
         if (installed.length === 0)
           return (
             <div className="empty-state">
               <Codicon name="package" />
-              <p>Este proyecto aún no tiene paquetes.</p>
-              <button className="btn primary" onClick={() => setTab("recommended")}>Ver recomendados</button>
+              <p>{t("Este proyecto aún no tiene paquetes.")}</p>
+              <button className="btn primary" onClick={() => setTab("recommended")}>{t("Ver recomendados")}</button>
             </div>
           );
         return groups.map(([k, label]) => {
@@ -287,19 +288,19 @@ export default function PackagesDialog(p: Props) {
           return (
             <div className="empty-state">
               <Codicon name="pass" className="ok" />
-              <p>Todo está al día.</p>
+              <p>{t("Todo está al día.")}</p>
             </div>
           );
         return (
           <>
             <div className="list-header row">
-              <span>{updates.length} actualización(es) disponible(s)</span>
+              <span>{updates.length} {" "}{t("actualización(es) disponible(s)")}</span>
               <span className="spacer" />
-              <button className="btn small primary" disabled={!!busy} onClick={updateAll}>Actualizar todo</button>
+              <button className="btn small primary" disabled={!!busy} onClick={updateAll}>{t("Actualizar todo")}</button>
             </div>
             {updates.some((d) => isBreaking(currentOf(d), latest[d.name])) && (
               <div className="pad small warn-text">
-                <Codicon name="warning" /> Las marcadas en naranja son versiones mayores: pueden requerir cambios en tu código.
+                <Codicon name="warning" /> {" "}{t("Las marcadas en naranja son versiones mayores: pueden requerir cambios en tu código.")}
               </div>
             )}
             {updates.map(depRow)}
@@ -310,7 +311,7 @@ export default function PackagesDialog(p: Props) {
           <>
             {suggestions.length > 0 && (
               <div>
-                <div className="list-header"><Codicon name="lightbulb" /> Sugeridos para este proyecto</div>
+                <div className="list-header"><Codicon name="lightbulb" /> {" "}{t("Sugeridos para este proyecto")}</div>
                 {suggestions.map(recRow)}
               </div>
             )}
@@ -326,7 +327,8 @@ export default function PackagesDialog(p: Props) {
         return (
           <div className="essentials">
             <p className="muted small">
-              Estas herramientas no se agregan a tu proyecto: las usa Raxorin Studio para el autocompletado, revisar y formatear tu código.
+              
+              {t("Estas herramientas no se agregan a tu proyecto: las usa Raxorin Studio para el autocompletado, revisar y formatear tu código.")}
             </p>
             {COMPONENTS.map((c) => {
               const ok = !!p.toolchain?.[c.key];
@@ -337,7 +339,7 @@ export default function PackagesDialog(p: Props) {
                     <strong>{c.name}</strong>
                     <div className="muted small">{c.what}</div>
                   </div>
-                  <span className={"pill " + (ok ? "ok" : "update")}>{ok ? "Instalado" : "Falta"}</span>
+                  <span className={"pill " + (ok ? "ok" : "update")}>{ok ? t("Instalado") : t("Falta")}</span>
                 </div>
               );
             })}
@@ -347,21 +349,21 @@ export default function PackagesDialog(p: Props) {
                 disabled={!!busy}
                 onClick={async () => {
                   setBusy("Instalando herramientas…");
-                  setStatus({ text: "Instalando herramientas con rustup… (puede tardar un minuto)" });
+                  setStatus({ text: t("Instalando herramientas con rustup… (puede tardar un minuto)") });
                   await p.onInstallComponents(missingTools.map((m) => m.name));
                   setBusy(null);
-                  setStatus({ text: "Herramientas instaladas" });
+                  setStatus({ text: t("Herramientas instaladas") });
                 }}
               >
-                <Codicon name="cloud-download" /> Instalar lo que falta ({missingTools.length})
+                <Codicon name="cloud-download" /> {" "}{t("Instalar lo que falta (")}{missingTools.length})
               </button>
             )}
-            <div className="list-header">Toolchain</div>
+            <div className="list-header">{t("Toolchain")}</div>
             <div className="tool-row">
               <Codicon name={p.toolchain?.cargo ? "pass-filled" : "error"} className={p.toolchain?.cargo ? "ok" : "err"} />
               <div className="pkg-row-main">
-                <strong>Rust y Cargo</strong>
-                <div className="muted small">{p.toolchain?.cargo ?? "No instalado — https://rustup.rs"}</div>
+                <strong>{t("Rust y Cargo")}</strong>
+                <div className="muted small">{p.toolchain?.cargo ?? t("No instalado — https://rustup.rs")}</div>
               </div>
             </div>
           </div>
@@ -370,11 +372,11 @@ export default function PackagesDialog(p: Props) {
   };
 
   const tabs: { id: Tab; label: string; icon: string; count?: number; alert?: boolean }[] = [
-    { id: "browse", label: "Explorar", icon: "search" },
-    { id: "installed", label: "Instalados", icon: "package", count: installed.length },
-    { id: "updates", label: "Actualizaciones", icon: "arrow-circle-up", count: updates.length, alert: updates.length > 0 },
-    { id: "recommended", label: "Recomendados", icon: "star-full" },
-    { id: "essentials", label: "Esenciales", icon: "tools", count: missingTools.length || undefined, alert: missingTools.length > 0 },
+    { id: "browse", label: t("Explorar"), icon: "search" },
+    { id: "installed", label: t("Instalados"), icon: "package", count: installed.length },
+    { id: "updates", label: t("Actualizaciones"), icon: "arrow-circle-up", count: updates.length, alert: updates.length > 0 },
+    { id: "recommended", label: t("Recomendados"), icon: "star-full" },
+    { id: "essentials", label: t("Esenciales"), icon: "tools", count: missingTools.length || undefined, alert: missingTools.length > 0 },
   ];
 
   return (
@@ -382,10 +384,10 @@ export default function PackagesDialog(p: Props) {
       <div className="modal packages" onMouseDown={(e) => e.stopPropagation()}>
         <div className="pkg-header">
           <h2>
-            <Codicon name="package" /> Paquetes{p.title ? ` de “${p.title}”` : ""}
+            <Codicon name="package" /> {" "}{t("Paquetes")}{p.title ? t(" de “{0}”", p.title) : ""}
             <span className="muted pkg-source">crates.io</span>
           </h2>
-          <button className="icon-btn" onClick={p.onClose} title="Cerrar"><Codicon name="close" /></button>
+          <button className="icon-btn" onClick={p.onClose} title={t("Cerrar")}><Codicon name="close" /></button>
         </div>
 
         <div className="pkg-tabs">
@@ -401,7 +403,7 @@ export default function PackagesDialog(p: Props) {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar en crates.io…"
+                placeholder={t("Buscar en crates.io…")}
                 autoFocus
                 spellCheck={false}
               />
@@ -425,7 +427,7 @@ export default function PackagesDialog(p: Props) {
             ) : (
               <div className="empty-state">
                 <Codicon name="package" />
-                <p>Selecciona un paquete para ver sus detalles.</p>
+                <p>{t("Selecciona un paquete para ver sus detalles.")}</p>
               </div>
             )}
           </div>

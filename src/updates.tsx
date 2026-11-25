@@ -6,6 +6,7 @@ import { listen } from "@tauri-apps/api/event";
 import { api, type UpdateInfo } from "./api";
 import { Codicon } from "./components/Icon";
 import { getSettings } from "./settings";
+import { t, tErr, lang } from "./i18n/index.ts";
 
 export type UpdateStatus = "idle" | "checking" | "available" | "uptodate" | "downloading" | "installed" | "error";
 
@@ -43,11 +44,11 @@ export function useUpdates(log: (t: string, k?: "info" | "error" | "success" | "
           }
           // En la búsqueda automática no se insiste con una versión que el usuario omitió.
           if (manual || skipped !== found.version) setOpen(true);
-          log(`Hay una versión nueva de Raxorin Studio: ${found.version} (tienes la ${found.current}).`, "info");
+          log(t("Hay una versión nueva de Raxorin Studio: {0} (tienes la {1}).", found.version, found.current), "info");
         }
       } catch (e) {
         setStatus("error");
-        setError(String(e));
+        setError(tErr(e));
         if (manual) log(`Actualizaciones: ${e}`, "warning");
       } finally {
         busy.current = false;
@@ -82,10 +83,10 @@ export function useUpdates(log: (t: string, k?: "info" | "error" | "success" | "
     try {
       await api.updateInstall();
       setStatus("installed");
-      log(`Raxorin Studio ${info?.version} instalado: reinicia para usarlo.`, "success");
+      log(t("Raxorin Studio {0} instalado: reinicia para usarlo.", info?.version), "success");
     } catch (e) {
       setStatus("error");
-      setError(String(e));
+      setError(tErr(e));
     }
   }, [info, log]);
 
@@ -107,9 +108,18 @@ export type Updates = ReturnType<typeof useUpdates>;
 
 const mb = (n: number) => `${(n / (1024 * 1024)).toFixed(1)} MB`;
 
+/**
+ * NOVEDADES.md trae primero el español y, después de `<!-- English -->`, el inglés: se muestra la
+ * parte del idioma de la interfaz (las versiones antiguas solo tienen español).
+ */
+export function notesFor(text: string): string {
+  const [es, en] = text.split(/<!--\s*English\s*-->/i);
+  return (lang === "en" && en?.trim() ? en : es).replace(/^\s*---\s*$/gm, "").trim();
+}
+
 /** Notas de la versión: texto de GitHub (Markdown simple) como líneas legibles. */
 function Notes({ text }: { text: string }) {
-  const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
+  const lines = notesFor(text).replace(/\r/g, "").split("\n").filter((l) => l.trim());
   return (
     <div className="update-notes">
       {lines.map((l, i) => {
@@ -130,22 +140,23 @@ export function UpdateDialog({ u }: { u: Updates }) {
     <div className="modal-backdrop" onMouseDown={() => !busy && u.setOpen(false)}>
       <div className="modal update-dialog" onMouseDown={(e) => e.stopPropagation()}>
         <h2>
-          <Codicon name="cloud-download" /> Actualizaciones
+          <Codicon name="cloud-download" /> {" "}{t("Actualizaciones")}
         </h2>
 
         {u.status === "checking" && (
-          <p><Codicon name="loading" spin /> Buscando versiones nuevas…</p>
+          <p><Codicon name="loading" spin /> {" "}{t("Buscando versiones nuevas…")}</p>
         )}
         {u.status === "uptodate" && (
-          <p><Codicon name="pass" className="ok" /> Tienes la última versión de Raxorin Studio.</p>
+          <p><Codicon name="pass" className="ok" /> {" "}{t("Tienes la última versión de Raxorin Studio.")}</p>
         )}
         {u.status === "error" && <pre className="hint err git-dialog-err">{u.error}</pre>}
 
         {u.info && (u.status === "available" || u.status === "downloading" || u.status === "installed") && (
           <>
             <p>
-              Hay una versión nueva: <strong>{u.info.version}</strong>{" "}
-              <span className="muted">(tienes la {u.info.current}{u.info.date ? ` · publicada el ${u.info.date}` : ""})</span>
+              
+              {t("Hay una versión nueva:")}{" "}<strong>{u.info.version}</strong>{" "}
+              <span className="muted">{t("(tienes la")}{" "}{u.info.current}{u.info.date ? t(" · publicada el {0}", u.info.date) : ""})</span>
             </p>
             {u.info.notes && <Notes text={u.info.notes} />}
           </>
@@ -155,40 +166,43 @@ export function UpdateDialog({ u }: { u: Updates }) {
           <div className="update-progress">
             <div className="update-bar"><div style={{ width: `${pct ?? 30}%` }} className={pct === null ? "indeterminate" : ""} /></div>
             <span className="muted small">
-              Descargando… {mb(u.progress.downloaded)}{u.progress.total ? ` de ${mb(u.progress.total)}` : ""}. Se verifica la firma antes de instalar.
+              
+              {t("Descargando…")}{" "}{mb(u.progress.downloaded)}{u.progress.total ? ` de ${mb(u.progress.total)}` : ""}{t(". Se verifica la firma antes de instalar.")}
             </span>
           </div>
         )}
         {u.status === "installed" && (
-          <p><Codicon name="pass" className="ok" /> Listo. Reinicia Raxorin Studio para usar la versión nueva (guarda tu trabajo antes).</p>
+          <p><Codicon name="pass" className="ok" /> {" "}{t("Listo. Reinicia Raxorin Studio para usar la versión nueva (guarda tu trabajo antes).")}</p>
         )}
 
         <div className="actions">
           {u.status === "available" && (
-            <button className="btn" onClick={u.skip} title="No volver a avisar de esta versión">
-              Omitir esta versión
+            <button className="btn" onClick={u.skip} title={t("No volver a avisar de esta versión")}>
+              
+              {t("Omitir esta versión")}
             </button>
           )}
           <span className="spacer" />
           {u.status === "available" && (
             <>
-              <button className="btn" onClick={() => u.setOpen(false)}>Más tarde</button>
+              <button className="btn" onClick={() => u.setOpen(false)}>{t("Más tarde")}</button>
               <button className="btn primary" onClick={u.install}>
-                <Codicon name="cloud-download" /> Actualizar ahora
+                <Codicon name="cloud-download" /> {" "}{t("Actualizar ahora")}
               </button>
             </>
           )}
           {u.status === "installed" && (
             <>
-              <button className="btn" onClick={() => u.setOpen(false)}>Después</button>
+              <button className="btn" onClick={() => u.setOpen(false)}>{t("Después")}</button>
               <button className="btn primary" onClick={u.restart}>
-                <Codicon name="debug-restart" /> Reiniciar ahora
+                <Codicon name="debug-restart" /> {" "}{t("Reiniciar ahora")}
               </button>
             </>
           )}
           {(u.status === "uptodate" || u.status === "error" || u.status === "checking") && (
             <button className="btn primary" onClick={() => u.setOpen(false)} disabled={u.status === "checking"}>
-              Cerrar
+              
+              {t("Cerrar")}
             </button>
           )}
         </div>

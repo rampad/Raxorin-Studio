@@ -25,6 +25,7 @@ import type { CSSProperties } from "react";
 import WidgetPreview from "./WidgetPreview";
 import { ImageBaseContext, clearImageCache } from "./ImagePreview";
 import PropertyPanel from "./PropertyPanel";
+import { t, tErr } from "../i18n/index.ts";
 
 export interface DesignerHost {
   /** Crea `ui.on_<callback>(…)` en main.rs y lo abre. */
@@ -122,7 +123,7 @@ export default function SlintDesigner(p: Props) {
     } catch (e) {
       if (e instanceof SlintParseError) {
         setError({ message: e.message, line: model.getPositionAt(e.offset).lineNumber });
-      } else setError({ message: String(e), line: 1 });
+      } else setError({ message: tErr(e), line: 1 });
     }
   }, [uri]);
 
@@ -308,7 +309,7 @@ export default function SlintDesigner(p: Props) {
     commit((d) => {
       const tw = getAt(d.root, twPath)!;
       const n = Ops.elementChildren(tw).length + 1;
-      const tab = Ops.fromTemplate({ type: "Tab", props: { title: formatString(`Pestaña ${n}`) } });
+      const tab = Ops.fromTemplate({ type: "Tab", props: { title: formatString(t("Pestaña {0}", n)) } });
       tw.items.push(tab);
       newPath = Ops.findPath(d.root, tab)!;
     });
@@ -399,9 +400,9 @@ export default function SlintDesigner(p: Props) {
   const rename = (newId: string): string | null => {
     if (!sel || !selected) return null;
     const id = newId.trim();
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(id)) return "Usa letras, números y _ (sin espacios).";
-    if (RESERVED.has(id)) return "Ese nombre está reservado.";
-    if (id !== selected.id && doc && allIds(doc.root).has(id)) return "Ya hay un control con ese nombre.";
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(id)) return t("Usa letras, números y _ (sin espacios).");
+    if (RESERVED.has(id)) return t("Ese nombre está reservado.");
+    if (id !== selected.id && doc && allIds(doc.root).has(id)) return t("Ya hay un control con ese nombre.");
     const old = selected.id;
     commit((d) => {
       getAt(d.root, sel)!.id = id;
@@ -664,10 +665,10 @@ export default function SlintDesigner(p: Props) {
     return (
       <div className="designer-error">
         <Codicon name="warning" />
-        <h3>El diseñador no puede mostrar este archivo</h3>
-        <p>{error.message} <span className="muted">(línea {error.line})</span></p>
-        <p className="muted small">Corrige el código y vuelve a la vista de diseño, o sigue editando como código.</p>
-        <button className="btn primary" onClick={p.onShowCode}><Codicon name="code" /> Ver código</button>
+        <h3>{t("El diseñador no puede mostrar este archivo")}</h3>
+        <p>{error.message} <span className="muted">{t("(línea")}{" "}{error.line})</span></p>
+        <p className="muted small">{t("Corrige el código y vuelve a la vista de diseño, o sigue editando como código.")}</p>
+        <button className="btn primary" onClick={p.onShowCode}><Codicon name="code" /> {" "}{t("Ver código")}</button>
       </div>
     );
   }
@@ -710,7 +711,7 @@ export default function SlintDesigner(p: Props) {
   const groupMode = selected?.type === "GroupBox" ? Ops.groupInner(selected)?.mode ?? null : null;
   const groupExtra = selected?.type === "GroupBox" ? (
     <section>
-      <h5>Contenido del grupo</h5>
+      <h5>{t("Contenido del grupo")}</h5>
       <div className="segmented small">
         {([["free", "Libre", "move"], ["vertical", "Columna", "split-vertical"], ["horizontal", "Fila", "split-horizontal"]] as const).map(([m, label, icon]) => (
           <button key={m} type="button" className={groupMode === m ? "active" : ""} onClick={() => changeGroupMode(m)}>
@@ -720,24 +721,24 @@ export default function SlintDesigner(p: Props) {
       </div>
       <p className="muted small">
         {groupMode === "free"
-          ? "Los controles se mueven libremente dentro del grupo."
+          ? t("Los controles se mueven libremente dentro del grupo.")
           : groupMode
-            ? "Los controles se acomodan solos. Cambia a “Libre” para moverlos a mano (se quedan donde están)."
-            : "El contenido no es un panel ni un layout simple: edítalo en la vista de código o elige un modo."}
+            ? t("Los controles se acomodan solos. Cambia a “Libre” para moverlos a mano (se quedan donde están).")
+            : t("El contenido no es un panel ni un layout simple: edítalo en la vista de código o elige un modo.")}
       </p>
     </section>
   ) : null;
   const selIsTabs = !!selected && (selected.type === "TabWidget" || selected.type === "Tab");
   const tabExtra = selIsTabs ? (
     <section>
-      <h5>Pestañas</h5>
+      <h5>{t("Pestañas")}</h5>
       <p className="muted small">
         {selected!.type === "Tab"
-          ? "Esta es una pestaña: arrastra controles a su contenido. Cambia de pestaña con un clic en su título."
-          : "Haz clic en el título de una pestaña para verla y editarla."}
+          ? t("Esta es una pestaña: arrastra controles a su contenido. Cambia de pestaña con un clic en su título.")
+          : t("Haz clic en el título de una pestaña para verla y editarla.")}
       </p>
       <button className="btn small" onClick={addTab}>
-        <Codicon name="add" /> Agregar pestaña
+        <Codicon name="add" /> {" "}{t("Agregar pestaña")}
       </button>
     </section>
   ) : null;
@@ -824,7 +825,7 @@ export default function SlintDesigner(p: Props) {
         {kids.map((k, i) => renderNode(k.el, [...path, k.item], kind, el, cells?.[i]))}
         {!kids.length && (
           <div className="d-empty">
-            <Codicon name="add" /> Suelta controles aquí
+            <Codicon name="add" /> {" "}{t("Suelta controles aquí")}
           </div>
         )}
       </div>
@@ -882,22 +883,22 @@ export default function SlintDesigner(p: Props) {
           <div className="d-frame" />
           <div className="d-tabs">
             <div className="d-tabs-head">
-              {tabs.map((t, i) => (
+              {tabs.map((it, i) => (
                 <button
-                  key={t.item}
+                  key={it.item}
                   className={i === active ? "active" : ""}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     setActiveTabs((a) => ({ ...a, [key]: i }));
-                    setSel([...path, t.item]);
+                    setSel([...path, it.item]);
                     rootRef.current?.focus();
                   }}
                 >
-                  {parseString(getProp(t.el, "title")) ?? `Pestaña ${i + 1}`}
+                  {parseString(getProp(it.el, "title")) ?? t("Pestaña {0}", i + 1)}
                 </button>
               ))}
               {isSel && (
-                <button className="add" title="Agregar pestaña" onPointerDown={(e) => { e.stopPropagation(); addTab(); }}>
+                <button className="add" title={t("Agregar pestaña")} onPointerDown={(e) => { e.stopPropagation(); addTab(); }}>
                   <Codicon name="add" />
                 </button>
               )}
@@ -942,7 +943,7 @@ export default function SlintDesigner(p: Props) {
             startDrag(e, path.slice(0, -1), "move", groupNode);
           } else startDrag(e, path, "move");
         }}
-        title={`${el.id ?? "(sin nombre)"} · ${el.type}`}
+        title={`${el.id ?? t("(sin nombre)")} · ${el.type}`}
       >
         {body}
         {isSel && !isTabPage && !groupContent && handles(path, inFlow)}
@@ -976,11 +977,11 @@ export default function SlintDesigner(p: Props) {
     <div className="designer" ref={rootRef} tabIndex={0} onKeyDown={onKeyDown}>
       {/* ----- Caja de herramientas + esquema ----- */}
       <div className="toolbox" style={{ width: toolboxSize.size }}>
-        <div className="panel-title"><span>CAJA DE HERRAMIENTAS</span></div>
+        <div className="panel-title"><span>{t("CAJA DE HERRAMIENTAS")}</span></div>
         <div className="toolbox-list">
           {(["common", "containers", "components"] as const).flatMap((cat) => [
             <div key={cat} className="toolbox-group">
-              {cat === "common" ? "Controles" : cat === "containers" ? "Contenedores y layouts" : "Componentes (sin interfaz)"}
+              {cat === "common" ? t("Controles") : cat === "containers" ? t("Contenedores y layouts") : t("Componentes (sin interfaz)")}
             </div>,
             ...WIDGETS.filter((w) => w.category === cat).map((w) => (
             <div
@@ -992,7 +993,7 @@ export default function SlintDesigner(p: Props) {
                 e.dataTransfer.effectAllowed = "copy";
               }}
               onClick={() => addWidget(w.type)}
-              title="Arrastra al lienzo (o haz clic para agregar)"
+              title={t("Arrastra al lienzo (o haz clic para agregar)")}
             >
               <Codicon name={w.icon} />
               <span>{w.label}</span>
@@ -1000,12 +1001,12 @@ export default function SlintDesigner(p: Props) {
           )),
           ])}
         </div>
-        <div className="panel-title"><span>ESQUEMA</span></div>
+        <div className="panel-title"><span>{t("ESQUEMA")}</span></div>
         <div className="outline">
           <div className={"outline-row" + (isRoot ? " selected" : "")} style={{ paddingLeft: 10 }} onClick={() => setSel([])}>
             <Codicon name="window" />
             <span>{doc.name}</span>
-            <span className="muted small">Window</span>
+            <span className="muted small">{t("Window")}</span>
           </div>
           {outline(doc.root, [], 1)}
         </div>
@@ -1016,19 +1017,19 @@ export default function SlintDesigner(p: Props) {
       <div className="canvas-wrap">
         <div className="canvas-bar">
           <span className="muted small">
-            <Codicon name="info" /> Arrastra controles · Supr borra · ⌘/Ctrl+D duplica · flechas mueven
+            <Codicon name="info" /> {" "}{t("Arrastra controles · Supr borra · ⌘/Ctrl+D duplica · flechas mueven")}
           </span>
           <span className="spacer" />
           <label className="check-line small">
-            <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Ajustar a la cuadrícula
+            <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> {" "}{t("Ajustar a la cuadrícula")}
           </label>
           <select className="zoom" value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
             {[0.5, 0.75, 1, 1.25, 1.5, 2].map((z) => <option key={z} value={z}>{Math.round(z * 100)}%</option>)}
           </select>
-          <button className="btn small" onClick={() => setFigmaOpen(true)} title="Importar una pantalla exportada con el plugin de Figma">
-            <Codicon name="symbol-color" /> Figma
+          <button className="btn small" onClick={() => setFigmaOpen(true)} title={t("Importar una pantalla exportada con el plugin de Figma")}>
+            <Codicon name="symbol-color" /> {" "}{t("Figma")}
           </button>
-          <button className="btn small" onClick={() => p.openRustFile(p.path)} title="Abrir el código Rust (main.rs)">
+          <button className="btn small" onClick={() => p.openRustFile(p.path)} title={t("Abrir el código Rust (main.rs)")}>
             <Codicon name="file-code" /> main.rs
           </button>
         </div>
@@ -1074,13 +1075,13 @@ export default function SlintDesigner(p: Props) {
               onPointerDown={(e) => startDrag(e, [], "move")}
             >
               {doc.root.items.map((it, i) => (it.kind === "element" ? renderNode(it, [i]) : null))}
-              <span className="d-handle h-se window" onPointerDown={(e) => startDrag(e, [], "se")} title="Cambiar tamaño de la ventana" />
+              <span className="d-handle h-se window" onPointerDown={(e) => startDrag(e, [], "se")} title={t("Cambiar tamaño de la ventana")} />
               {drag && drag.path.length === 0 && <span className="d-size">{winRect.w}×{winRect.h}</span>}
             </div>
           </div>
           {nonVisual.length > 0 && (
             <div className="d-tray" onPointerDown={(e) => e.stopPropagation()}>
-              <span className="d-tray-title muted small">Componentes</span>
+              <span className="d-tray-title muted small">{t("Componentes")}</span>
               {nonVisual.map(({ el, path }) => (
                 <button
                   key={path.join("/")}
@@ -1089,7 +1090,7 @@ export default function SlintDesigner(p: Props) {
                     setSel(path);
                     rootRef.current?.focus();
                   }}
-                  title={`${el.id ?? "(sin nombre)"} · ${el.type}`}
+                  title={`${el.id ?? t("(sin nombre)")} · ${el.type}`}
                 >
                   <Codicon name={widgetDef(el.type)?.icon ?? "symbol-misc"} /> {el.id ?? el.type}
                 </button>
@@ -1131,7 +1132,7 @@ export default function SlintDesigner(p: Props) {
             onDelete={removeSelected}
           />
         ) : (
-          <div className="empty-state"><Codicon name="symbol-property" /><p>Selecciona un control</p></div>
+          <div className="empty-state"><Codicon name="symbol-property" /><p>{t("Selecciona un control")}</p></div>
         )}
       </div>
     </div>

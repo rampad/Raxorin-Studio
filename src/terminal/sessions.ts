@@ -6,6 +6,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { t, tErr } from "../i18n/index.ts";
 
 export interface Session {
   /** Número local (estable); el del backend llega al abrir el shell. */
@@ -52,7 +53,7 @@ function wireEvents() {
     const s = byBackend.get(e.payload.id);
     if (!s) return;
     s.exited = true;
-    s.term.write("\r\n\x1b[2m[El proceso terminó. Pulsa una tecla para cerrar esta terminal.]\x1b[0m\r\n");
+    s.term.write(t("\r\n\u001b[2m[El proceso terminó. Pulsa una tecla para cerrar esta terminal.]\u001b[0m\r\n"));
     notify();
   });
 }
@@ -135,7 +136,7 @@ export function attach(s: Session, container: HTMLElement) {
       })
       .catch((e) => {
         s.exited = true;
-        s.term.write(`\x1b[31m${String(e)}\x1b[0m\r\n`);
+        s.term.write(`\x1b[31m${tErr(e)}\x1b[0m\r\n`);
       });
   } else {
     s.fit.fit();

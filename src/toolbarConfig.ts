@@ -1,6 +1,7 @@
 // Configuración de la barra de herramientas: qué controles se muestran y en qué orden.
 
 import { useSyncExternalStore } from "react";
+import { t } from "./i18n/index.ts";
 
 export type ToolId =
   | "new"
@@ -34,26 +35,26 @@ export interface ToolDef {
 }
 
 export const TOOLS: Record<ToolId, ToolDef> = {
-  new: { icon: "new-file", label: "Nuevo", name: "Nuevo proyecto", desc: "Crear un proyecto o una solución" },
-  open: { icon: "folder-opened", label: "Abrir", name: "Abrir carpeta", desc: "Abrir una carpeta con proyectos de Rust" },
-  openSolution: { icon: "layers", name: "Abrir solución", desc: "Abrir un archivo .rxsln" },
-  save: { icon: "save", name: "Guardar", desc: "Guardar el archivo actual (Ctrl/⌘+S)" },
-  saveAll: { icon: "save-all", name: "Guardar todo", desc: "Guardar todos los archivos abiertos" },
-  format: { icon: "wand", name: "Formatear", desc: "Formatear el documento con rustfmt" },
-  packages: { icon: "package", label: "Paquetes", name: "Paquetes", desc: "Administrar los crates del proyecto" },
-  startup: { icon: "rocket", name: "Proyecto de inicio", desc: "Elegir qué proyecto se compila y ejecuta" },
-  config: { icon: "settings", name: "Debug / Release", desc: "Compilar rápido para probar o optimizado para entregar" },
-  publish: { icon: "package", label: "Publicar", name: "Publicar", desc: "Compilar en Release y dejar el ejecutable listo para compartir" },
-  build: { icon: "tools", label: "Compilar", name: "Compilar", desc: "cargo build (Ctrl/⌘+Shift+B)" },
-  check: { icon: "check-all", label: "Revisar", name: "Revisar", desc: "Revisar el código con Clippy" },
-  test: { icon: "beaker", label: "Probar", name: "Probar", desc: "Ejecutar las pruebas (cargo test)" },
-  debug: { icon: "debug-start", label: "Depurar", name: "Depurar", desc: "Iniciar la depuración (F5)" },
-  run: { icon: "play-circle", label: "Sin depurar", name: "Ejecutar sin depurar", desc: "Ejecutar el programa (Ctrl/⌘+F5)" },
-  stop: { icon: "debug-stop", label: "Detener", name: "Detener", desc: "Detener la compilación o el programa (Shift+F5)" },
-  diag: { icon: "pulse", name: "Diagnóstico", desc: "Gráficas de CPU y memoria del programa" },
-  theme: { icon: "color-mode", name: "Tema claro/oscuro", desc: "Cambiar entre el tema claro y el oscuro" },
-  sidebar: { icon: "layout-sidebar-left", name: "Explorador", desc: "Mostrar u ocultar el explorador (Ctrl/⌘+B)" },
-  bottom: { icon: "layout-panel", name: "Panel inferior", desc: "Mostrar u ocultar la salida y errores (Ctrl/⌘+J)" },
+  new: { icon: "new-file", label: t("Nuevo"), name: t("Nuevo proyecto"), desc: t("Crear un proyecto o una solución") },
+  open: { icon: "folder-opened", label: t("Abrir"), name: t("Abrir carpeta"), desc: t("Abrir una carpeta con proyectos de Rust") },
+  openSolution: { icon: "layers", name: t("Abrir solución"), desc: t("Abrir un archivo .rxsln") },
+  save: { icon: "save", name: t("Guardar"), desc: t("Guardar el archivo actual (Ctrl/⌘+S)") },
+  saveAll: { icon: "save-all", name: t("Guardar todo"), desc: t("Guardar todos los archivos abiertos") },
+  format: { icon: "wand", name: t("Formatear"), desc: t("Formatear el documento con rustfmt") },
+  packages: { icon: "package", label: t("Paquetes"), name: t("Paquetes"), desc: t("Administrar los crates del proyecto") },
+  startup: { icon: "rocket", name: t("Proyecto de inicio"), desc: t("Elegir qué proyecto se compila y ejecuta") },
+  config: { icon: "settings", name: "Debug / Release", desc: t("Compilar rápido para probar o optimizado para entregar") },
+  publish: { icon: "package", label: t("Publicar"), name: t("Publicar"), desc: t("Compilar en Release y dejar el ejecutable listo para compartir") },
+  build: { icon: "tools", label: t("Compilar"), name: t("Compilar"), desc: t("cargo build (Ctrl/⌘+Shift+B)") },
+  check: { icon: "check-all", label: t("Revisar"), name: t("Revisar"), desc: t("Revisar el código con Clippy") },
+  test: { icon: "beaker", label: t("Probar"), name: t("Probar"), desc: t("Ejecutar las pruebas (cargo test)") },
+  debug: { icon: "debug-start", label: t("Depurar"), name: t("Depurar"), desc: t("Iniciar la depuración (F5)") },
+  run: { icon: "play-circle", label: t("Sin depurar"), name: t("Ejecutar sin depurar"), desc: t("Ejecutar el programa (Ctrl/⌘+F5)") },
+  stop: { icon: "debug-stop", label: t("Detener"), name: t("Detener"), desc: t("Detener la compilación o el programa (Shift+F5)") },
+  diag: { icon: "pulse", name: t("Diagnóstico"), desc: t("Gráficas de CPU y memoria del programa") },
+  theme: { icon: "color-mode", name: t("Tema claro/oscuro"), desc: t("Cambiar entre el tema claro y el oscuro") },
+  sidebar: { icon: "layout-sidebar-left", name: t("Explorador"), desc: t("Mostrar u ocultar el explorador (Ctrl/⌘+B)") },
+  bottom: { icon: "layout-panel", name: t("Panel inferior"), desc: t("Mostrar u ocultar la salida y errores (Ctrl/⌘+J)") },
 };
 
 /** Un control o un separador ("|" seguido de un número). */

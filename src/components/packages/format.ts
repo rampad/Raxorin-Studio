@@ -1,9 +1,10 @@
+import { lang } from "../../i18n/index.ts";
 // Formato de números, fechas y versiones para el gestor de paquetes.
 
-const compact = new Intl.NumberFormat("es", { notation: "compact", maximumFractionDigits: 1 });
+const compact = new Intl.NumberFormat(lang, { notation: "compact", maximumFractionDigits: 1 });
 export const formatCount = (n: number) => compact.format(n);
 
-const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+const rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
 export function timeAgo(iso: string): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "";
@@ -18,7 +19,7 @@ export function timeAgo(iso: string): string {
 }
 
 export const formatDate = (iso: string) =>
-  Number.isNaN(Date.parse(iso)) ? "" : new Date(iso).toLocaleDateString("es", { year: "numeric", month: "short", day: "numeric" });
+  Number.isNaN(Date.parse(iso)) ? "" : new Date(iso).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" });
 
 /** "^1.2" → "1.2" */
 export const stripReq = (req: string) => req.replace(/^[\^~=<>\s]+/, "").split(",")[0].trim();

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Codicon } from "./Icon";
 import { formatShortcut } from "../shortcuts";
+import { t } from "../i18n/index.ts";
 
 export { formatShortcut };
 
@@ -56,7 +57,7 @@ function Items({ items, onDone }: { items: MenuItem[]; onDone: () => void }) {
             </button>
             {it.submenu && sub === i && (
               <div className="context-menu submenu">
-                {it.submenu.length ? <Items items={it.submenu} onDone={onDone} /> : <div className="menu-header">Vacío</div>}
+                {it.submenu.length ? <Items items={it.submenu} onDone={onDone} /> : <div className="menu-header">{t("Vacío")}</div>}
               </div>
             )}
           </div>

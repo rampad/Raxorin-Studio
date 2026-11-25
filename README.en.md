@@ -24,7 +24,7 @@
   <img src="docs/screenshots/editor.png" alt="Raxorin Studio: Rust editor with the solution explorer, Git and the output panel" />
 </p>
 
-> **Note:** the user interface is currently in **Spanish**. The screenshots below show it as it is.
+> The interface is available in **English and Spanish** (it follows your system's language; change it in *Settings → Appearance → Language*). The screenshots below show the Spanish interface.
 
 ## What is Raxorin Studio?
 

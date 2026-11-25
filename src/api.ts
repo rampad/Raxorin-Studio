@@ -1,3 +1,4 @@
+import { lang } from "./i18n/index.ts";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface Entry { name: string; path: string; isDir: boolean }
@@ -161,11 +162,14 @@ export const api = {
   appLocation: () => invoke<{ needsMove: boolean; reason: "dmg" | "translocated" | null; appPath: string | null }>("app_location"),
   /** Copia la app a Aplicaciones, la vuelve a abrir desde allí y cierra esta. */
   moveToApplications: () => invoke<string>("move_to_applications"),
-  samplesList: () => invoke<SampleCatalog>("samples_list"),
+  /** El catálogo de ejemplos, con las fichas en el idioma de la interfaz. */
+  samplesList: () =>
+    invoke<SampleCatalog>("samples_list").then((c) => ({ ...c, samples: c.samples.map((s) => ({ ...s, ...sampleInfo(s) })) })),
   sampleCreate: (sample: Sample, parent: string, name: string, online: boolean) =>
     invoke<{ open: string; file: string }>("sample_create", { sample, parent, name, online }),
+  /** Las plantillas (textos y comentarios del código) salen en el idioma de la interfaz. */
   createProject: (parent: string, name: string, kind: "bin" | "lib" | "slint") =>
-    invoke<string>("create_project", { parent, name, kind }),
+    invoke<string>("create_project", { parent, name, kind, lang }),
   startTask: (project: string, task: Task, external = false, release = false, publish: PublishOptions | null = null) =>
     invoke<void>("start_task", { project, task, external, release, publish }),
   rustTargets: () => invoke<RustTargets>("rust_targets"),
@@ -272,6 +276,20 @@ export interface Sample {
   solucion?: string;
   aprenderas: string[];
   archivos: string[];
+  /** La ficha en inglés (los catálogos antiguos no la tienen). */
+  en?: { nombre: string; descripcion: string; categoria: string; nivel: string; aprenderas: string[] };
+}
+
+/** La ficha de un ejemplo en el idioma de la interfaz. */
+export function sampleInfo(s: Sample) {
+  const en = lang === "en" ? s.en : undefined;
+  return {
+    nombre: en?.nombre ?? s.nombre,
+    descripcion: en?.descripcion ?? s.descripcion,
+    categoria: en?.categoria ?? s.categoria,
+    nivel: en?.nivel ?? s.nivel,
+    aprenderas: en?.aprenderas ?? s.aprenderas,
+  };
 }
 
 export interface SampleCatalog {

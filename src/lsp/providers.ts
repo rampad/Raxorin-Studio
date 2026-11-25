@@ -4,6 +4,7 @@
 import * as monaco from "monaco-editor";
 import { inlayHintsRefresh, isBenign, type LspClient } from "./client";
 import type * as L from "./types";
+import { t } from "../i18n/index.ts";
 
 export interface ProviderHost {
   /** Cliente LSP activo (o null si rust-analyzer no está listo). */
@@ -244,7 +245,7 @@ export function registerRustProviders(host: ProviderHost) {
         position: toPosition(position),
         newName,
       }, token);
-      if (!edit) return { edits: [], rejectReason: "No se pudo renombrar este elemento." };
+      if (!edit) return { edits: [], rejectReason: t("No se pudo renombrar este elemento.") };
       return toWorkspaceEdit(host, edit);
     },
     async resolveRenameLocation(model, position, token) {
@@ -252,7 +253,7 @@ export function registerRustProviders(host: ProviderHost) {
         textDocument: docId(model),
         position: toPosition(position),
       }, token);
-      if (!r) return { range: new monaco.Range(1, 1, 1, 1), text: "", rejectReason: "Este elemento no se puede renombrar." };
+      if (!r) return { range: new monaco.Range(1, 1, 1, 1), text: "", rejectReason: t("Este elemento no se puede renombrar.") };
       const range = toRange("range" in r ? r.range : r);
       return { range, text: "placeholder" in r ? r.placeholder : model.getValueInRange(range) };
     },

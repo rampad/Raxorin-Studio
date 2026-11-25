@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../api";
 import { Codicon } from "../components/Icon";
 import { convertFrame, parseFigmaExport, type FigmaExport, type ImportResult } from "./figmaImport";
+import { t, tErr } from "../i18n/index.ts";
 
 export type FigmaMode = "replace" | "add";
 
@@ -14,9 +15,9 @@ interface Props {
 }
 
 const TYPE_NAMES: Record<string, string> = {
-  VerticalBox: "columnas", HorizontalBox: "filas", Rectangle: "paneles", Text: "textos", Image: "imágenes",
-  Button: "botones", LineEdit: "cuadros de texto", TextEdit: "áreas de texto", CheckBox: "casillas", Switch: "interruptores",
-  Slider: "deslizadores", ComboBox: "listas", ProgressIndicator: "barras de progreso", Spinner: "indicadores de carga",
+  VerticalBox: "columnas", HorizontalBox: "filas", Rectangle: "paneles", Text: "textos", Image: t("imágenes"),
+  Button: "botones", LineEdit: t("cuadros de texto"), TextEdit: t("áreas de texto"), CheckBox: "casillas", Switch: "interruptores",
+  Slider: "deslizadores", ComboBox: "listas", ProgressIndicator: t("barras de progreso"), Spinner: t("indicadores de carga"),
 };
 
 /** Importar una pantalla exportada con el plugin "Raxorin Studio Export" de Figma. */
@@ -42,12 +43,12 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
   };
 
   const pick = async () => {
-    const file = await open({ title: "Archivo exportado desde Figma", filters: [{ name: "Exportación de Figma", extensions: ["json"] }] });
+    const file = await open({ title: t("Archivo exportado desde Figma"), filters: [{ name: t("Exportación de Figma"), extensions: ["json"] }] });
     if (typeof file !== "string") return;
     try {
       load(await api.readFile(file), file.split(/[\\/]/).pop() ?? file);
     } catch (e) {
-      setErr(String(e));
+      setErr(tErr(e));
     }
   };
 
@@ -56,7 +57,7 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
     try {
       return convertFrame(data, frame, usedIds);
     } catch (e) {
-      setErr(String(e));
+      setErr(tErr(e));
       return null;
     }
   }, [data, frame, usedIds]);
@@ -72,32 +73,34 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
     <div className="modal-backdrop" onMouseDown={() => !busy && onClose()}>
       <div className="modal figma-import" onMouseDown={(e) => e.stopPropagation()}>
         <h2>
-          <Codicon name="symbol-color" /> Importar de Figma
+          <Codicon name="symbol-color" /> {" "}{t("Importar de Figma")}
         </h2>
 
         {!data ? (
           <>
             <p className="muted small">
-              En Figma, selecciona una pantalla y usa el plugin <strong>Raxorin Studio Export</strong>: descarga un archivo
-              <code>.raxorin.json</code> (o lo copia). Ábrelo aquí.
+              
+              {t("En Figma, selecciona una pantalla y usa el plugin")}{" "}<strong>{t("Raxorin Studio Export")}</strong>{t(": descarga un archivo")}
+              <code>{t(".raxorin.json")}</code> {" "}{t("(o lo copia). Ábrelo aquí.")}
             </p>
             <button className="btn primary" onClick={pick}>
-              <Codicon name="folder-opened" /> Elegir archivo…
+              <Codicon name="folder-opened" /> {" "}{t("Elegir archivo…")}
             </button>
             <label>
-              …o pega lo que copiaste en el plugin
+              
+              {t("…o pega lo que copiaste en el plugin")}
               <textarea className="mono figma-paste" value={paste} onChange={(e) => setPaste(e.target.value)} placeholder='{"format": "raxorin-figma", …}' rows={4} spellCheck={false} />
             </label>
             {paste.trim() && (
               <button className="btn" onClick={() => load(paste, "Texto pegado")}>
-                <Codicon name="check" /> Usar lo pegado
+                <Codicon name="check" /> {" "}{t("Usar lo pegado")}
               </button>
             )}
             <details className="muted small">
-              <summary>¿Cómo instalo el plugin en Figma?</summary>
-              En Figma Desktop: <strong>Plugins → Desarrollo → Importar plugin desde manifiesto…</strong> y elige el
-              <code>manifest.json</code> del proyecto <strong>Raxorin-Figma</strong>. Para mejores resultados usa Auto Layout y
-              nombra los componentes <code>Button</code>, <code>Input</code>, <code>Checkbox</code>…
+              <summary>{t("¿Cómo instalo el plugin en Figma?")}</summary>
+              
+              {t("En Figma Desktop:")}{" "}<strong>{t("Plugins → Desarrollo → Importar plugin desde manifiesto…")}</strong> {" "}{t("y elige el")}
+              <code>manifest.json</code> {" "}{t("del proyecto")}{" "}<strong>{t("Raxorin-Figma")}</strong>{t(". Para mejores resultados usa Auto Layout y nombra los componentes")}{" "}<code>{t("Button")}</code>, <code>{t("Input")}</code>, <code>{t("Checkbox")}</code>…
             </details>
           </>
         ) : (
@@ -105,11 +108,12 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
             <div className="figma-source">
               <Codicon name="file" /> <strong>{data.file || source}</strong>
               <span className="muted small">{data.page && ` · ${data.page}`} · {source}</span>
-              <button className="link-btn" onClick={() => setData(null)}>Cambiar</button>
+              <button className="link-btn" onClick={() => setData(null)}>{t("Cambiar")}</button>
             </div>
             {data.frames.length > 1 && (
               <label>
-                Pantalla
+                
+                {t("Pantalla")}
                 <select value={frame} onChange={(e) => setFrame(Number(e.target.value))}>
                   {data.frames.map((f, i) => (
                     <option key={f.id} value={i}>
@@ -124,23 +128,23 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
                 <span>
                   <Codicon name="pass" /> {preview.title} · {preview.width}×{preview.height}
                 </span>
-                <span className="muted small">{summary || "Pantalla vacía"}</span>
-                {preview.tokens && <span className="muted small">+ {data.variables.length} colores del sistema de diseño (global <code>Tema</code>)</span>}
+                <span className="muted small">{summary || t("Pantalla vacía")}</span>
+                {preview.tokens && <span className="muted small">+ {data.variables.length} {" "}{t("colores del sistema de diseño (global")}{" "}<code>{t("Tema")}</code>)</span>}
               </div>
             )}
             <div className="segmented">
               <button type="button" className={mode === "replace" ? "active" : ""} onClick={() => setMode("replace")}>
-                <Codicon name="replace-all" /> Reemplazar el diseño
+                <Codicon name="replace-all" /> {" "}{t("Reemplazar el diseño")}
               </button>
               <button type="button" className={mode === "add" ? "active" : ""} onClick={() => setMode("add")}>
-                <Codicon name="add" /> Agregar como panel
+                <Codicon name="add" /> {" "}{t("Agregar como panel")}
               </button>
             </div>
             <p className="muted small">
               {mode === "replace"
-                ? "Se quitan los controles actuales de la ventana (y sus propiedades expuestas a Rust); la ventana toma el tamaño, título y fondo de la pantalla de Figma. Los callbacks de main.rs se conservan."
-                : "La pantalla se agrega como un panel nuevo sobre lo que ya hay; luego puedes moverla o borrar lo anterior."}
-              {preview?.assets.length ? ` Las imágenes se guardan en la carpeta figma/ junto al .slint.` : ""}
+                ? t("Se quitan los controles actuales de la ventana (y sus propiedades expuestas a Rust); la ventana toma el tamaño, título y fondo de la pantalla de Figma. Los callbacks de main.rs se conservan.")
+                : t("La pantalla se agrega como un panel nuevo sobre lo que ya hay; luego puedes moverla o borrar lo anterior.")}
+              {preview?.assets.length ? t(" Las imágenes se guardan en la carpeta figma/ junto al .slint.") : ""}
             </p>
             {preview && preview.warnings.length > 0 && (
               <ul className="figma-warnings muted small">
@@ -154,7 +158,7 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
 
         <div className="actions">
           <span className="spacer" />
-          <button className="btn" onClick={onClose} disabled={busy}>Cancelar</button>
+          <button className="btn" onClick={onClose} disabled={busy}>{t("Cancelar")}</button>
           <button
             className="btn primary"
             disabled={!preview || busy}
@@ -166,13 +170,13 @@ export default function FigmaImportDialog({ usedIds, onImport, onClose }: Props)
                 await onImport(preview, mode);
                 onClose();
               } catch (e) {
-                setErr(String(e));
+                setErr(tErr(e));
               } finally {
                 setBusy(false);
               }
             }}
           >
-            {busy ? <><Codicon name="loading" spin /> Importando…</> : <><Codicon name="cloud-download" /> Importar</>}
+            {busy ? <><Codicon name="loading" spin /> {" "}{t("Importando…")}</> : <><Codicon name="cloud-download" /> {" "}{t("Importar")}</>}
           </button>
         </div>
       </div>

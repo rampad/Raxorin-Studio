@@ -3,6 +3,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { t } from "../i18n/index.ts";
 
 export interface Source { name?: string; path?: string }
 export interface StackFrame { id: number; name: string; source?: Source; line: number; column: number }
@@ -34,7 +35,7 @@ export class DapClient {
   }
 
   request<T = any>(command: string, args: unknown = {}): Promise<T> {
-    if (this.closed) return Promise.reject(new DapError("La sesión de depuración terminó"));
+    if (this.closed) return Promise.reject(new DapError(t("La sesión de depuración terminó")));
     const seq = this.seq++;
     const p = new Promise<T>((resolve, reject) => this.pending.set(seq, { resolve, reject, command }));
     this.send({ seq, type: "request", command, arguments: args });
@@ -65,12 +66,12 @@ export class DapClient {
       if (!p) return;
       this.pending.delete(m.request_seq);
       if (m.success) p.resolve(m.body ?? {});
-      else p.reject(new DapError(m.message || m.body?.error?.format || `Falló “${p.command}”`));
+      else p.reject(new DapError(m.message || m.body?.error?.format || t("Falló “{0}”", p.command)));
     } else if (m.type === "event") {
       this.emit(m.event, m.body ?? {});
     } else if (m.type === "request") {
       // Peticiones inversas (p. ej. runInTerminal): no las usamos.
-      this.send({ seq: this.seq++, type: "response", request_seq: m.seq, command: m.command, success: false, message: "no soportado" });
+      this.send({ seq: this.seq++, type: "response", request_seq: m.seq, command: m.command, success: false, message: t("no soportado") });
     }
   }
 
@@ -78,7 +79,7 @@ export class DapClient {
     if (this.closed) return;
     this.closed = true;
     this.unlisteners.forEach((u) => u());
-    this.pending.forEach((p) => p.reject(new DapError("La sesión de depuración terminó")));
+    this.pending.forEach((p) => p.reject(new DapError(t("La sesión de depuración terminó"))));
     this.pending.clear();
     await invoke("dap_stop").catch(() => {});
   }

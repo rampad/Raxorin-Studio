@@ -2,6 +2,7 @@
 // del editor (punto rojo) y siguen a su línea cuando editas el archivo.
 
 import * as monaco from "monaco-editor";
+import { t } from "../i18n/index.ts";
 
 export interface BreakpointInfo {
   path: string;
@@ -234,12 +235,12 @@ export class BreakpointStore {
 /** Texto para el usuario: qué hace este punto. */
 export function describeBreakpoint(b: BreakpointInfo): string {
   const parts: string[] = [];
-  if (b.logMessage) parts.push(`**Punto de registro:** escribe \`${b.logMessage}\` sin detener el programa`);
-  else if (b.condition && b.hitCondition) parts.push(`**Se detiene** cuando \`${b.condition}\`, a partir de la vez ${b.hitCondition}`);
-  else if (b.condition) parts.push(`**Se detiene** solo cuando \`${b.condition}\``);
-  else if (b.hitCondition) parts.push(`**Se detiene** a partir de la vez número ${b.hitCondition}`);
-  else parts.push("**Punto de interrupción**");
+  if (b.logMessage) parts.push(t("**Punto de registro:** escribe `{0}` sin detener el programa", b.logMessage));
+  else if (b.condition && b.hitCondition) parts.push(t("**Se detiene** cuando `{0}`, a partir de la vez {1}", b.condition, b.hitCondition));
+  else if (b.condition) parts.push(t("**Se detiene** solo cuando `{0}`", b.condition));
+  else if (b.hitCondition) parts.push(t("**Se detiene** a partir de la vez número {0}", b.hitCondition));
+  else parts.push(t("**Punto de interrupción**"));
   if (!b.enabled) parts.push("(desactivado)");
-  if (b.verified === false) parts.push(`— no colocado${b.message ? ": " + b.message : " (¿línea sin código?)"}`);
+  if (b.verified === false) parts.push(t("— no colocado{0}", b.message ? ": " + b.message : t(" (¿línea sin código?)")));
   return parts.join(" ");
 }

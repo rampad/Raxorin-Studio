@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { homeDir, join } from "@tauri-apps/api/path";
 import { api, type Sample, type SampleCatalog } from "../api";
 import { Codicon } from "./Icon";
+import { t, tErr } from "../i18n/index.ts";
 
 interface Props {
   onCancel: () => void;
@@ -11,10 +12,10 @@ interface Props {
 }
 
 const TIPO: Record<Sample["tipo"], string> = {
-  ventana: "Aplicación de ventana",
-  consola: "Aplicación de consola",
+  ventana: t("Aplicación de ventana"),
+  consola: t("Aplicación de consola"),
   biblioteca: "Biblioteca",
-  solucion: "Solución",
+  solucion: t("Solución"),
 };
 
 /** Hub de ejemplos: aplicaciones de muestra para abrir, ejecutar y estudiar. */
@@ -29,7 +30,7 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.samplesList().then(setCatalog).catch((e) => setError(String(e)));
+    api.samplesList().then(setCatalog).catch((e) => setError(tErr(e)));
     homeDir()
       .then((h) => join(h, "RustProjects"))
       .then(setLocation)
@@ -62,7 +63,7 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
       const created = await api.sampleCreate(selected, location, name.trim(), !!catalog?.online);
       await onCreated(selected, created);
     } catch (e) {
-      setError(String(e));
+      setError(tErr(e));
       setBusy(false);
     }
   };
@@ -71,11 +72,11 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
     <div className="modal-backdrop" onMouseDown={() => !busy && onCancel()}>
       <div className="modal samples-dialog" onMouseDown={(e) => e.stopPropagation()}>
         <h2>
-          <Codicon name="beaker" /> Ejemplos
+          <Codicon name="beaker" /> {" "}{t("Ejemplos")}
         </h2>
         <p className="muted small">
-          Aplicaciones de muestra listas para ejecutar. Crea una copia, pulsa <kbd>F5</kbd> y lee el código: cada ejemplo
-          explica lo que hace.
+          
+          {t("Aplicaciones de muestra listas para ejecutar. Crea una copia, pulsa")}{" "}<kbd>F5</kbd> {" "}{t("y lee el código: cada ejemplo explica lo que hace.")}
         </p>
 
         <div className="samples-filters">
@@ -84,14 +85,15 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar (p. ej. lista, depurar, trait)…"
+              placeholder={t("Buscar (p. ej. lista, depurar, trait)…")}
               spellCheck={false}
               autoFocus
             />
           </div>
           <div className="chips">
             <button className={"chip" + (!category ? " active" : "")} onClick={() => setCategory(null)}>
-              Todos
+              
+              {t("Todos")}
             </button>
             {categories.map((c) => (
               <button key={c} className={"chip" + (category === c ? " active" : "")} onClick={() => setCategory(c)}>
@@ -105,10 +107,10 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
           <div className="samples-grid">
             {!catalog && !error && (
               <p className="muted">
-                <Codicon name="loading" spin /> Cargando ejemplos…
+                <Codicon name="loading" spin /> {" "}{t("Cargando ejemplos…")}
               </p>
             )}
-            {catalog && visible.length === 0 && <p className="muted">Ningún ejemplo coincide con la búsqueda.</p>}
+            {catalog && visible.length === 0 && <p className="muted">{t("Ningún ejemplo coincide con la búsqueda.")}</p>}
             {visible.map((s) => (
               <button
                 key={s.id}
@@ -121,7 +123,7 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
                   <small>{s.descripcion}</small>
                   <span className="sample-tags">
                     <span className="tag">{s.categoria}</span>
-                    <span className={"tag level" + (s.nivel === "Principiante" ? " easy" : "")}>{s.nivel}</span>
+                    <span className={"tag level" + (s.nivel === "Principiante" || s.nivel === "Beginner" ? " easy" : "")}>{s.nivel}</span>
                   </span>
                 </span>
               </button>
@@ -141,7 +143,7 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
                 <p className="small">{selected.descripcion}</p>
                 {selected.aprenderas.length > 0 && (
                   <>
-                    <div className="sample-section">Aprenderás</div>
+                    <div className="sample-section">{t("Aprenderás")}</div>
                     <ul className="sample-learn small">
                       {selected.aprenderas.map((a) => (
                         <li key={a}>
@@ -151,23 +153,24 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
                     </ul>
                   </>
                 )}
-                <div className="sample-section">Archivos</div>
+                <div className="sample-section">{t("Archivos")}</div>
                 <div className="sample-files small">
                   {selected.archivos.filter((f) => !f.endsWith(".gitignore")).map((f) => (
                     <code key={f}>{f}</code>
                   ))}
                 </div>
                 <label>
-                  {isSolution ? "Nombre de la solución" : "Nombre del proyecto"}
+                  {isSolution ? t("Nombre de la solución") : t("Nombre del proyecto")}
                   <input value={name} onChange={(e) => setName(e.target.value)} spellCheck={false} />
                 </label>
                 {!nameOk && name.length > 0 && (
                   <div className="hint err">
-                    {isSolution ? "El nombre no puede tener / \\ : * ? \" < > |" : "Usa letras, números, “_” o “-”, sin empezar con número."}
+                    {isSolution ? t("El nombre no puede tener / \\ : * ? \" < > |") : t("Usa letras, números, “_” o “-”, sin empezar con número.")}
                   </div>
                 )}
                 <label>
-                  Ubicación
+                  
+                  {t("Ubicación")}
                   <div className="row">
                     <input value={location} onChange={(e) => setLocation(e.target.value)} spellCheck={false} />
                     <button
@@ -178,14 +181,15 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
                         if (typeof dir === "string") setLocation(dir);
                       }}
                     >
-                      Examinar…
+                      
+                      {t("Examinar…")}
                     </button>
                   </div>
                 </label>
               </>
             ) : (
               <div className="sample-empty muted">
-                <Codicon name="arrow-left" /> Elige un ejemplo para ver qué incluye.
+                <Codicon name="arrow-left" /> {" "}{t("Elige un ejemplo para ver qué incluye.")}
               </div>
             )}
           </div>
@@ -196,17 +200,18 @@ export default function SamplesDialog({ onCancel, onCreated }: Props) {
         <div className="actions">
           <span className="muted small samples-source">
             {catalog && (catalog.online ? (
-              <><Codicon name="cloud" /> Catálogo actualizado desde GitHub</>
+              <><Codicon name="cloud" /> {" "}{t("Catálogo actualizado desde GitHub")}</>
             ) : (
-              <><Codicon name="package" /> Ejemplos incluidos en Raxorin Studio</>
+              <><Codicon name="package" /> {" "}{t("Ejemplos incluidos en Raxorin Studio")}</>
             ))}
           </span>
           <span className="spacer" />
           <button className="btn" onClick={onCancel} disabled={busy}>
-            Cancelar
+            
+            {t("Cancelar")}
           </button>
           <button className="btn primary" onClick={() => void create()} disabled={!selected || !nameOk || !location || busy}>
-            {busy ? "Creando…" : "Crear y abrir"}
+            {busy ? t("Creando…") : t("Crear y abrir")}
           </button>
         </div>
       </div>

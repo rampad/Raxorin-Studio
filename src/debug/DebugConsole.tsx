@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Codicon } from "../components/Icon";
 import type { DebugController } from "./controller";
+import { t } from "../i18n/index.ts";
 
 export interface ConsoleEntry {
   kind: "input" | "result" | "error";
@@ -39,8 +40,9 @@ export default function DebugConsole({ ctl, entries, setEntries, stopped }: {
       <div className="console-out" ref={out}>
         {entries.length === 0 && (
           <div className="muted small pad">
-            Escribe una expresión de Rust y presiona Enter, por ejemplo <code>i * 2</code>, <code>nombre.len()</code> o{" "}
-            <code>i = 10</code> para cambiar un valor. Los comandos de LLDB empiezan con <code>`</code> (por ejemplo{" "}
+            
+            {t("Escribe una expresión de Rust y presiona Enter, por ejemplo")}{" "}<code>i * 2</code>, <code>nombre.len()</code> o{" "}
+            <code>i = 10</code> {" "}{t("para cambiar un valor. Los comandos de LLDB empiezan con")}{" "}<code>`</code> {" "}{t("(por ejemplo")}{" "}
             <code>`frame variable</code>).
           </div>
         )}
@@ -58,11 +60,11 @@ export default function DebugConsole({ ctl, entries, setEntries, stopped }: {
           run();
         }}
       >
-        <span className="stdin-label"><Codicon name="debug-console" /> Evaluar</span>
+        <span className="stdin-label"><Codicon name="debug-console" /> {" "}{t("Evaluar")}</span>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={stopped ? "Expresión (↑ ↓ historial)" : "Disponible cuando el programa está detenido"}
+          placeholder={stopped ? t("Expresión (↑ ↓ historial)") : t("Disponible cuando el programa está detenido")}
           spellCheck={false}
           onKeyDown={(e) => {
             if (e.key === "ArrowUp" && history.length) {
@@ -79,7 +81,7 @@ export default function DebugConsole({ ctl, entries, setEntries, stopped }: {
           }}
         />
         {entries.length > 0 && (
-          <button type="button" className="icon-btn" title="Limpiar" onClick={() => setEntries(() => [])}>
+          <button type="button" className="icon-btn" title={t("Limpiar")} onClick={() => setEntries(() => [])}>
             <Codicon name="clear-all" />
           </button>
         )}

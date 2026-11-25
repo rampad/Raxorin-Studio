@@ -8,6 +8,7 @@ import {
   getProp, parseBool, parseColor, parseImage, parseItems, parseLength, parseNumber, parseString, parseStringArray,
   type Element,
 } from "./slintDoc";
+import { t } from "../i18n/index.ts";
 
 const str = (el: Element, name: string, fallback = "") => {
   const v = getProp(el, name);
@@ -67,7 +68,7 @@ export default function WidgetPreview({ el }: { el: Element }) {
       // Los mismos textos que pone Slint (en inglés, traducibles con @tr).
       const kind = getProp(el, "kind")?.trim() ?? "ok";
       const label: Record<string, string> = {
-        ok: "OK", cancel: "Cancel", apply: "Apply", close: "Close", reset: "Reset", help: "Help",
+        ok: "OK", cancel: "Cancel", apply: "Apply", close: "Close", reset: "Reset", help: t("Help"),
         yes: "Yes", no: "No", abort: "Abort", retry: "Retry", ignore: "Ignore",
       };
       return <div className="w-button" style={base}>{label[kind] ?? kind}</div>;
@@ -80,13 +81,13 @@ export default function WidgetPreview({ el }: { el: Element }) {
           {items.map((t, i) => (
             <div key={i} className={"w-listview-row" + (i === current ? " selected" : "")}>{t}</div>
           ))}
-          {!items.length && <span className="w-placeholder">(sin elementos)</span>}
+          {!items.length && <span className="w-placeholder">{t("(sin elementos)")}</span>}
         </div>
       );
     }
     case "TouchArea":
       return (
-        <div className="w-toucharea" title={`Cursor: ${getProp(el, "mouse-cursor")?.trim() ?? "default"}`}>
+        <div className="w-toucharea" title={t("Cursor: {0}", getProp(el, "mouse-cursor")?.trim() ?? "default")}>
           <Codicon name="target" />
         </div>
       );
@@ -221,7 +222,7 @@ export default function WidgetPreview({ el }: { el: Element }) {
       return (
         <div className="w-unknown">
           <span>{el.type}</span>
-          <small>se edita como código</small>
+          <small>{t("se edita como código")}</small>
         </div>
       );
   }

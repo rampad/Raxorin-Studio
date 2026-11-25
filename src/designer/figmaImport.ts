@@ -4,6 +4,7 @@
 // el resto → Rectangle/Text/Image con posiciones fijas.
 
 import { formatLength, formatString, type Element, type Item } from "./slintDoc.ts";
+import { t } from "../i18n/index.ts";
 
 // ---------- Formato del plugin ----------
 
@@ -53,12 +54,12 @@ export function parseFigmaExport(text: string): FigmaExport {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("El archivo no es un JSON válido. Expórtalo de nuevo con el plugin de Figma.");
+    throw new Error(t("El archivo no es un JSON válido. Expórtalo de nuevo con el plugin de Figma."));
   }
   const d = data as Partial<FigmaExport>;
-  if (d?.format !== "raxorin-figma") throw new Error("Este archivo no fue creado con el plugin “Raxorin Studio Export” de Figma.");
-  if ((d.version ?? 0) > 1) throw new Error(`El archivo es de una versión más nueva del plugin (${d.version}). Actualiza Raxorin Studio.`);
-  if (!Array.isArray(d.frames) || !d.frames.length) throw new Error("El archivo no tiene pantallas.");
+  if (d?.format !== "raxorin-figma") throw new Error(t("Este archivo no fue creado con el plugin “Raxorin Studio Export” de Figma."));
+  if ((d.version ?? 0) > 1) throw new Error(t("El archivo es de una versión más nueva del plugin ({0}). Actualiza Raxorin Studio.", d.version));
+  if (!Array.isArray(d.frames) || !d.frames.length) throw new Error(t("El archivo no tiene pantallas."));
   return { images: {}, variables: [], warnings: [], file: "", page: "", ...d } as FigmaExport;
 }
 
@@ -283,7 +284,7 @@ function convertWidget(n: FNode, type: string, parent: Parent, ctx: Ctx): Elemen
       if (/checked=(true|yes|on)|state=(on|checked)|\bon\b|activ/.test(v)) items.push(prop("checked", "true"));
       break;
     case "ComboBox":
-      items.push(prop("model", `[${formatString(label || "Opción 1")}]`));
+      items.push(prop("model", `[${formatString(label || t("Opción 1"))}]`));
       break;
     case "Slider":
       items.push(prop("value", "50"));
@@ -303,7 +304,7 @@ function convertImage(n: FNode, parent: Parent, ctx: Ctx): Element {
   const img = ctx.exp.images[n.image!];
   const file = `${ctx.assetDir}/${slug(n.name)}-${n.image}.png`;
   if (img) ctx.assets.push({ path: file, base64: img.base64 });
-  else ctx.warnings.push(`Falta la imagen de “${n.name}” en el archivo.`);
+  else ctx.warnings.push(t("Falta la imagen de “{0}” en el archivo.", n.name));
   count(ctx, "Image");
   return el("Image", uniqueId(ctx, n.name), [...geometry(n, parent), prop("source", `@image-url(${formatString(file)})`), prop("image-fit", "fill")]);
 }
@@ -330,10 +331,10 @@ function convertNode(n: FNode, parent: Parent, ctx: Ctx): Element | null {
     boxItems.push(prop("spacing", formatLength(n.layout.spacing)));
     const align = ALIGN[n.layout.primaryAlign] ?? "start";
     boxItems.push(prop("alignment", align));
-    if (n.layout.wrap) ctx.warnings.push(`“${n.name}” usa Auto Layout con varias líneas (wrap): se convirtió en una sola ${n.layout.mode === "VERTICAL" ? "columna" : "fila"}.`);
+    if (n.layout.wrap) ctx.warnings.push(t("“{0}” usa Auto Layout con varias líneas (wrap): se convirtió en una sola {1}.", n.name, n.layout.mode === "VERTICAL" ? "columna" : "fila"));
     const flow: Parent = { kind: "flow", mode: n.layout.mode };
     for (const c of n.children) {
-      if (c.sizing.positioning === "ABSOLUTE") ctx.warnings.push(`“${c.name}” tiene posición absoluta dentro de un Auto Layout: se acomodó con los demás.`);
+      if (c.sizing.positioning === "ABSOLUTE") ctx.warnings.push(t("“{0}” tiene posición absoluta dentro de un Auto Layout: se acomodó con los demás.", c.name));
       const child = convertNode(c, flow, ctx);
       if (child) boxItems.push(child);
     }
@@ -357,7 +358,7 @@ function convertNode(n: FNode, parent: Parent, ctx: Ctx): Element | null {
  */
 export function convertFrame(exp: FigmaExport, index: number, usedIds: Set<string>, assetDir = "figma"): ImportResult {
   const frame = exp.frames[index];
-  if (!frame) throw new Error("Esa pantalla no existe en el archivo.");
+  if (!frame) throw new Error(t("Esa pantalla no existe en el archivo."));
   const ctx: Ctx = { used: new Set(usedIds), assets: [], exp, assetDir, stats: {}, warnings: [...(exp.warnings ?? [])] };
   const inside: Parent = { kind: "abs", x: frame.box.x, y: frame.box.y };
   let items: Element[];
@@ -393,5 +394,5 @@ export function tokensGlobal(exp: FigmaExport): string | null {
     seen.add(name);
     return `    out property <color> ${name}: ${colorToSlint(v.color)};`;
   });
-  return `// Colores del sistema de diseño (variables de Figma).\nexport global Tema {\n${lines.join("\n")}\n}`;
+  return `// ${t("Colores del sistema de diseño (variables de Figma).")}\nexport global Tema {\n${lines.join("\n")}\n}`;
 }

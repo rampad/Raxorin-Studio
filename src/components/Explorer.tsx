@@ -4,6 +4,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { api, type Entry, type ProjectInfo } from "../api";
 import { basename, dirname, isInside, joinPath, relative } from "../util";
 import { Codicon, FileIcon } from "./Icon";
+import { t, tErr } from "../i18n/index.ts";
 
 export interface FileProblems { errors: number; warnings: number }
 
@@ -214,14 +215,14 @@ export default function Explorer(p: Props) {
         p.onCreated(path, ed.mode === "new-folder");
       }
     } catch (e) {
-      p.onError(String(e));
+      p.onError(tErr(e));
     }
   };
 
   const remove = async (entry: Entry) => {
     const ok = await ask(
-      `¿Mover “${entry.name}”${entry.isDir ? " y todo su contenido" : ""} a la papelera?`,
-      { title: "Eliminar", kind: "warning", okLabel: "Mover a la papelera", cancelLabel: "Cancelar" },
+      t("¿Mover “{0}”{1} a la papelera?", entry.name, entry.isDir ? t(" y todo su contenido") : ""),
+      { title: t("Eliminar"), kind: "warning", okLabel: t("Mover a la papelera"), cancelLabel: t("Cancelar") },
     );
     if (!ok) return;
     try {
@@ -229,7 +230,7 @@ export default function Explorer(p: Props) {
       await loadDir(dirname(entry.path));
       p.onDeleted(entry.path);
     } catch (e) {
-      p.onError(String(e));
+      p.onError(tErr(e));
     }
   };
 
@@ -242,7 +243,7 @@ export default function Explorer(p: Props) {
       setExpanded((e) => new Set([...e, toDir]));
       p.onRenamed(from, to);
     } catch (e) {
-      p.onError(String(e));
+      p.onError(tErr(e));
     }
   };
 
@@ -317,8 +318,8 @@ export default function Explorer(p: Props) {
   if (!roots.length && !p.solution) {
     return (
       <div className="explorer">
-        <div className="panel-title"><span>EXPLORADOR</span></div>
-        <div className="muted pad">No hay ningún proyecto abierto.</div>
+        <div className="panel-title"><span>{t("EXPLORADOR")}</span></div>
+        <div className="muted pad">{t("No hay ningún proyecto abierto.")}</div>
       </div>
     );
   }
@@ -387,7 +388,7 @@ export default function Explorer(p: Props) {
         ) : (
           <>
             <span className="label">{entry.name}</span>
-            {isStartup && <Codicon name="play" className="startup-badge" title="Proyecto de inicio" />}
+            {isStartup && <Codicon name="play" className="startup-badge" title={t("Proyecto de inicio")} />}
             {prob && !entry.isDir && (
               <span className={"problem-count " + (prob.errors ? "err" : "warn")}>
                 {prob.errors || prob.warnings}
@@ -429,12 +430,12 @@ export default function Explorer(p: Props) {
   return (
     <div className="explorer">
       <div className="panel-title">
-        <span>EXPLORADOR</span>
+        <span>{t("EXPLORADOR")}</span>
         <span className="title-actions">
-          <button className="icon-btn" title="Nuevo archivo" onClick={() => startNew("new-file", targetDir(selected))}><Codicon name="new-file" /></button>
-          <button className="icon-btn" title="Nueva carpeta" onClick={() => startNew("new-folder", targetDir(selected))}><Codicon name="new-folder" /></button>
-          <button className="icon-btn" title="Actualizar" onClick={refreshAll}><Codicon name="refresh" /></button>
-          <button className="icon-btn" title="Contraer todo" onClick={collapseAll}><Codicon name="collapse-all" /></button>
+          <button className="icon-btn" title={t("Nuevo archivo")} onClick={() => startNew("new-file", targetDir(selected))}><Codicon name="new-file" /></button>
+          <button className="icon-btn" title={t("Nueva carpeta")} onClick={() => startNew("new-folder", targetDir(selected))}><Codicon name="new-folder" /></button>
+          <button className="icon-btn" title={t("Actualizar")} onClick={refreshAll}><Codicon name="refresh" /></button>
+          <button className="icon-btn" title={t("Contraer todo")} onClick={collapseAll}><Codicon name="collapse-all" /></button>
         </span>
       </div>
       <div
@@ -466,18 +467,18 @@ export default function Explorer(p: Props) {
           >
             <span className="twisty" />
             <span className="file-icon"><Codicon name="layers" /></span>
-            <span className="label">Solución “{p.solution.name}”</span>
-            <span className="muted small solution-count">{roots.length} {roots.length === 1 ? "proyecto" : "proyectos"}</span>
-            <button className="icon-btn" title="Agregar proyecto nuevo" onClick={(e) => { e.stopPropagation(); p.onSolution("new-project"); }}>
+            <span className="label">{t("Solución “")}{p.solution.name}”</span>
+            <span className="muted small solution-count">{roots.length} {roots.length === 1 ? t("proyecto") : t("proyectos")}</span>
+            <button className="icon-btn" title={t("Agregar proyecto nuevo")} onClick={(e) => { e.stopPropagation(); p.onSolution("new-project"); }}>
               <Codicon name="add" />
             </button>
-            <button className="icon-btn" title="Agregar proyecto existente" onClick={(e) => { e.stopPropagation(); p.onSolution("add-existing"); }}>
+            <button className="icon-btn" title={t("Agregar proyecto existente")} onClick={(e) => { e.stopPropagation(); p.onSolution("add-existing"); }}>
               <Codicon name="folder-library" />
             </button>
           </div>
         )}
         {p.solution && roots.length === 0 && (
-          <div className="muted small pad">La solución está vacía. Usa <Codicon name="add" /> para agregar un proyecto.</div>
+          <div className="muted small pad">{t("La solución está vacía. Usa")}{" "}<Codicon name="add" /> {" "}{t("para agregar un proyecto.")}</div>
         )}
         {roots.map((root) => (
           <div key={root}>
@@ -494,11 +495,11 @@ export default function Explorer(p: Props) {
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => setSolutionMenu(null)}
         >
-          <div className="menu-header">Solución · {p.solution.name}</div>
-          <MenuItem icon="add" label="Agregar proyecto nuevo…" onClick={() => p.onSolution("new-project")} />
-          <MenuItem icon="folder-library" label="Agregar proyecto existente…" onClick={() => p.onSolution("add-existing")} />
+          <div className="menu-header">{t("Solución ·")}{" "}{p.solution.name}</div>
+          <MenuItem icon="add" label={t("Agregar proyecto nuevo…")} onClick={() => p.onSolution("new-project")} />
+          <MenuItem icon="folder-library" label={t("Agregar proyecto existente…")} onClick={() => p.onSolution("add-existing")} />
           <div className="menu-sep" />
-          <MenuItem icon="go-to-file" label="Abrir el archivo .rxsln" onClick={() => p.onSolution("edit-file")} />
+          <MenuItem icon="go-to-file" label={t("Abrir el archivo .rxsln")} onClick={() => p.onSolution("edit-file")} />
           <MenuItem icon="folder-opened" label={revealLabel()} onClick={() => api.revealPath(p.solution!.file).catch(() => {})} />
         </div>
       )}
@@ -510,50 +511,50 @@ export default function Explorer(p: Props) {
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => setMenu(null)}
         >
-          {!menuEntry.isDir && <MenuItem icon="go-to-file" label="Abrir" onClick={() => p.onOpenFile(menuEntry.path)} />}
+          {!menuEntry.isDir && <MenuItem icon="go-to-file" label={t("Abrir")} onClick={() => p.onOpenFile(menuEntry.path)} />}
           {menuProject && (
             <>
-              <div className="menu-header">{menuProject.kind === "bin" ? "Aplicación" : "Biblioteca"} · {menuProject.name}</div>
+              <div className="menu-header">{menuProject.kind === "bin" ? t("Aplicación") : t("Biblioteca")} · {menuProject.name}</div>
               {menuProject.dir !== p.startupDir && (
-                <MenuItem icon="play" label="Establecer como proyecto de inicio" onClick={() => p.onSetStartup(menuProject.dir)} />
+                <MenuItem icon="play" label={t("Establecer como proyecto de inicio")} onClick={() => p.onSetStartup(menuProject.dir)} />
               )}
-              <MenuItem icon="references" label="Agregar referencia a proyecto…" onClick={() => p.onAddReference(menuProject.dir)} />
-              <MenuItem icon="package" label="Administrar paquetes…" onClick={() => p.onManagePackages(menuProject.dir)} />
+              <MenuItem icon="references" label={t("Agregar referencia a proyecto…")} onClick={() => p.onAddReference(menuProject.dir)} />
+              <MenuItem icon="package" label={t("Administrar paquetes…")} onClick={() => p.onManagePackages(menuProject.dir)} />
               <div className="menu-sep" />
             </>
           )}
           {menuEntry.isDir && (
             <>
-              <MenuItem icon="new-file" label="Nuevo archivo…" onClick={() => startNew("new-file", menuDir)} />
-              <MenuItem icon="new-folder" label="Nueva carpeta…" onClick={() => startNew("new-folder", menuDir)} />
+              <MenuItem icon="new-file" label={t("Nuevo archivo…")} onClick={() => startNew("new-file", menuDir)} />
+              <MenuItem icon="new-folder" label={t("Nueva carpeta…")} onClick={() => startNew("new-folder", menuDir)} />
             </>
           )}
           <div className="menu-sep" />
-          <MenuItem icon="folder-opened" label={revealLabel()} onClick={() => api.revealPath(menuEntry.path).catch((e) => p.onError(String(e)))} />
-          <MenuItem icon="copy" label="Copiar ruta" onClick={() => copy(menuEntry.path)} />
-          {!menu.isRoot && <MenuItem label="Copiar ruta relativa" onClick={() => copy(relative(rootOf(menuEntry.path), menuEntry.path))} />}
+          <MenuItem icon="folder-opened" label={revealLabel()} onClick={() => api.revealPath(menuEntry.path).catch((e) => p.onError(tErr(e)))} />
+          <MenuItem icon="copy" label={t("Copiar ruta")} onClick={() => copy(menuEntry.path)} />
+          {!menu.isRoot && <MenuItem label={t("Copiar ruta relativa")} onClick={() => copy(relative(rootOf(menuEntry.path), menuEntry.path))} />}
           {!menu.isRoot && (
             <>
               <div className="menu-sep" />
               <MenuItem
                 icon="edit"
-                label="Renombrar"
+                label={t("Renombrar")}
                 shortcut="F2"
                 onClick={() => setEditing({ mode: "rename", path: menuEntry.path, isDir: menuEntry.isDir })}
               />
-              <MenuItem icon="trash" label="Eliminar" shortcut="Supr" danger onClick={() => remove(menuEntry)} />
+              <MenuItem icon="trash" label={t("Eliminar")} shortcut="Supr" danger onClick={() => remove(menuEntry)} />
             </>
           )}
           {menu.isRoot && (
             <>
               <div className="menu-sep" />
               {p.solution ? (
-                <MenuItem icon="close" label="Quitar de la solución" onClick={() => p.onSolution("remove", menuEntry.path)} />
+                <MenuItem icon="close" label={t("Quitar de la solución")} onClick={() => p.onSolution("remove", menuEntry.path)} />
               ) : (
-                <MenuItem icon="layers" label="Guardar como solución (.rxsln)…" onClick={() => p.onSolution("save-as")} />
+                <MenuItem icon="layers" label={t("Guardar como solución (.rxsln)…")} onClick={() => p.onSolution("save-as")} />
               )}
-              <MenuItem icon="refresh" label="Actualizar" onClick={refreshAll} />
-              <MenuItem icon="collapse-all" label="Contraer todo" onClick={collapseAll} />
+              <MenuItem icon="refresh" label={t("Actualizar")} onClick={refreshAll} />
+              <MenuItem icon="collapse-all" label={t("Contraer todo")} onClick={collapseAll} />
             </>
           )}
         </div>
@@ -611,8 +612,8 @@ function InlineInput(props: { initial: string; selectStem?: boolean; onDone: (v:
 
 function revealLabel() {
   const ua = navigator.userAgent;
-  if (ua.includes("Mac")) return "Mostrar en Finder";
-  if (ua.includes("Windows")) return "Mostrar en el Explorador";
+  if (ua.includes("Mac")) return t("Mostrar en Finder");
+  if (ua.includes("Windows")) return t("Mostrar en el Explorador");
   return "Abrir carpeta contenedora";
 }
 

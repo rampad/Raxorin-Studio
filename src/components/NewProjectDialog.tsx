@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { homeDir, join } from "@tauri-apps/api/path";
 import { api, type Sample, type SampleCatalog } from "../api";
 import { Codicon } from "./Icon";
+import { t, tErr } from "../i18n/index.ts";
 
 type Kind = "bin" | "lib" | "slint" | "solution";
 
@@ -23,10 +24,10 @@ interface Props {
 }
 
 const TEMPLATES: { kind: Kind; icon: string; title: string; desc: string; blank: string; sample: Sample["tipo"] }[] = [
-  { kind: "bin", icon: "terminal", title: "Aplicación de consola", desc: "Un programa que se ejecuta en la terminal.", blank: "Pregunta tu nombre y te saluda.", sample: "consola" },
-  { kind: "slint", icon: "window", title: "Aplicación de ventana", desc: "Ventana con diseñador visual (Slint), como WPF.", blank: "Una ventana con un campo de texto y un botón.", sample: "ventana" },
-  { kind: "lib", icon: "library", title: "Biblioteca", desc: "Código reutilizable para otros proyectos.", blank: "Una función de ejemplo con su prueba.", sample: "biblioteca" },
-  { kind: "solution", icon: "layers", title: "Solución", desc: "Un archivo .rxsln para agrupar varios proyectos.", blank: "Una solución vacía, lista para agregar proyectos.", sample: "solucion" },
+  { kind: "bin", icon: "terminal", title: t("Aplicación de consola"), desc: t("Un programa que se ejecuta en la terminal."), blank: t("Pregunta tu nombre y te saluda."), sample: "consola" },
+  { kind: "slint", icon: "window", title: t("Aplicación de ventana"), desc: t("Ventana con diseñador visual (Slint), como WPF."), blank: t("Una ventana con un campo de texto y un botón."), sample: "ventana" },
+  { kind: "lib", icon: "library", title: t("Biblioteca"), desc: t("Código reutilizable para otros proyectos."), blank: t("Una función de ejemplo con su prueba."), sample: "biblioteca" },
+  { kind: "solution", icon: "layers", title: t("Solución"), desc: t("Un archivo .rxsln para agrupar varios proyectos."), blank: t("Una solución vacía, lista para agregar proyectos."), sample: "solucion" },
 ];
 
 const CRATE_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -74,7 +75,7 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
   const suggest = (k: Kind, s: Sample | null) => {
     if (nameTouched) return;
     if (s) setName(k === "solution" ? s.nombre.replace(/\s*\(.*\)$/, "") : s.id);
-    else setName(k === "solution" ? "Mi solución" : "mi_app");
+    else setName(k === "solution" ? t("Mi solución") : "mi_app");
   };
 
   const chooseKind = (k: Kind) => {
@@ -110,7 +111,7 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
     try {
       await onCreate(location, name.trim(), kind, adding, sample ? { sample, online: !!catalog?.online } : undefined);
     } catch (err) {
-      setError(String(err));
+      setError(tErr(err));
       setBusy(false);
     }
   };
@@ -122,11 +123,11 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
         onMouseDown={(e) => e.stopPropagation()}
         onSubmit={submit}
       >
-        <h2>{step === 1 ? "Nuevo proyecto" : template.title}</h2>
+        <h2>{step === 1 ? t("Nuevo proyecto") : template.title}</h2>
         <div className="wizard-steps small">
           <span className={step === 1 ? "active" : "done"}>1. Tipo</span>
           <Codicon name="chevron-right" />
-          <span className={step === 2 ? "active" : ""}>2. Cómo empezar</span>
+          <span className={step === 2 ? "active" : ""}>{t("2. Cómo empezar")}</span>
         </div>
 
         {step === 1 ? (
@@ -164,11 +165,11 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
               >
                 <Codicon name="new-file" className="sample-icon" />
                 <span className="sample-text">
-                  <strong>{isSolution ? "Solución en blanco" : "Proyecto en blanco"}</strong>
+                  <strong>{isSolution ? t("Solución en blanco") : t("Proyecto en blanco")}</strong>
                   <small>{template.blank}</small>
                 </span>
               </button>
-              {samples.length > 0 && <div className="start-section">Empezar desde un ejemplo</div>}
+              {samples.length > 0 && <div className="start-section">{t("Empezar desde un ejemplo")}</div>}
               {samples.map((s) => (
                 <button
                   type="button"
@@ -181,7 +182,7 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
                     <strong>{s.nombre}</strong>
                     <small>{s.descripcion}</small>
                     <span className="sample-tags">
-                      <span className={"tag level" + (s.nivel === "Principiante" ? " easy" : "")}>{s.nivel}</span>
+                      <span className={"tag level" + (s.nivel === "Principiante" || s.nivel === "Beginner" ? " easy" : "")}>{s.nivel}</span>
                       {s.aprenderas.slice(0, 2).map((a) => (
                         <span key={a} className="tag">{a}</span>
                       ))}
@@ -191,14 +192,14 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
               ))}
               {!catalog && !catalogFailed && (
                 <p className="muted small">
-                  <Codicon name="loading" spin /> Cargando ejemplos…
+                  <Codicon name="loading" spin /> {" "}{t("Cargando ejemplos…")}
                 </p>
               )}
             </div>
 
             <div className="start-form">
               <label>
-                {isSolution ? "Nombre de la solución" : "Nombre del proyecto"}
+                {isSolution ? t("Nombre de la solución") : t("Nombre del proyecto")}
                 <input
                   value={name}
                   onChange={(e) => {
@@ -211,32 +212,33 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
               </label>
               {!nameOk && name.length > 0 && (
                 <div className="hint err">
-                  {isSolution ? "El nombre no puede tener / \\ : * ? \" < > |" : "Usa letras, números, “_” o “-”, sin empezar con número."}
+                  {isSolution ? t("El nombre no puede tener / \\ : * ? \" < > |") : t("Usa letras, números, “_” o “-”, sin empezar con número.")}
                 </div>
               )}
               {currentRoot && !isSolution && (
                 <div className="segmented vertical">
                   <button type="button" className={addToCurrent ? "active" : ""} onClick={() => setAddToCurrent(true)}>
-                    <Codicon name="add" /> {solutionName ? `Agregar a la solución “${solutionName}”` : "Agregar a la carpeta actual"}
+                    <Codicon name="add" /> {solutionName ? t("Agregar a la solución “{0}”", solutionName) : t("Agregar a la carpeta actual")}
                   </button>
                   <button type="button" className={!addToCurrent ? "active" : ""} onClick={() => setAddToCurrent(false)}>
-                    <Codicon name="folder-opened" /> Crear en otra ubicación
+                    <Codicon name="folder-opened" /> {" "}{t("Crear en otra ubicación")}
                   </button>
                 </div>
               )}
               <label>
-                Ubicación
+                
+                {t("Ubicación")}
                 <div className="row">
                   <input value={location} onChange={(e) => setLocation(e.target.value)} spellCheck={false} />
                   <button type="button" className="btn" onClick={browse}>
-                    Examinar…
+                    
+                    {t("Examinar…")}
                   </button>
                 </div>
               </label>
               {sample && (
                 <p className="muted small start-note">
-                  <Codicon name="info" /> Se copia el ejemplo «{sample.nombre}» con el nombre que elegiste. Es tuyo:
-                  cámbialo todo lo que quieras.
+                  <Codicon name="info" /> {" "}{t("Se copia el ejemplo «")}{sample.nombre}{t("» con el nombre que elegiste. Es tuyo: cámbialo todo lo que quieras.")}
                 </p>
               )}
             </div>
@@ -247,20 +249,22 @@ export default function NewProjectDialog({ currentRoot, solutionName, onCancel, 
         <div className="actions">
           {step === 2 && (
             <button type="button" className="btn" onClick={() => setStep(1)} disabled={busy}>
-              <Codicon name="arrow-left" /> Atrás
+              <Codicon name="arrow-left" /> {" "}{t("Atrás")}
             </button>
           )}
           <span className="spacer" />
           <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            Cancelar
+            
+            {t("Cancelar")}
           </button>
           {step === 1 ? (
             <button type="submit" className="btn primary">
-              Siguiente <Codicon name="arrow-right" />
+              
+              {t("Siguiente")}{" "}<Codicon name="arrow-right" />
             </button>
           ) : (
             <button type="submit" className="btn primary" disabled={!valid || busy}>
-              {busy ? "Creando…" : adding ? "Agregar" : "Crear"}
+              {busy ? t("Creando…") : adding ? t("Agregar") : t("Crear")}
             </button>
           )}
         </div>

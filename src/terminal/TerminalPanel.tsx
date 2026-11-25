@@ -13,6 +13,7 @@ import {
   setFontSize,
   subscribe,
 } from "./sessions";
+import { t } from "../i18n/index.ts";
 
 interface Props {
   /** Carpeta donde arrancan las terminales nuevas (el proyecto abierto). */
@@ -76,7 +77,7 @@ export default function TerminalPanel({ cwd, visible, fontSize }: Props) {
             <span
               className="terminal-close"
               role="button"
-              title="Cerrar esta terminal"
+              title={t("Cerrar esta terminal")}
               onClick={(e) => {
                 e.stopPropagation();
                 closeSession(s.key);
@@ -86,11 +87,11 @@ export default function TerminalPanel({ cwd, visible, fontSize }: Props) {
             </span>
           </button>
         ))}
-        <button className="icon-btn" title="Nueva terminal" onClick={() => createSession(cwd, fontSize)}>
+        <button className="icon-btn" title={t("Nueva terminal")} onClick={() => createSession(cwd, fontSize)}>
           <Codicon name="add" />
         </button>
         <span className="spacer" />
-        <button className="icon-btn" title="Limpiar" onClick={() => active?.term.clear()} disabled={!active}>
+        <button className="icon-btn" title={t("Limpiar")} onClick={() => active?.term.clear()} disabled={!active}>
           <Codicon name="clear-all" />
         </button>
       </div>
@@ -98,7 +99,7 @@ export default function TerminalPanel({ cwd, visible, fontSize }: Props) {
         {sessions.length === 0 && (
           <div className="muted pad">
             <button className="btn" onClick={() => createSession(cwd, fontSize)}>
-              <Codicon name="add" /> Nueva terminal
+              <Codicon name="add" /> {" "}{t("Nueva terminal")}
             </button>
           </div>
         )}

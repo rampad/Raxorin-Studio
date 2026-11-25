@@ -9,6 +9,7 @@ import {
   useToolbarConfig,
   type ToolItem,
 } from "../toolbarConfig";
+import { t } from "../i18n/index.ts";
 
 /**
  * Personalizar la barra de herramientas: mostrar u ocultar controles, cambiar
@@ -50,13 +51,14 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal tb-customize" onMouseDown={(e) => e.stopPropagation()}>
         <h2>
-          <Codicon name="settings" /> Personalizar barra de herramientas
+          <Codicon name="settings" /> {" "}{t("Personalizar barra de herramientas")}
         </h2>
         <p className="muted small">
-          Marca los controles que quieres ver y ordénalos con las flechas o arrastrándolos. Los cambios se aplican al momento.
+          
+          {t("Marca los controles que quieres ver y ordénalos con las flechas o arrastrándolos. Los cambios se aplican al momento.")}
         </p>
 
-        <div className="tb-list" role="listbox" aria-label="Controles de la barra">
+        <div className="tb-list" role="listbox" aria-label={t("Controles de la barra")}>
           {items.map((it, i) => {
             const sep = isSep(it.id);
             const def = sep ? null : TOOLS[it.id as keyof typeof TOOLS];
@@ -88,8 +90,8 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
                 {sep ? (
                   <>
                     <span className="tb-sep-preview" />
-                    <span className="tb-item-name muted">Separador</span>
-                    <button className="icon-btn" title="Quitar separador" onClick={() => removeSeparator(i)}>
+                    <span className="tb-item-name muted">{t("Separador")}</span>
+                    <button className="icon-btn" title={t("Quitar separador")} onClick={() => removeSeparator(i)}>
                       <Codicon name="close" />
                     </button>
                   </>
@@ -113,30 +115,32 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="row tb-tools">
-          <button className="btn" disabled={sel <= 0} onClick={() => move(sel, sel - 1)} title="Subir (más a la izquierda)">
+          <button className="btn" disabled={sel <= 0} onClick={() => move(sel, sel - 1)} title={t("Subir (más a la izquierda)")}>
             <Codicon name="arrow-up" />
           </button>
-          <button className="btn" disabled={sel < 0 || sel >= items.length - 1} onClick={() => move(sel, sel + 1)} title="Bajar (más a la derecha)">
+          <button className="btn" disabled={sel < 0 || sel >= items.length - 1} onClick={() => move(sel, sel + 1)} title={t("Bajar (más a la derecha)")}>
             <Codicon name="arrow-down" />
           </button>
           <button className="btn" onClick={addSeparator}>
-            <Codicon name="add" /> Separador
+            <Codicon name="add" /> {" "}{t("Separador")}
           </button>
           <span className="spacer" />
           <label className="check-line">
             <input type="checkbox" checked={config.labels} onChange={(e) => setToolbarConfig({ ...config, labels: e.target.checked })} />
-            Mostrar texto en los botones
+            
+            {t("Mostrar texto en los botones")}
           </label>
         </div>
 
         <div className="actions">
           <button className="btn" onClick={resetToolbarConfig}>
-            <Codicon name="discard" /> Restablecer
+            <Codicon name="discard" /> {" "}{t("Restablecer")}
           </button>
-          <span className="muted small">{shown} controles visibles</span>
+          <span className="muted small">{shown} {" "}{t("controles visibles")}</span>
           <span className="spacer" />
           <button className="btn primary" onClick={onClose} autoFocus>
-            Listo
+            
+            {t("Listo")}
           </button>
         </div>
       </div>

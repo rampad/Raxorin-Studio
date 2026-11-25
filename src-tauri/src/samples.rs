@@ -39,6 +39,9 @@ pub struct Sample {
     #[serde(default)]
     pub aprenderas: Vec<String>,
     pub archivos: Vec<String>,
+    /// Textos de la ficha en inglés (nombre, descripcion, categoria, nivel, aprenderas).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub en: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]

@@ -4,6 +4,7 @@ import { basename, relative } from "../util";
 import { describeBreakpoint, type BreakpointInfo, type BreakpointStore } from "./breakpoints";
 import type { DebugController, DebugSnapshot } from "./controller";
 import type { Variable } from "./dap";
+import { t } from "../i18n/index.ts";
 
 // ---------- Árbol de variables (se expande bajo demanda) ----------
 
@@ -54,7 +55,7 @@ function VarNode({ v, ctl, depth, stopCount, parentRef }: {
         ) : (
           <span
             className={"var-value" + (/^".*"$/.test(v.value) ? " str" : /^-?\d/.test(v.value) ? " num" : "") + (editable ? " editable" : "")}
-            title={editable ? "Doble clic para cambiar el valor" : undefined}
+            title={editable ? t("Doble clic para cambiar el valor") : undefined}
             onDoubleClick={(e) => {
               if (!editable) return;
               e.stopPropagation();
@@ -92,12 +93,12 @@ export function DebugPanel({ ctl, snap, root }: { ctl: DebugController; snap: De
   return (
     <div className="debug-panel">
       <div className="debug-col">
-        <div className="debug-col-title"><Codicon name="symbol-variable" /> Variables locales</div>
+        <div className="debug-col-title"><Codicon name="symbol-variable" /> {" "}{t("Variables locales")}</div>
         <div className="debug-col-body">
           {!stopped ? (
-            <div className="muted pad small">{snap.status === "running" ? "El programa se está ejecutando…" : "Detén el programa en un punto de interrupción para ver sus variables."}</div>
+            <div className="muted pad small">{snap.status === "running" ? t("El programa se está ejecutando…") : t("Detén el programa en un punto de interrupción para ver sus variables.")}</div>
           ) : snap.locals.length === 0 ? (
-            <div className="muted pad small">No hay variables en este punto.</div>
+            <div className="muted pad small">{t("No hay variables en este punto.")}</div>
           ) : (
             snap.locals.map((v) => (
               <VarNode key={`${snap.stopCount}-${snap.frameId}-${v.name}`} v={v} ctl={ctl} depth={0} stopCount={snap.stopCount} parentRef={snap.localsRef} />
@@ -107,7 +108,7 @@ export function DebugPanel({ ctl, snap, root }: { ctl: DebugController; snap: De
       </div>
 
       <div className="debug-col">
-        <div className="debug-col-title"><Codicon name="eye" /> Inspección</div>
+        <div className="debug-col-title"><Codicon name="eye" /> {" "}{t("Inspección")}</div>
         <div className="debug-col-body">
           {snap.watches.map((w) => (
             <div key={w.expr} className="var-row watch">
@@ -115,7 +116,7 @@ export function DebugPanel({ ctl, snap, root }: { ctl: DebugController; snap: De
               <span className="var-name">{w.expr}</span>
               <span className="var-sep">=</span>
               {w.error ? <span className="var-value err">{w.error}</span> : <span className="var-value">{w.value ?? (stopped ? "…" : "")}</span>}
-              <button className="icon-btn" title="Quitar" onClick={() => ctl.removeWatch(w.expr)}><Codicon name="close" /></button>
+              <button className="icon-btn" title={t("Quitar")} onClick={() => ctl.removeWatch(w.expr)}><Codicon name="close" /></button>
             </div>
           ))}
           <form
@@ -127,24 +128,24 @@ export function DebugPanel({ ctl, snap, root }: { ctl: DebugController; snap: De
             }}
           >
             <Codicon name="add" />
-            <input value={newWatch} onChange={(e) => setNewWatch(e.target.value)} placeholder="Agregar expresión (p. ej. numeros.len())" spellCheck={false} />
+            <input value={newWatch} onChange={(e) => setNewWatch(e.target.value)} placeholder={t("Agregar expresión (p. ej. numeros.len())")} spellCheck={false} />
           </form>
         </div>
       </div>
 
       <div className="debug-col">
         <div className="debug-col-title">
-          <Codicon name="debug-stackframe" /> Pila de llamadas
+          <Codicon name="debug-stackframe" /> {" "}{t("Pila de llamadas")}
           {stopped && snap.threads.length > 1 && (
             <select
               className="thread-select"
               value={snap.viewThreadId}
               onChange={(e) => ctl.selectThread(Number(e.target.value))}
-              title="Hilo"
+              title={t("Hilo")}
             >
-              {snap.threads.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.id === snap.threadId ? "● " : ""}{t.name || `Hilo ${t.id}`}
+              {snap.threads.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.id === snap.threadId ? "● " : ""}{it.name || t("Hilo {0}", it.id)}
                 </option>
               ))}
             </select>
@@ -194,20 +195,19 @@ export function BreakpointsPanel({ store, root, onOpen, onAdd, onEdit }: {
     return (
       <div className="bp-empty">
         <p className="muted small">
-          <Codicon name="info" /> Haz clic en el margen izquierdo del editor (junto al número de línea) o presiona <kbd>F9</kbd>.
-          Con clic derecho en el margen eliges el tipo: condicional, por número de vuelta o mensaje sin detenerse.
+          <Codicon name="info" /> {" "}{t("Haz clic en el margen izquierdo del editor (junto al número de línea) o presiona")}{" "}<kbd>F9</kbd>{t(". Con clic derecho en el margen eliges el tipo: condicional, por número de vuelta o mensaje sin detenerse.")}
         </p>
-        <button className="btn small primary" onClick={onAdd}><Codicon name="add" /> Agregar punto de interrupción…</button>
+        <button className="btn small primary" onClick={onAdd}><Codicon name="add" /> {" "}{t("Agregar punto de interrupción…")}</button>
       </div>
     );
   }
   return (
     <div className="bp-list">
       <div className="bp-actions">
-        <button className="btn small primary" onClick={onAdd}><Codicon name="add" /> Agregar…</button>
-        <button className="btn small" onClick={() => all.forEach((b) => store.setEnabled(b.path, b.line, true))}>Activar todos</button>
-        <button className="btn small" onClick={() => all.forEach((b) => store.setEnabled(b.path, b.line, false))}>Desactivar todos</button>
-        <button className="btn small" onClick={() => store.removeAll()}><Codicon name="trash" /> Quitar todos</button>
+        <button className="btn small primary" onClick={onAdd}><Codicon name="add" /> {" "}{t("Agregar…")}</button>
+        <button className="btn small" onClick={() => all.forEach((b) => store.setEnabled(b.path, b.line, true))}>{t("Activar todos")}</button>
+        <button className="btn small" onClick={() => all.forEach((b) => store.setEnabled(b.path, b.line, false))}>{t("Desactivar todos")}</button>
+        <button className="btn small" onClick={() => store.removeAll()}><Codicon name="trash" /> {" "}{t("Quitar todos")}</button>
       </div>
       {all.map((b) => (
         <div key={`${b.path}:${b.line}`} className="bp-row" onClick={() => onOpen(b)} title={b.message ?? b.path}>
@@ -219,17 +219,17 @@ export function BreakpointsPanel({ store, root, onOpen, onAdd, onEdit }: {
           />
           <span className={"bp-dot" + (b.logMessage ? " log" : b.condition || b.hitCondition ? " cond" : "") + (!b.enabled ? " disabled" : b.verified === false ? " unverified" : "")} />
           <span>{basename(b.path)}</span>
-          <span className="muted">línea {b.line}</span>
+          <span className="muted">{t("línea")}{" "}{b.line}</span>
           {b.condition && <code className="bp-extra">si {b.condition}</code>}
           {b.hitCondition && <code className="bp-extra">vuelta ≥ {b.hitCondition}</code>}
           {b.logMessage && <code className="bp-extra log"><Codicon name="output" /> {b.logMessage}</code>}
           <span className="muted small bp-path">{relative(root, b.path)}</span>
-          {b.verified === false && <span className="small warn-text">no colocado</span>}
+          {b.verified === false && <span className="small warn-text">{t("no colocado")}</span>}
           <span className="spacer" />
           <button className="icon-btn" title={"Editar — " + describeBreakpoint(b).replace(/\*/g, "")} onClick={(e) => { e.stopPropagation(); onEdit(b); }}>
             <Codicon name="edit" />
           </button>
-          <button className="icon-btn" title="Quitar" onClick={(e) => { e.stopPropagation(); store.remove(b.path, b.line); }}>
+          <button className="icon-btn" title={t("Quitar")} onClick={(e) => { e.stopPropagation(); store.remove(b.path, b.line); }}>
             <Codicon name="close" />
           </button>
         </div>
