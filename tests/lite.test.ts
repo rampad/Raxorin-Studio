@@ -1,5 +1,5 @@
 // Raxorin Studio Lite: unir módulos para el Playground y devolver los errores a su archivo.
-import { bundle, manifestInfo, parseDiagnostics, remapText } from "../src/lite/playground.ts";
+import { bundle, manifestInfo, parseDiagnostics, readsStdin, remapText, withStdin } from "../src/lite/playground.ts";
 import { crc32, fileBytes, makeZip } from "../src/lite/zip.ts";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
@@ -40,6 +40,18 @@ ok(bundle({ "src/main.rs": "mod a {\n}\nfn main() {}\n" }, "src/main.rs").code.s
 
 const m = manifestInfo(`[package]\nname = "x"\nedition = "2024"\n\n[dependencies]\nrand = "0.9"\nserde = { version = "1", features = ["derive"] }\n\n[dependencies.regex]\nversion = "1"\n\n[build-dependencies]\nslint-build = "1.19"\n`);
 ok(m.edition === "2024" && m.deps.join(",") === "rand,serde,regex", "Cargo.toml: edición y dependencias (sin build-dependencies)");
+
+// Entrada estándar escrita antes de ejecutar.
+{
+  const src = { "src/main.rs": "mod util;\nuse std::io;\n\nfn main() {\n    let mut s = String::new();\n    io::stdin().read_line(&mut s).unwrap();\n}\n", "src/util.rs": "fn main() {}\n" };
+  const b2 = bundle(src, "src/main.rs");
+  const w = withStdin(b2, "src/main.rs", 'Ana\n"#25');
+  ok(typeof w !== "string" && w.code.includes("fn __raxorin_main()") && w.code.includes('r##"Ana\n"#25\n"##'), "renombra main y pone la entrada en un texto crudo seguro");
+  ok(typeof w !== "string" && w.code.split("\n").length === w.map.length, "el mapa de líneas sigue completo");
+  ok(typeof w !== "string" && w.code.includes("mod util {\nfn main() {}"), "no toca un fn main dentro de un módulo");
+  ok(readsStdin(b2.code) && !readsStdin("fn main() {}"), "detecta si el programa lee la entrada");
+  ok(withStdin(bundle({ "src/main.rs": "#[tokio::main]\nasync fn main() {}\n" }, "src/main.rs"), "src/main.rs", "x") === "async", "async fn main: se avisa");
+}
 
 // .zip: lo abre unzip y el contenido sale igual.
 ok(crc32(new TextEncoder().encode("123456789")) === 0xcbf43926, "CRC-32 correcto");

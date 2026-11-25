@@ -1282,4 +1282,10 @@ export const EN: Record<string, string> = {
   "No existe {0}": "{0} doesn't exist",
   "Esto necesita la app de escritorio de Raxorin Studio.": "This needs the Raxorin Studio desktop app.",
   "Hecho con Slint": "Made with Slint",
+  "Este programa lee lo que escribe el usuario: escríbelo en «Entrada» (una línea por respuesta) y vuelve a ejecutar. Sin entrada, lo que lea llegará vacío.": "This program reads what the user types: write it in “Input” (one line per answer) and run again. Without input, what it reads arrives empty.",
+  "Con un main asíncrono (async fn main) no se puede dar la entrada en el navegador.": "With an asynchronous main (async fn main), input can't be given in the browser.",
+  "No se encontró fn main en {0}.": "fn main wasn't found in {0}.",
+  "Lo que el programa leerá del teclado (stdin)": "What the program will read from the keyboard (stdin)",
+  "Escribe lo que el programa leerá, una línea por cada vez que pide algo. Por ejemplo:\nAna\n25": "Write what the program will read, one line for each time it asks for something. For example:\nAna\n25",
+  "El Playground no es interactivo: la entrada se escribe antes de ejecutar y el programa la lee línea por línea.": "The Playground isn't interactive: input is written before running and the program reads it line by line.",
 };

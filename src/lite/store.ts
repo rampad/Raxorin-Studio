@@ -58,6 +58,13 @@ export function writeFile(rel: string, content: string) {
   notify();
 }
 
+export function setStdin(stdin: string) {
+  if (!project || project.stdin === stdin) return;
+  project = { ...project, stdin };
+  scheduleSave();
+  notify();
+}
+
 export function deleteFile(rel: string) {
   if (!project || !(rel in project.files)) return;
   const files = { ...project.files };

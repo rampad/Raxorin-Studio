@@ -10,3 +10,4 @@ tests/dap/ejemplo/target/
 # Raxorin Studio Lite
 /dist-lite
 /public-lite/slint
+/lite/deploy/servidor.env

@@ -76,3 +76,6 @@ body { background: var(--bg); color: var(--text); }
 }
 .lite-slint-credit { margin-left: auto; color: var(--info); font-weight: 400; text-decoration: none; }
 .lite-preview-head .lite-slint-credit { flex-basis: auto; }
+.lite-stdin { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.lite-stdin textarea { resize: vertical; min-height: 54px; max-height: 200px; background: var(--input); color: var(--text-strong); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; font: 12px/1.45 var(--mono); }
+.lite-stdin textarea:focus { outline: none; border-color: var(--accent); }

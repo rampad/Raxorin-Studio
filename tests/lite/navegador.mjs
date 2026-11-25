@@ -68,6 +68,13 @@ try {
   const out = await js(`[...document.querySelectorAll('.lite-out.stdout')].map((x) => x.textContent).join('\\n')`);
   ok(/Hola|Hello/.test(out ?? ""), `salida del programa: ${JSON.stringify((out ?? "").slice(0, 60))}`);
 
+  // Entrada (stdin): el programa pide el nombre; sin entrada se abre el cuadro y se avisa.
+  ok(await waitFor(`!!document.querySelector('.lite-stdin textarea')`, 5000), "el programa lee la entrada: se abre el cuadro «Entrada»");
+  await js(`document.querySelector('.lite-stdin textarea').focus()`);
+  await cdp("Input.insertText", { text: "Ana" });
+  await click("Ejecutar");
+  ok(await waitFor(`[...document.querySelectorAll('.lite-out.stdout')].some((x) => /Ana/.test(x.textContent))`, 90000), "con la entrada «Ana», el programa la lee y responde");
+
   // Error en un módulo: aparece con su archivo y línea (los módulos se unen para el Playground).
   // Necesita el editor expuesto, que solo existe en desarrollo (npm run lite:dev).
   if (await js(`typeof monaco !== "undefined"`)) {

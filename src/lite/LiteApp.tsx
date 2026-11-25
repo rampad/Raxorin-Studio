@@ -10,7 +10,7 @@ import { languageFor } from "../util";
 import { lang, setLangPref, t } from "../i18n/index.ts";
 import { toggleTheme, useTheme } from "../theme";
 import plantillas from "./plantillas.json";
-import { availableCrates, bundle, clippy, execute, format, manifestInfo, parseDiagnostics, remapText, type Diagnostic } from "./playground";
+import { availableCrates, bundle, clippy, execute, format, manifestInfo, parseDiagnostics, readsStdin, remapText, withStdin, type Diagnostic } from "./playground";
 import { downloadSample, loadSamples, type LiteSample } from "./samples";
 import SlintPreview from "./SlintPreview";
 import * as store from "./store";
@@ -74,6 +74,7 @@ export default function LiteApp() {
   const [newOpen, setNewOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [stdinOpen, setStdinOpen] = useState(false);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const abort = useRef<AbortController | null>(null);
   const { theme } = useTheme();
@@ -181,13 +182,13 @@ export default function LiteApp() {
   };
 
   const run = async (kind: "run" | "test" | "check") => {
-    const input = await playgroundInput();
-    if (!input) return;
-    const { info, b, crateType } = input;
+    const prepared = await playgroundInput();
+    if (!prepared) return;
+    const { info, b, crateType, entry } = prepared;
     setOutput([]);
     // Las ventanas de Slint no se ejecutan en el Playground: se ven en la vista previa.
     if (info.deps.includes("slint") && kind === "run") {
-      const ui = previewPath ?? Object.keys(input.p.files).find((f) => f.endsWith(".slint"));
+      const ui = previewPath ?? Object.keys(prepared.p.files).find((f) => f.endsWith(".slint"));
       if (ui) {
         setPreviewPath(ui);
         setPreviewOpen(true);
@@ -199,16 +200,33 @@ export default function LiteApp() {
     const missing = info.deps.filter((d) => available.size && !available.has(d.replace(/-/g, "_")));
     if (missing.length) log(t("El Playground no tiene estas dependencias: {0}. Solo ofrece las ~100 crates más usadas; para las demás, usa la app de escritorio.", missing.join(", ")), "warning");
     if (b.missing.length) log(t("No se encontraron estos módulos: {0}", b.missing.join(", ")), "warning");
-    if (kind === "run" && /stdin\s*\(/.test(b.code)) log(t("Aviso: el Playground no permite escribir datos al programa; lo que lea de la entrada (stdin) llegará vacío."), "warning");
+    // Entrada del programa: la escrita en «Entrada» llega como stdin (el Playground no es interactivo).
+    let code = b.code;
+    let map = b.map;
+    const stdin = prepared.p.stdin ?? "";
+    // Las pruebas (cargo test) no leen la entrada: solo al ejecutar el programa.
+    if (kind === "run" && crateType === "bin" && readsStdin(b.code)) {
+      if (!stdin) {
+        setStdinOpen(true);
+        log(t("Este programa lee lo que escribe el usuario: escríbelo en «Entrada» (una línea por respuesta) y vuelve a ejecutar. Sin entrada, lo que lea llegará vacío."), "warning");
+      } else {
+        const w = withStdin(b, entry, stdin);
+        if (typeof w === "string") log(w === "async" ? t("Con un main asíncrono (async fn main) no se puede dar la entrada en el navegador.") : t("No se encontró fn main en {0}.", entry), "warning");
+        else {
+          code = w.code;
+          map = w.map;
+        }
+      }
+    }
     log(kind === "check" ? t("Revisando con Clippy en el Rust Playground…") : kind === "test" ? t("Ejecutando las pruebas en el Rust Playground…") : t("Compilando y ejecutando en el Rust Playground ({0})…", mode === "release" ? "Release" : "Debug"), "info");
     setBusy(kind);
     abort.current = new AbortController();
     try {
       const r = kind === "check"
         ? await clippy({ code: b.code, edition: info.edition, crateType }, abort.current.signal)
-        : await execute({ code: b.code, edition: info.edition, mode, crateType: kind === "test" ? "bin" : crateType, tests: kind === "test" || crateType === "lib" }, abort.current.signal);
-      const d = showDiagnostics(r.stderr, b);
-      const stderr = remapText(r.stderr, b.map).replace(/^\s*Compiling playground .*\n/m, "").replace(/^\s*(Finished|Running) .*\n/gm, "");
+        : await execute({ code, edition: info.edition, mode, crateType: kind === "test" ? "bin" : crateType, tests: kind === "test" || crateType === "lib" }, abort.current.signal);
+      const d = showDiagnostics(r.stderr, kind === "check" ? b : { ...b, code, map });
+      const stderr = remapText(r.stderr, kind === "check" ? b.map : map).replace(/^\s*Compiling playground .*\n/m, "").replace(/^\s*(Finished|Running) .*\n/gm, "");
       if (stderr.trim()) log(stderr.trimEnd(), r.success ? "stderr" : "error");
       if (r.stdout) log(r.stdout.trimEnd(), "stdout");
       const errors = d.filter((x) => x.level === "error").length, warnings = d.length - errors;
@@ -450,9 +468,23 @@ export default function LiteApp() {
                 <Codicon name="output" /> {t("Salida")}
                 {diags.length > 0 && <span className="muted small">{t("{0} error(es), {1} advertencia(s)", diags.filter((d) => d.level === "error").length, diags.filter((d) => d.level === "warning").length)}</span>}
                 <span className="spacer" />
+                <button className={"link-btn small" + (stdinOpen ? " active" : "")} onClick={() => setStdinOpen((o) => !o)} title={t("Lo que el programa leerá del teclado (stdin)")}>
+                  <Codicon name="keyboard" /> {t("Entrada")}{project.stdin ? ` (${project.stdin.split("\n").filter(Boolean).length})` : ""}
+                </button>
                 <span className="muted small">{t("Se compila en play.rust-lang.org")}</span>
                 <button className="icon-btn" title={t("Limpiar")} onClick={() => { setOutput([]); setDiags([]); }}><Codicon name="clear-all" /></button>
               </div>
+              {stdinOpen && (
+                <div className="lite-stdin">
+                  <textarea
+                    value={project.stdin ?? ""}
+                    onChange={(e) => store.setStdin(e.target.value)}
+                    placeholder={t("Escribe lo que el programa leerá, una línea por cada vez que pide algo. Por ejemplo:\nAna\n25")}
+                    spellCheck={false}
+                  />
+                  <span className="muted small">{t("El Playground no es interactivo: la entrada se escribe antes de ejecutar y el programa la lee línea por línea.")}</span>
+                </div>
+              )}
               <div className="lite-output-body">
                 {diags.map((d, i) => (
                   <button key={`d${i}`} className={`lite-diag ${d.level}`} onClick={() => d.file && openFile(d.file, d.line)}>

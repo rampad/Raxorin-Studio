@@ -9,6 +9,8 @@ export interface LiteProject {
   updated: number;
   /** Ejemplo del que salió (si salió de uno). */
   sample?: string;
+  /** Entrada para el programa (stdin), escrita antes de ejecutar. */
+  stdin?: string;
 }
 
 const DB = "raxorin-studio-lite";

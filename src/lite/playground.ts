@@ -61,6 +61,47 @@ export function bundle(files: Record<string, string>, entry: string): Bundle {
   return { code: out.join("\n"), map, missing };
 }
 
+/** Lee de la entrada estándar (para avisar si no se escribió ninguna). */
+export const readsStdin = (code: string) => /\bstdin\s*\(/.test(code);
+
+/**
+ * Da `input` como entrada estándar del programa: el `fn main` del archivo principal pasa a llamarse
+ * `__raxorin_main` y un `main` nuevo escribe la entrada en un archivo, lo conecta como stdin (dup2
+ * sobre el descriptor 0) y lo llama. El código de la persona no cambia de líneas. Devuelve el motivo
+ * si no se puede (p. ej. un `async fn main` de tokio).
+ */
+export function withStdin(b: Bundle, entry: string, input: string): Bundle | string {
+  const lines = b.code.split("\n");
+  const at = lines.findIndex((l, i) => b.map[i]?.file === entry && /^(pub\s+)?fn\s+main\s*\(/.test(l));
+  if (at < 0) {
+    return lines.some((l, i) => b.map[i]?.file === entry && /^(pub\s+)?async\s+fn\s+main\s*\(/.test(l))
+      ? "async"
+      : "no-main";
+  }
+  lines[at] = lines[at].replace(/fn\s+main\s*\(/, "fn __raxorin_main(");
+  let hashes = "#";
+  while (input.includes(`"${hashes}`)) hashes += "#";
+  const text = input.endsWith("\n") || !input ? input : input + "\n";
+  const extra = [
+    "",
+    "// Raxorin Studio Lite: la entrada escrita antes de ejecutar llega como stdin.",
+    "fn main() -> impl std::process::Termination {",
+    "    {",
+    "        use std::os::fd::AsRawFd;",
+    "        unsafe extern \"C\" { fn dup2(old: i32, new: i32) -> i32; }",
+    "        let path = std::env::temp_dir().join(\"raxorin-stdin.txt\");",
+    `        std::fs::write(&path, r${hashes}"${text}"${hashes}).expect("stdin");`,
+    "        let f = std::fs::File::open(&path).expect(\"stdin\");",
+    "        unsafe { dup2(f.as_raw_fd(), 0); }",
+    "    }",
+    "    __raxorin_main()",
+    "}",
+  ];
+  // Las líneas agregadas apuntan al `fn main` original (si un error cae ahí, se ve dónde).
+  const extraLines = extra.join("\n").split("\n").length;
+  return { ...b, code: [...lines, ...extra].join("\n"), map: [...b.map, ...Array(extraLines).fill(b.map[at])] };
+}
+
 /** Errores y advertencias del texto de cargo (el Playground no da JSON), con su archivo original. */
 export function parseDiagnostics(stderr: string, map: Bundle["map"]): Diagnostic[] {
   const out: Diagnostic[] = [];

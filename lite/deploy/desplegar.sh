@@ -6,11 +6,14 @@
 # La primera vez también hacen falta: el registro DNS "app" en Cloudflare y el sitio en /opt/edge/conf/sitios.
 set -euo pipefail
 
-SERVIDOR="${RAXORIN_SERVIDOR:?Falta RAXORIN_SERVIDOR (usuario@host)}"
+cd "$(dirname "$0")/../.."
+# Los datos del servidor no van en el repositorio (es público): se leen de lite/deploy/servidor.env
+# (ignorado por git), con RAXORIN_SERVIDOR=usuario@host y RAXORIN_PUERTO=puerto, o del entorno.
+[ -f lite/deploy/servidor.env ] && . lite/deploy/servidor.env
+SERVIDOR="${RAXORIN_SERVIDOR:?Falta RAXORIN_SERVIDOR (usuario@host): créalo en lite/deploy/servidor.env}"
 PUERTO="${RAXORIN_PUERTO:-22}"
 DIR=/opt/raxorin/app
 
-cd "$(dirname "$0")/../.."
 VERSION=$(date +%Y%m%d-%H%M)
 echo "== Compilando Raxorin Studio Lite ($VERSION)"
 npm run lite:build >/dev/null
