@@ -7,6 +7,7 @@ mod monitor;
 mod projects;
 mod runner;
 mod solution;
+mod terminal;
 mod samples;
 mod setup;
 mod toolchain;
@@ -36,6 +37,7 @@ pub fn run() {
             }
             Ok(())
         })
+        .manage(terminal::Terminals::default())
         .manage(runner::ProcState::default())
         .manage(lsp::LspState::default())
         .manage(watcher::WatchState::default())
@@ -64,6 +66,10 @@ pub fn run() {
             solution::take_pending_open,
             runner::rust_targets,
             runner::cross_status,
+            terminal::terminal_open,
+            terminal::terminal_write,
+            terminal::terminal_resize,
+            terminal::terminal_close,
             samples::samples_list,
             samples::sample_create,
             setup::setup_status,
@@ -127,7 +133,10 @@ pub fn run() {
         .run(|app, event| {
             // Al cerrar la app, no dejar programas depurados huérfanos.
             match event {
-                tauri::RunEvent::Exit => app.state::<dap::DapState>().shutdown(),
+                tauri::RunEvent::Exit => {
+                    app.state::<dap::DapState>().shutdown();
+                    terminal::close_all(&app.state::<terminal::Terminals>());
+                }
                 // macOS: doble clic en un .rxsln (con la app cerrada o abierta).
                 #[cfg(target_os = "macos")]
                 tauri::RunEvent::Opened { urls } => {

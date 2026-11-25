@@ -15,7 +15,7 @@ fn cargo_bin_dir() -> Option<PathBuf> {
 
 /// PATH con `~/.cargo/bin` al principio. Una app abierta desde Finder/Explorer no
 /// hereda el PATH de la terminal, y cargo necesita encontrar rustc, rustfmt, etc.
-fn path_with_cargo() -> Option<std::ffi::OsString> {
+pub(crate) fn path_with_cargo() -> Option<std::ffi::OsString> {
     let bin = cargo_bin_dir()?;
     let current = std::env::var_os("PATH").unwrap_or_default();
     if std::env::split_paths(&current).any(|p| p == bin) {

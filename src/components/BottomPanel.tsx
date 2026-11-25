@@ -3,7 +3,7 @@ import type { Diagnostic, OutputChunk, Task } from "../api";
 import { relative } from "../util";
 import { Codicon } from "./Icon";
 
-export type BottomTab = "output" | "errors" | "debug" | "console" | "breakpoints";
+export type BottomTab = "output" | "errors" | "terminal" | "debug" | "console" | "breakpoints";
 
 interface Props {
   tab: BottomTab;
@@ -21,6 +21,8 @@ interface Props {
   debugContent: ReactNode;
   consoleContent: ReactNode;
   breakpointsContent: ReactNode;
+  /** Siempre montado (oculto si no es la pestaña activa) para no perder las terminales. */
+  terminalContent: ReactNode;
   breakpointCount: number;
   height?: number;
   onHide?: () => void;
@@ -59,6 +61,10 @@ export default function BottomPanel(p: Props) {
           <span className="badge err"><Codicon name="error" /> {errors}</span>
           <span className="badge warn"><Codicon name="warning" /> {warnings}</span>
         </button>
+        <button className={p.tab === "terminal" ? "active" : ""} onClick={() => p.setTab("terminal")}>
+          <Codicon name="terminal" />
+          Terminal
+        </button>
         {p.debugActive && (
           <button className={p.tab === "debug" ? "active" : ""} onClick={() => p.setTab("debug")}>
             <Codicon name="debug-alt" />
@@ -85,7 +91,10 @@ export default function BottomPanel(p: Props) {
         )}
       </div>
 
-      {p.tab === "debug" ? (
+      <div className="terminal-wrap" style={{ display: p.tab === "terminal" ? "flex" : "none" }}>
+        {p.terminalContent}
+      </div>
+      {p.tab === "terminal" ? null : p.tab === "debug" ? (
         p.debugContent
       ) : p.tab === "console" ? (
         p.consoleContent

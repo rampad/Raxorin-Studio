@@ -23,6 +23,7 @@ import EditorArea, { type Tab } from "./components/EditorArea";
 import BottomPanel, { type BottomTab } from "./components/BottomPanel";
 import NewProjectDialog from "./components/NewProjectDialog";
 import SamplesDialog from "./components/SamplesDialog";
+import TerminalPanel from "./terminal/TerminalPanel";
 import PackagesDialog from "./components/packages/PackagesDialog";
 import ReferenceDialog from "./components/ReferenceDialog";
 import ToolchainBanner from "./components/ToolchainBanner";
@@ -134,6 +135,8 @@ export default function App() {
   const [lspDiagnostics, setLspDiagnostics] = useState<Record<string, Diagnostic[]>>({});
   const [running, setRunning] = useState<Task | null>(null);
   const [bottomTab, setBottomTab] = useState<BottomTab>("output");
+  const bottomTabRef = useRef(bottomTab);
+  bottomTabRef.current = bottomTab;
   // Paneles redimensionables y que se pueden ocultar (se recuerdan entre sesiones).
   const sidebarSize = usePanelSize(PANELS.sidebar);
   const bottomSize = usePanelSize(PANELS.bottom);
@@ -165,6 +168,9 @@ export default function App() {
   const settings = useSettings();
   const { pref: themePref } = useTheme();
   const [bottomVisible, setBottomVisible] = usePanelVisible("bottom");
+  // Para los atajos de teclado (el manejador se registra una sola vez).
+  const bottomVisibleRef = useRef(bottomVisible);
+  bottomVisibleRef.current = bottomVisible;
   const [showNew, setShowNew] = useState(false);
   const [showSamples, setShowSamples] = useState(false);
   const [packagesFor, setPackagesFor] = useState<string | null>(null);
@@ -1461,6 +1467,7 @@ export default function App() {
         "sep",
         { label: "Salida", icon: "output", onClick: () => { setBottomVisible(true); setBottomTab("output"); } },
         { label: "Lista de errores", icon: "list-unordered", onClick: () => { setBottomVisible(true); setBottomTab("errors"); } },
+        { label: "Terminal", icon: "terminal", shortcut: "Ctrl+`", onClick: () => { setBottomVisible(true); setBottomTab("terminal"); } },
         { label: "Puntos de interrupción", icon: "circle-filled", onClick: () => { setBottomVisible(true); setBottomTab("breakpoints"); } },
         "sep",
         {
@@ -1568,6 +1575,21 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
+      // Ctrl+` abre o cierra el terminal (como en VS Code).
+      if (e.ctrlKey && !e.metaKey && !e.altKey && e.code === "Backquote") {
+        e.preventDefault();
+        const showing = bottomVisibleRef.current && bottomTabRef.current === "terminal";
+        if (showing) setBottomVisible(false);
+        else {
+          setBottomVisible(true);
+          setBottomTab("terminal");
+        }
+        return;
+      }
+      // En el terminal, Ctrl+letra es del shell (Ctrl+C, Ctrl+R, Ctrl+B…). Cmd en macOS y las
+      // teclas F siguen siendo atajos del IDE.
+      const inTerminal = (e.target as HTMLElement | null)?.closest?.(".terminal-panel");
+      if (inTerminal && e.ctrlKey && !e.metaKey && !/^F\d+$/.test(e.key)) return;
       let handled = true;
       const dbg = debug.getSnapshot().status;
       if (e.key === "F5" && mod && e.shiftKey) dbg !== "idle" ? debug.restart() : (handled = false);
@@ -2002,6 +2024,9 @@ export default function App() {
             debugContent={<DebugPanel ctl={debug} snap={debugSnap} root={project} />}
             consoleContent={
               <DebugConsole ctl={debug} entries={consoleEntries} setEntries={setConsoleEntries} stopped={debugSnap.status === "stopped"} />
+            }
+            terminalContent={
+              <TerminalPanel cwd={project} visible={bottomTab === "terminal"} fontSize={Math.max(10, settings.fontSize - 1)} />
             }
             breakpointsContent={
               <BreakpointsPanel

@@ -10,6 +10,8 @@ on:
       - "src-tauri/src/dap.rs"
       - "src-tauri/src/setup.rs"
       - "src-tauri/src/runner.rs"
+      - "src-tauri/src/terminal.rs"
+      - "src-tauri/src/samples.rs"
       - "tests/dap/**"
       - ".github/workflows/depurador.yml"
   pull_request:
@@ -36,6 +38,9 @@ jobs:
       # Detección de Visual Studio (link.exe y SDK de Windows) en un Windows real.
       - name: Pruebas de setup.rs
         run: "cargo test --manifest-path src-tauri/Cargo.toml --lib setup:: -- --nocapture"
+      # Terminal integrado (ConPTY + PowerShell) y ejemplos incluidos, en un Windows real.
+      - name: Pruebas del terminal y los ejemplos
+        run: "cargo test --manifest-path src-tauri/Cargo.toml --lib -- terminal:: samples::"
 
   sesion:
     name: ${{ matrix.name }}
