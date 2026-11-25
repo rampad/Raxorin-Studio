@@ -16,8 +16,34 @@ permissions:
   contents: write
 
 jobs:
+  # El borrador se crea una sola vez antes de los builds: si cada build lo creara, los que
+  # terminan a la vez crearían borradores duplicados y repartirían los archivos entre ellos.
+  borrador:
+    name: Crear el borrador
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.crear.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: crear
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          tag=$([ "$GITHUB_REF_TYPE" = tag ] && echo "$GITHUB_REF_NAME" || echo "v$version")
+          # v1.2.0-beta.1 → versión de prueba (canal beta del actualizador).
+          pre=$([[ "$tag" == *-* ]] && echo true || echo false)
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == "'"$tag"'" and .draft) | .id' | head -1)
+          if [ -z "$id" ]; then
+            id=$(gh api "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$tag" -f target_commitish="$GITHUB_SHA" \
+              -f name="Raxorin Studio $tag" -F body=@NOVEDADES.md -F draft=true -F prerelease=$pre --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
+    needs: borrador
     strategy:
       fail-fast: false
       matrix:
@@ -72,13 +98,6 @@ jobs:
       - name: Pruebas
         run: npm test
 
-      # Las novedades de la versión (NOVEDADES.md) van en el Release y en el aviso de actualización.
-      - name: Novedades
-        id: notas
-        shell: bash
-        run: |
-          { echo 'texto<<FIN_NOVEDADES'; cat NOVEDADES.md; echo 'FIN_NOVEDADES'; } >> "$GITHUB_OUTPUT"
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -86,11 +105,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseName: Raxorin Studio v__VERSION__
-          releaseBody: ${{ steps.notas.outputs.texto }}
-          releaseDraft: true
-          # v1.2.0-beta.1 → versión de prueba (canal beta del actualizador).
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          # Todos los builds suben al mismo borrador (las novedades salen de NOVEDADES.md).
+          releaseId: ${{ needs.borrador.outputs.id }}
           includeUpdaterJson: true
           args: ${{ matrix.args }}
