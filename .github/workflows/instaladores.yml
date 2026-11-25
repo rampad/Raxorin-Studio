@@ -98,6 +98,13 @@ jobs:
       - name: Pruebas
         run: npm test
 
+      # Las notas de la versión (NOVEDADES.md) van en latest.json: el aviso de actualización las muestra.
+      - name: Novedades
+        id: notas
+        shell: bash
+        run: |
+          { echo 'texto<<FIN_NOVEDADES'; cat NOVEDADES.md; echo 'FIN_NOVEDADES'; } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -107,6 +114,7 @@ jobs:
         with:
           # Todos los builds suben al mismo borrador (las novedades salen de NOVEDADES.md).
           releaseId: ${{ needs.borrador.outputs.id }}
+          releaseBody: ${{ steps.notas.outputs.texto }}
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
