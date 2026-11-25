@@ -1333,3 +1333,13 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
 .w-slider.vertical .w-slider-track { width: 4px; height: 100%; display: flex; flex-direction: column-reverse; }
 .w-slider.vertical .w-slider-track > div { width: 100%; }
 .w-slider.vertical .w-slider-thumb { left: calc(50% - 9px); top: auto; }
+
+/* Conectar con IA (MCP) */
+.modal.mcp-dialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+.mcp-dialog p { margin: 0; }
+.mcp-dialog .mcp-note { margin-top: -6px; }
+.mcp-section { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+.mcp-section h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.mcp-code { display: flex; align-items: flex-start; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; }
+.mcp-code code, .mcp-code pre { flex: 1; margin: 0; font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; user-select: text; -webkit-user-select: text; }
+.mcp-warn { padding: 8px 10px; border-radius: 5px; background: rgba(204, 167, 0, 0.12); color: var(--warning); }

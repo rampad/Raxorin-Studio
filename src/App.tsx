@@ -23,6 +23,7 @@ import EditorArea, { type Tab } from "./components/EditorArea";
 import BottomPanel, { type BottomTab } from "./components/BottomPanel";
 import NewProjectDialog from "./components/NewProjectDialog";
 import SamplesDialog from "./components/SamplesDialog";
+import McpDialog from "./components/McpDialog";
 import TerminalPanel from "./terminal/TerminalPanel";
 import PackagesDialog from "./components/packages/PackagesDialog";
 import ReferenceDialog from "./components/ReferenceDialog";
@@ -61,7 +62,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { PANELS, usePanelSize, usePanelVisible } from "./layout";
 import raxorinMark from "./assets/brand/raxorin-mark.svg";
-import { t, tErr, tb } from "./i18n/index.ts";
+import { t, tErr, tb, docsUrl } from "./i18n/index.ts";
 
 const LAST_PROJECT_KEY = "raxorinstudio.lastProject";
 const RECENT_KEY = "raxorinstudio.recent";
@@ -174,6 +175,7 @@ export default function App() {
   bottomVisibleRef.current = bottomVisible;
   const [showNew, setShowNew] = useState(false);
   const [showSamples, setShowSamples] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
   const [packagesFor, setPackagesFor] = useState<string | null>(null);
   const [referenceFor, setReferenceFor] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
@@ -1559,7 +1561,7 @@ export default function App() {
     {
       label: t("Ayuda"),
       items: [
-        { label: t("Documentación"), icon: "book", shortcut: "F1", onClick: () => void openUrl("https://raxorin.dev") },
+        { label: t("Documentación"), icon: "book", shortcut: "F1", onClick: () => void openUrl(docsUrl()) },
         { label: t("Ejemplos…"), icon: "beaker", onClick: () => setShowSamples(true) },
         "sep",
         { label: t("Repositorio en GitHub"), icon: "github", onClick: () => void openUrl(GITHUB_URL) },
@@ -1567,6 +1569,7 @@ export default function App() {
         { label: t("Licencia (MIT)"), icon: "law", onClick: () => setAboutOpen(true) },
         { label: t("Buscar actualizaciones…"), icon: "cloud-download", onClick: () => void updates.check(true) },
         { label: t("Herramientas necesarias…"), icon: "tools", onClick: () => setSetupOpen("manual") },
+        { label: t("Conectar con IA (MCP)…"), icon: "plug", onClick: () => setMcpOpen(true) },
         "sep",
         { label: t("Acerca de Raxorin Studio"), icon: "info", onClick: () => setAboutOpen(true) },
       ],
@@ -1618,7 +1621,7 @@ export default function App() {
       else if (mod && !e.shiftKey && !e.altKey && key === "n") void actions.current.newFile();
       else if (mod && !e.shiftKey && !e.altKey && key === "o") void actions.current.openFileDialog();
       else if (mod && !e.shiftKey && !e.altKey && key === ",") setSettingsOpen(true);
-      else if (e.key === "F1" && !mod) void openUrl("https://raxorin.dev");
+      else if (e.key === "F1" && !mod) void openUrl(docsUrl());
       else if (mod && e.shiftKey && !e.altKey && key === "g") actions.current.showGit();
       else if (mod && e.shiftKey && !e.altKey && key === "e") actions.current.showExplorer();
       else if (mod && !e.shiftKey && !e.altKey && key === "b") setSidebarVisible((v) => !v);
@@ -2143,6 +2146,7 @@ export default function App() {
           onClose={() => setBpDraft(null)}
         />
       )}
+      {mcpOpen && <McpDialog project={solution?.dir ?? project} onClose={() => setMcpOpen(false)} />}
       {showSamples && (
         <SamplesDialog
           onCancel={() => setShowSamples(false)}

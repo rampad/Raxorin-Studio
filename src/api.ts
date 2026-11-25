@@ -163,6 +163,10 @@ export const api = {
   /** Copia la app a Aplicaciones, la vuelve a abrir desde allí y cierra esta. */
   moveToApplications: () => invoke<string>("move_to_applications"),
   /** El catálogo de ejemplos, con las fichas en el idioma de la interfaz. */
+  /** Datos para conectar clientes MCP (Claude Code, Claude Desktop…). */
+  mcpSetup: () =>
+    invoke<{ exe: string; temporaryLocation: boolean; claudeDesktopConfig: string | null; inClaudeDesktop: boolean }>("mcp_setup"),
+  mcpAddToClaudeDesktop: (roots: string[]) => invoke<string>("mcp_add_to_claude_desktop", { roots }),
   samplesList: () =>
     invoke<SampleCatalog>("samples_list").then((c) => ({ ...c, samples: c.samples.map((s) => ({ ...s, ...sampleInfo(s) })) })),
   sampleCreate: (sample: Sample, parent: string, name: string, online: boolean) =>

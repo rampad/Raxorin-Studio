@@ -89,3 +89,6 @@ export function tb(text: string): string {
 
 /** Texto de un error (de un comando del backend o de JavaScript), traducido. */
 export const tErr = (e: unknown) => tb(e instanceof Error ? e.message : String(e));
+
+/** Página de raxorin.dev en el idioma de la interfaz (p. ej. docsUrl("guias/mcp/")). */
+export const docsUrl = (path = "") => `https://raxorin.dev/${lang === "en" ? "en/" : ""}${path}`;

@@ -4,6 +4,7 @@ mod fs_cmds;
 mod git;
 mod install_location;
 mod lsp;
+pub mod mcp;
 mod monitor;
 mod projects;
 mod runner;
@@ -70,6 +71,8 @@ pub fn run() {
             runner::cross_status,
             install_location::app_location,
             install_location::move_to_applications,
+            mcp::mcp_setup,
+            mcp::mcp_add_to_claude_desktop,
             terminal::terminal_open,
             terminal::terminal_write,
             terminal::terminal_resize,

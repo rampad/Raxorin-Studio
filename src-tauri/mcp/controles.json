@@ -1,0 +1,3881 @@
+{
+ "slint": "1.19",
+ "es": {
+  "window": {
+   "props": [
+    {
+     "name": "title",
+     "label": "Título",
+     "kind": "string"
+    },
+    {
+     "name": "width",
+     "label": "Ancho",
+     "kind": "length"
+    },
+    {
+     "name": "height",
+     "label": "Alto",
+     "kind": "length"
+    },
+    {
+     "name": "icon",
+     "label": "Ícono",
+     "kind": "image"
+    },
+    {
+     "name": "background",
+     "label": "Fondo",
+     "kind": "color"
+    },
+    {
+     "name": "default-font-size",
+     "label": "Tamaño de letra por defecto",
+     "kind": "length"
+    },
+    {
+     "name": "default-font-family",
+     "label": "Fuente por defecto",
+     "kind": "string"
+    },
+    {
+     "name": "default-font-weight",
+     "label": "Grosor por defecto",
+     "kind": "enum",
+     "options": [
+      "100",
+      "200",
+      "300",
+      "400",
+      "500",
+      "600",
+      "700",
+      "800",
+      "900"
+     ],
+     "default": "400"
+    },
+    {
+     "name": "always-on-top",
+     "label": "Siempre encima",
+     "kind": "bool",
+     "default": "false"
+    },
+    {
+     "name": "no-frame",
+     "label": "Sin marco (sin barra de título)",
+     "kind": "bool",
+     "default": "false"
+    }
+   ]
+  },
+  "layoutChild": [
+   {
+    "name": "width",
+    "label": "Ancho fijo",
+    "kind": "length"
+   },
+   {
+    "name": "height",
+    "label": "Alto fijo",
+    "kind": "length"
+   },
+   {
+    "name": "horizontal-stretch",
+    "label": "Crecer a lo ancho",
+    "kind": "number"
+   },
+   {
+    "name": "vertical-stretch",
+    "label": "Crecer a lo alto",
+    "kind": "number"
+   },
+   {
+    "name": "min-width",
+    "label": "Ancho mínimo",
+    "kind": "length"
+   },
+   {
+    "name": "max-width",
+    "label": "Ancho máximo",
+    "kind": "length"
+   },
+   {
+    "name": "min-height",
+    "label": "Alto mínimo",
+    "kind": "length"
+   },
+   {
+    "name": "max-height",
+    "label": "Alto máximo",
+    "kind": "length"
+   }
+  ],
+  "gridChild": [
+   {
+    "name": "row",
+    "label": "Fila",
+    "kind": "int",
+    "default": "0"
+   },
+   {
+    "name": "col",
+    "label": "Columna",
+    "kind": "int",
+    "default": "0"
+   },
+   {
+    "name": "colspan",
+    "label": "Columnas que ocupa",
+    "kind": "int",
+    "default": "1"
+   },
+   {
+    "name": "rowspan",
+    "label": "Filas que ocupa",
+    "kind": "int",
+    "default": "1"
+   }
+  ],
+  "widgets": [
+   {
+    "type": "Text",
+    "label": "Etiqueta (Text)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Texto\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Texto",
+      "kind": "text"
+     },
+     {
+      "name": "font-size",
+      "label": "Tamaño de letra",
+      "kind": "length",
+      "default": "14px"
+     },
+     {
+      "name": "font-weight",
+      "label": "Grosor",
+      "kind": "enum",
+      "options": [
+       "100",
+       "200",
+       "300",
+       "400",
+       "500",
+       "600",
+       "700",
+       "800",
+       "900"
+      ],
+      "default": "400"
+     },
+     {
+      "name": "font-family",
+      "label": "Fuente",
+      "kind": "string"
+     },
+     {
+      "name": "font-italic",
+      "label": "Cursiva",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "letter-spacing",
+      "label": "Espaciado entre letras",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "color",
+      "label": "Color",
+      "kind": "color"
+     },
+     {
+      "name": "horizontal-alignment",
+      "label": "Alineación horizontal",
+      "kind": "enum",
+      "options": [
+       "left",
+       "center",
+       "right"
+      ],
+      "default": "left"
+     },
+     {
+      "name": "vertical-alignment",
+      "label": "Alineación vertical",
+      "kind": "enum",
+      "options": [
+       "top",
+       "center",
+       "bottom"
+      ],
+      "default": "top"
+     },
+     {
+      "name": "wrap",
+      "label": "Ajuste de línea",
+      "kind": "enum",
+      "options": [
+       "no-wrap",
+       "word-wrap",
+       "char-wrap"
+      ],
+      "default": "no-wrap"
+     },
+     {
+      "name": "overflow",
+      "label": "Si no cabe",
+      "kind": "enum",
+      "options": [
+       "clip",
+       "elide"
+      ],
+      "default": "clip"
+     },
+     {
+      "name": "stroke",
+      "label": "Contorno: color",
+      "kind": "color"
+     },
+     {
+      "name": "stroke-width",
+      "label": "Contorno: grosor",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "Button",
+    "label": "Botón (Button)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Botón\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Texto",
+      "kind": "string"
+     },
+     {
+      "name": "icon",
+      "label": "Ícono",
+      "kind": "image"
+     },
+     {
+      "name": "primary",
+      "label": "Principal (color de acento)",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "colorize-icon",
+      "label": "Colorear el ícono como el texto",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "checkable",
+      "label": "Se puede mantener presionado",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "checked",
+      "label": "Presionado (si se puede mantener)",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "clicked",
+      "label": "Al hacer clic",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     },
+     {
+      "prop": "enabled",
+      "slint": "bool"
+     },
+     {
+      "prop": "checked",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "LineEdit",
+    "label": "Cuadro de texto (LineEdit)",
+    "category": "common",
+    "defaults": {
+     "placeholder-text": "\"Escribe aquí\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Texto",
+      "kind": "string"
+     },
+     {
+      "name": "placeholder-text",
+      "label": "Texto de ayuda",
+      "kind": "string"
+     },
+     {
+      "name": "input-type",
+      "label": "Tipo de entrada",
+      "kind": "enum",
+      "options": [
+       "text",
+       "password",
+       "number",
+       "decimal"
+      ],
+      "default": "text"
+     },
+     {
+      "name": "read-only",
+      "label": "Solo lectura",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "font-size",
+      "label": "Tamaño de letra",
+      "kind": "length"
+     },
+     {
+      "name": "horizontal-alignment",
+      "label": "Alineación del texto",
+      "kind": "enum",
+      "options": [
+       "left",
+       "center",
+       "right"
+      ],
+      "default": "left"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "accepted",
+      "label": "Al presionar Enter",
+      "params": [
+       {
+        "name": "text",
+        "slint": "string"
+       }
+      ]
+     },
+     {
+      "name": "edited",
+      "label": "Al cambiar el texto",
+      "params": [
+       {
+        "name": "text",
+        "slint": "string"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "TextEdit",
+    "label": "Área de texto (TextEdit)",
+    "category": "common",
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Texto",
+      "kind": "text"
+     },
+     {
+      "name": "placeholder-text",
+      "label": "Texto de ayuda",
+      "kind": "string"
+     },
+     {
+      "name": "wrap",
+      "label": "Ajuste de línea",
+      "kind": "enum",
+      "options": [
+       "word-wrap",
+       "no-wrap"
+      ],
+      "default": "word-wrap"
+     },
+     {
+      "name": "read-only",
+      "label": "Solo lectura",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "font-size",
+      "label": "Tamaño de letra",
+      "kind": "length"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "edited",
+      "label": "Al cambiar el texto",
+      "params": [
+       {
+        "name": "text",
+        "slint": "string"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "CheckBox",
+    "label": "Casilla (CheckBox)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Opción\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Texto",
+      "kind": "string"
+     },
+     {
+      "name": "checked",
+      "label": "Marcada",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "toggled",
+      "label": "Al marcar o desmarcar",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "checked",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "Switch",
+    "label": "Interruptor (Switch)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Activar\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Texto",
+      "kind": "string"
+     },
+     {
+      "name": "checked",
+      "label": "Encendido",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "toggled",
+      "label": "Al encender o apagar",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "checked",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "Slider",
+    "label": "Deslizador (Slider)",
+    "category": "common",
+    "defaults": {
+     "minimum": "0",
+     "maximum": "100",
+     "value": "50"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "value",
+      "label": "Valor",
+      "kind": "number"
+     },
+     {
+      "name": "minimum",
+      "label": "Mínimo",
+      "kind": "number",
+      "default": "0"
+     },
+     {
+      "name": "maximum",
+      "label": "Máximo",
+      "kind": "number",
+      "default": "100"
+     },
+     {
+      "name": "step",
+      "label": "Paso",
+      "kind": "number",
+      "default": "1"
+     },
+     {
+      "name": "orientation",
+      "label": "Orientación",
+      "kind": "enum",
+      "options": [
+       "horizontal",
+       "vertical"
+      ],
+      "default": "horizontal"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "changed",
+      "label": "Al mover",
+      "params": [
+       {
+        "name": "value",
+        "slint": "float"
+       }
+      ]
+     },
+     {
+      "name": "released",
+      "label": "Al soltar",
+      "params": [
+       {
+        "name": "value",
+        "slint": "float"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "value",
+      "slint": "float"
+     }
+    ]
+   },
+   {
+    "type": "SpinBox",
+    "label": "Número (SpinBox)",
+    "category": "common",
+    "defaults": {
+     "minimum": "0",
+     "maximum": "100",
+     "value": "0"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "value",
+      "label": "Valor",
+      "kind": "int"
+     },
+     {
+      "name": "minimum",
+      "label": "Mínimo",
+      "kind": "int",
+      "default": "0"
+     },
+     {
+      "name": "maximum",
+      "label": "Máximo",
+      "kind": "int",
+      "default": "100"
+     },
+     {
+      "name": "step-size",
+      "label": "Paso (flechas)",
+      "kind": "int",
+      "default": "1"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "edited",
+      "label": "Al cambiar el valor",
+      "params": [
+       {
+        "name": "value",
+        "slint": "int"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "value",
+      "slint": "int"
+     }
+    ]
+   },
+   {
+    "type": "ComboBox",
+    "label": "Lista desplegable (ComboBox)",
+    "category": "common",
+    "defaults": {
+     "model": "[\"Opción 1\", \"Opción 2\", \"Opción 3\"]"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "model",
+      "label": "Opciones",
+      "kind": "strings"
+     },
+     {
+      "name": "current-index",
+      "label": "Índice seleccionado",
+      "kind": "int",
+      "default": "0"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "selected",
+      "label": "Al elegir una opción",
+      "params": [
+       {
+        "name": "value",
+        "slint": "string"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "current-index",
+      "slint": "int"
+     },
+     {
+      "prop": "current-value",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "ProgressIndicator",
+    "label": "Barra de progreso",
+    "category": "common",
+    "defaults": {
+     "progress": "0.4"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "progress",
+      "label": "Progreso",
+      "kind": "percent"
+     },
+     {
+      "name": "indeterminate",
+      "label": "Indeterminado (animado)",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "progress",
+      "slint": "float"
+     }
+    ]
+   },
+   {
+    "type": "Rectangle",
+    "label": "Panel (Rectangle)",
+    "category": "containers",
+    "container": true,
+    "defaults": {
+     "background": "#e6e6e6",
+     "border-radius": "6px"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "background",
+      "label": "Fondo",
+      "kind": "color"
+     },
+     {
+      "name": "border-radius",
+      "label": "Radio de esquinas",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "border-width",
+      "label": "Grosor del borde",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "border-color",
+      "label": "Color del borde",
+      "kind": "color"
+     },
+     {
+      "name": "drop-shadow-color",
+      "label": "Sombra: color",
+      "kind": "color"
+     },
+     {
+      "name": "drop-shadow-blur",
+      "label": "Sombra: desenfoque",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "drop-shadow-offset-x",
+      "label": "Sombra: desplazamiento X",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "drop-shadow-offset-y",
+      "label": "Sombra: desplazamiento Y",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "clip",
+      "label": "Recortar el contenido",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "Image",
+    "label": "Imagen (Image)",
+    "category": "common",
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "source",
+      "label": "Archivo",
+      "kind": "image"
+     },
+     {
+      "name": "image-fit",
+      "label": "Ajuste",
+      "kind": "enum",
+      "options": [
+       "fill",
+       "contain",
+       "cover",
+       "preserve"
+      ],
+      "default": "fill"
+     },
+     {
+      "name": "colorize",
+      "label": "Colorear (íconos)",
+      "kind": "color"
+     },
+     {
+      "name": "image-rendering",
+      "label": "Escalado",
+      "kind": "enum",
+      "options": [
+       "smooth",
+       "pixelated"
+      ],
+      "default": "smooth"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "Spinner",
+    "label": "Indicador de carga (Spinner)",
+    "category": "common",
+    "defaults": {
+     "indeterminate": "true"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "indeterminate",
+      "label": "Girando sin parar",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "progress",
+      "label": "Progreso",
+      "kind": "percent"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "progress",
+      "slint": "float"
+     }
+    ]
+   },
+   {
+    "type": "StandardButton",
+    "label": "Botón estándar (OK, Cancel…)",
+    "category": "common",
+    "defaults": {
+     "kind": "ok"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "kind",
+      "label": "Tipo",
+      "kind": "enum",
+      "options": [
+       "ok",
+       "cancel",
+       "apply",
+       "close",
+       "reset",
+       "help",
+       "yes",
+       "no",
+       "abort",
+       "retry",
+       "ignore"
+      ],
+      "default": "ok"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "clicked",
+      "label": "Al hacer clic",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "enabled",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "StandardListView",
+    "label": "Lista (StandardListView)",
+    "category": "common",
+    "defaults": {
+     "model": "[{ text: \"Elemento 1\" }, { text: \"Elemento 2\" }, { text: \"Elemento 3\" }]"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "model",
+      "label": "Elementos",
+      "kind": "items"
+     },
+     {
+      "name": "current-item",
+      "label": "Elemento seleccionado (-1 = ninguno)",
+      "kind": "int",
+      "default": "-1"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacidad",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "current-item-changed",
+      "label": "Al cambiar la selección",
+      "params": [
+       {
+        "name": "index",
+        "slint": "int"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "current-item",
+      "slint": "int"
+     }
+    ]
+   },
+   {
+    "type": "VerticalBox",
+    "label": "Columna (VerticalBox)",
+    "category": "containers",
+    "layout": "vertical",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Margen interior",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "spacing",
+      "label": "Separación",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribución",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "HorizontalBox",
+    "label": "Fila (HorizontalBox)",
+    "category": "containers",
+    "layout": "horizontal",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Margen interior",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "spacing",
+      "label": "Separación",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribución",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "GridBox",
+    "label": "Cuadrícula (GridBox)",
+    "category": "containers",
+    "layout": "grid",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Margen interior",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "spacing",
+      "label": "Separación",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "GroupBox",
+    "label": "Grupo con título (GroupBox)",
+    "category": "containers",
+    "layout": "group",
+    "container": true,
+    "defaults": {
+     "title": "\"Grupo\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "title",
+      "label": "Título",
+      "kind": "string"
+     },
+     {
+      "name": "content-padding",
+      "label": "Margen del contenido",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "TabWidget",
+    "label": "Pestañas (TabWidget)",
+    "category": "containers",
+    "layout": "tabs",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "current-index",
+      "label": "Pestaña inicial (0 = primera)",
+      "kind": "int",
+      "default": "0"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "current-index",
+      "slint": "int"
+     }
+    ]
+   },
+   {
+    "type": "ScrollView",
+    "label": "Área con desplazamiento (ScrollView)",
+    "category": "containers",
+    "container": true,
+    "defaults": {
+     "content-height": "400px"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "content-width",
+      "label": "Ancho del contenido",
+      "kind": "length"
+     },
+     {
+      "name": "content-height",
+      "label": "Alto del contenido",
+      "kind": "length"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "scrolled",
+      "label": "Al desplazarse",
+      "params": []
+     }
+    ]
+   },
+   {
+    "type": "TouchArea",
+    "label": "Área clicable (TouchArea)",
+    "category": "containers",
+    "container": true,
+    "defaults": {
+     "mouse-cursor": "pointer"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "mouse-cursor",
+      "label": "Cursor",
+      "kind": "enum",
+      "options": [
+       "default",
+       "pointer",
+       "text",
+       "move",
+       "crosshair",
+       "grab",
+       "grabbing",
+       "help",
+       "wait",
+       "progress",
+       "not-allowed",
+       "copy",
+       "ew-resize",
+       "ns-resize"
+      ],
+      "default": "default"
+     },
+     {
+      "name": "enabled",
+      "label": "Habilitado",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "clicked",
+      "label": "Al hacer clic",
+      "params": []
+     },
+     {
+      "name": "double-clicked",
+      "label": "Al hacer doble clic",
+      "params": []
+     },
+     {
+      "name": "moved",
+      "label": "Al mover el mouse con el botón presionado",
+      "params": []
+     }
+    ]
+   },
+   {
+    "type": "Timer",
+    "label": "Temporizador (Timer)",
+    "category": "components",
+    "nonVisual": true,
+    "defaults": {
+     "interval": "1000ms",
+     "running": "true"
+    },
+    "props": [
+     {
+      "name": "interval",
+      "label": "Cada cuánto",
+      "kind": "duration",
+      "default": "0ms"
+     },
+     {
+      "name": "running",
+      "label": "En marcha",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "triggered",
+      "label": "Al cumplirse el intervalo",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "running",
+      "slint": "bool"
+     }
+    ]
+   }
+  ]
+ },
+ "en": {
+  "window": {
+   "props": [
+    {
+     "name": "title",
+     "label": "Title",
+     "kind": "string"
+    },
+    {
+     "name": "width",
+     "label": "Width",
+     "kind": "length"
+    },
+    {
+     "name": "height",
+     "label": "Height",
+     "kind": "length"
+    },
+    {
+     "name": "icon",
+     "label": "Icon",
+     "kind": "image"
+    },
+    {
+     "name": "background",
+     "label": "Background",
+     "kind": "color"
+    },
+    {
+     "name": "default-font-size",
+     "label": "Default font size",
+     "kind": "length"
+    },
+    {
+     "name": "default-font-family",
+     "label": "Default font",
+     "kind": "string"
+    },
+    {
+     "name": "default-font-weight",
+     "label": "Default weight",
+     "kind": "enum",
+     "options": [
+      "100",
+      "200",
+      "300",
+      "400",
+      "500",
+      "600",
+      "700",
+      "800",
+      "900"
+     ],
+     "default": "400"
+    },
+    {
+     "name": "always-on-top",
+     "label": "Always on top",
+     "kind": "bool",
+     "default": "false"
+    },
+    {
+     "name": "no-frame",
+     "label": "Frameless (no title bar)",
+     "kind": "bool",
+     "default": "false"
+    }
+   ]
+  },
+  "layoutChild": [
+   {
+    "name": "width",
+    "label": "Fixed width",
+    "kind": "length"
+   },
+   {
+    "name": "height",
+    "label": "Fixed height",
+    "kind": "length"
+   },
+   {
+    "name": "horizontal-stretch",
+    "label": "Grow horizontally",
+    "kind": "number"
+   },
+   {
+    "name": "vertical-stretch",
+    "label": "Grow vertically",
+    "kind": "number"
+   },
+   {
+    "name": "min-width",
+    "label": "Minimum width",
+    "kind": "length"
+   },
+   {
+    "name": "max-width",
+    "label": "Maximum width",
+    "kind": "length"
+   },
+   {
+    "name": "min-height",
+    "label": "Minimum height",
+    "kind": "length"
+   },
+   {
+    "name": "max-height",
+    "label": "Maximum height",
+    "kind": "length"
+   }
+  ],
+  "gridChild": [
+   {
+    "name": "row",
+    "label": "Row",
+    "kind": "int",
+    "default": "0"
+   },
+   {
+    "name": "col",
+    "label": "Column",
+    "kind": "int",
+    "default": "0"
+   },
+   {
+    "name": "colspan",
+    "label": "Columns it spans",
+    "kind": "int",
+    "default": "1"
+   },
+   {
+    "name": "rowspan",
+    "label": "Rows it spans",
+    "kind": "int",
+    "default": "1"
+   }
+  ],
+  "widgets": [
+   {
+    "type": "Text",
+    "label": "Label (Text)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Text\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Text",
+      "kind": "text"
+     },
+     {
+      "name": "font-size",
+      "label": "Font size",
+      "kind": "length",
+      "default": "14px"
+     },
+     {
+      "name": "font-weight",
+      "label": "Weight",
+      "kind": "enum",
+      "options": [
+       "100",
+       "200",
+       "300",
+       "400",
+       "500",
+       "600",
+       "700",
+       "800",
+       "900"
+      ],
+      "default": "400"
+     },
+     {
+      "name": "font-family",
+      "label": "Font",
+      "kind": "string"
+     },
+     {
+      "name": "font-italic",
+      "label": "Italic",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "letter-spacing",
+      "label": "Letter spacing",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "color",
+      "label": "Color",
+      "kind": "color"
+     },
+     {
+      "name": "horizontal-alignment",
+      "label": "Horizontal alignment",
+      "kind": "enum",
+      "options": [
+       "left",
+       "center",
+       "right"
+      ],
+      "default": "left"
+     },
+     {
+      "name": "vertical-alignment",
+      "label": "Vertical alignment",
+      "kind": "enum",
+      "options": [
+       "top",
+       "center",
+       "bottom"
+      ],
+      "default": "top"
+     },
+     {
+      "name": "wrap",
+      "label": "Word wrap",
+      "kind": "enum",
+      "options": [
+       "no-wrap",
+       "word-wrap",
+       "char-wrap"
+      ],
+      "default": "no-wrap"
+     },
+     {
+      "name": "overflow",
+      "label": "If it doesn't fit",
+      "kind": "enum",
+      "options": [
+       "clip",
+       "elide"
+      ],
+      "default": "clip"
+     },
+     {
+      "name": "stroke",
+      "label": "Outline: color",
+      "kind": "color"
+     },
+     {
+      "name": "stroke-width",
+      "label": "Outline: width",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "Button",
+    "label": "Button (Button)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Button\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Text",
+      "kind": "string"
+     },
+     {
+      "name": "icon",
+      "label": "Icon",
+      "kind": "image"
+     },
+     {
+      "name": "primary",
+      "label": "Primary (accent color)",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "colorize-icon",
+      "label": "Color the icon like the text",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "checkable",
+      "label": "Can stay pressed",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "checked",
+      "label": "Pressed (if it can stay pressed)",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "clicked",
+      "label": "On click",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     },
+     {
+      "prop": "enabled",
+      "slint": "bool"
+     },
+     {
+      "prop": "checked",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "LineEdit",
+    "label": "Text box (LineEdit)",
+    "category": "common",
+    "defaults": {
+     "placeholder-text": "\"Type here\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Text",
+      "kind": "string"
+     },
+     {
+      "name": "placeholder-text",
+      "label": "Placeholder text",
+      "kind": "string"
+     },
+     {
+      "name": "input-type",
+      "label": "Input type",
+      "kind": "enum",
+      "options": [
+       "text",
+       "password",
+       "number",
+       "decimal"
+      ],
+      "default": "text"
+     },
+     {
+      "name": "read-only",
+      "label": "Read only",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "font-size",
+      "label": "Font size",
+      "kind": "length"
+     },
+     {
+      "name": "horizontal-alignment",
+      "label": "Text alignment",
+      "kind": "enum",
+      "options": [
+       "left",
+       "center",
+       "right"
+      ],
+      "default": "left"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "accepted",
+      "label": "On Enter",
+      "params": [
+       {
+        "name": "text",
+        "slint": "string"
+       }
+      ]
+     },
+     {
+      "name": "edited",
+      "label": "On text change",
+      "params": [
+       {
+        "name": "text",
+        "slint": "string"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "TextEdit",
+    "label": "Text area (TextEdit)",
+    "category": "common",
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Text",
+      "kind": "text"
+     },
+     {
+      "name": "placeholder-text",
+      "label": "Placeholder text",
+      "kind": "string"
+     },
+     {
+      "name": "wrap",
+      "label": "Word wrap",
+      "kind": "enum",
+      "options": [
+       "word-wrap",
+       "no-wrap"
+      ],
+      "default": "word-wrap"
+     },
+     {
+      "name": "read-only",
+      "label": "Read only",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "font-size",
+      "label": "Font size",
+      "kind": "length"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "edited",
+      "label": "On text change",
+      "params": [
+       {
+        "name": "text",
+        "slint": "string"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "text",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "CheckBox",
+    "label": "Check box (CheckBox)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Option\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Text",
+      "kind": "string"
+     },
+     {
+      "name": "checked",
+      "label": "Checked",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "toggled",
+      "label": "On check or uncheck",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "checked",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "Switch",
+    "label": "Switch (Switch)",
+    "category": "common",
+    "defaults": {
+     "text": "\"Enable\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "text",
+      "label": "Text",
+      "kind": "string"
+     },
+     {
+      "name": "checked",
+      "label": "On",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "toggled",
+      "label": "On turn on or off",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "checked",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "Slider",
+    "label": "Slider (Slider)",
+    "category": "common",
+    "defaults": {
+     "minimum": "0",
+     "maximum": "100",
+     "value": "50"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "value",
+      "label": "Value",
+      "kind": "number"
+     },
+     {
+      "name": "minimum",
+      "label": "Minimum",
+      "kind": "number",
+      "default": "0"
+     },
+     {
+      "name": "maximum",
+      "label": "Maximum",
+      "kind": "number",
+      "default": "100"
+     },
+     {
+      "name": "step",
+      "label": "Step",
+      "kind": "number",
+      "default": "1"
+     },
+     {
+      "name": "orientation",
+      "label": "Orientation",
+      "kind": "enum",
+      "options": [
+       "horizontal",
+       "vertical"
+      ],
+      "default": "horizontal"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "changed",
+      "label": "On move",
+      "params": [
+       {
+        "name": "value",
+        "slint": "float"
+       }
+      ]
+     },
+     {
+      "name": "released",
+      "label": "On release",
+      "params": [
+       {
+        "name": "value",
+        "slint": "float"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "value",
+      "slint": "float"
+     }
+    ]
+   },
+   {
+    "type": "SpinBox",
+    "label": "Number (SpinBox)",
+    "category": "common",
+    "defaults": {
+     "minimum": "0",
+     "maximum": "100",
+     "value": "0"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "value",
+      "label": "Value",
+      "kind": "int"
+     },
+     {
+      "name": "minimum",
+      "label": "Minimum",
+      "kind": "int",
+      "default": "0"
+     },
+     {
+      "name": "maximum",
+      "label": "Maximum",
+      "kind": "int",
+      "default": "100"
+     },
+     {
+      "name": "step-size",
+      "label": "Step (arrows)",
+      "kind": "int",
+      "default": "1"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "edited",
+      "label": "On value change",
+      "params": [
+       {
+        "name": "value",
+        "slint": "int"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "value",
+      "slint": "int"
+     }
+    ]
+   },
+   {
+    "type": "ComboBox",
+    "label": "Drop-down list (ComboBox)",
+    "category": "common",
+    "defaults": {
+     "model": "[\"Option 1\", \"Option 2\", \"Option 3\"]"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "model",
+      "label": "Options",
+      "kind": "strings"
+     },
+     {
+      "name": "current-index",
+      "label": "Selected index",
+      "kind": "int",
+      "default": "0"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "selected",
+      "label": "On option chosen",
+      "params": [
+       {
+        "name": "value",
+        "slint": "string"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "current-index",
+      "slint": "int"
+     },
+     {
+      "prop": "current-value",
+      "slint": "string"
+     }
+    ]
+   },
+   {
+    "type": "ProgressIndicator",
+    "label": "Progress bar",
+    "category": "common",
+    "defaults": {
+     "progress": "0.4"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "progress",
+      "label": "Progress",
+      "kind": "percent"
+     },
+     {
+      "name": "indeterminate",
+      "label": "Indeterminate (animated)",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "progress",
+      "slint": "float"
+     }
+    ]
+   },
+   {
+    "type": "Rectangle",
+    "label": "Panel (Rectangle)",
+    "category": "containers",
+    "container": true,
+    "defaults": {
+     "background": "#e6e6e6",
+     "border-radius": "6px"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "background",
+      "label": "Background",
+      "kind": "color"
+     },
+     {
+      "name": "border-radius",
+      "label": "Corner radius",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "border-width",
+      "label": "Border width",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "border-color",
+      "label": "Border color",
+      "kind": "color"
+     },
+     {
+      "name": "drop-shadow-color",
+      "label": "Shadow: color",
+      "kind": "color"
+     },
+     {
+      "name": "drop-shadow-blur",
+      "label": "Shadow: blur",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "drop-shadow-offset-x",
+      "label": "Shadow: X offset",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "drop-shadow-offset-y",
+      "label": "Shadow: Y offset",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "clip",
+      "label": "Clip the content",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "Image",
+    "label": "Image (Image)",
+    "category": "common",
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "source",
+      "label": "File",
+      "kind": "image"
+     },
+     {
+      "name": "image-fit",
+      "label": "Fit",
+      "kind": "enum",
+      "options": [
+       "fill",
+       "contain",
+       "cover",
+       "preserve"
+      ],
+      "default": "fill"
+     },
+     {
+      "name": "colorize",
+      "label": "Colorize (icons)",
+      "kind": "color"
+     },
+     {
+      "name": "image-rendering",
+      "label": "Scaling",
+      "kind": "enum",
+      "options": [
+       "smooth",
+       "pixelated"
+      ],
+      "default": "smooth"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "Spinner",
+    "label": "Loading indicator (Spinner)",
+    "category": "common",
+    "defaults": {
+     "indeterminate": "true"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "indeterminate",
+      "label": "Spinning continuously",
+      "kind": "bool",
+      "default": "false"
+     },
+     {
+      "name": "progress",
+      "label": "Progress",
+      "kind": "percent"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "progress",
+      "slint": "float"
+     }
+    ]
+   },
+   {
+    "type": "StandardButton",
+    "label": "Standard button (OK, Cancel…)",
+    "category": "common",
+    "defaults": {
+     "kind": "ok"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "kind",
+      "label": "Type",
+      "kind": "enum",
+      "options": [
+       "ok",
+       "cancel",
+       "apply",
+       "close",
+       "reset",
+       "help",
+       "yes",
+       "no",
+       "abort",
+       "retry",
+       "ignore"
+      ],
+      "default": "ok"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "clicked",
+      "label": "On click",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "enabled",
+      "slint": "bool"
+     }
+    ]
+   },
+   {
+    "type": "StandardListView",
+    "label": "List (StandardListView)",
+    "category": "common",
+    "defaults": {
+     "model": "[{ text: \"Item 1\" }, { text: \"Item 2\" }, { text: \"Item 3\" }]"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "model",
+      "label": "Items",
+      "kind": "items"
+     },
+     {
+      "name": "current-item",
+      "label": "Elemento seleccionado (-1 = ninguno)",
+      "kind": "int",
+      "default": "-1"
+     },
+     {
+      "name": "opacity",
+      "label": "Opacity",
+      "kind": "percent",
+      "default": "1"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "current-item-changed",
+      "label": "On selection change",
+      "params": [
+       {
+        "name": "index",
+        "slint": "int"
+       }
+      ]
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "current-item",
+      "slint": "int"
+     }
+    ]
+   },
+   {
+    "type": "VerticalBox",
+    "label": "Column (VerticalBox)",
+    "category": "containers",
+    "layout": "vertical",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Padding",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "spacing",
+      "label": "Spacing",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribution",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "HorizontalBox",
+    "label": "Row (HorizontalBox)",
+    "category": "containers",
+    "layout": "horizontal",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Padding",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "spacing",
+      "label": "Spacing",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribution",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "GridBox",
+    "label": "Grid (GridBox)",
+    "category": "containers",
+    "layout": "grid",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Padding",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "spacing",
+      "label": "Spacing",
+      "kind": "length",
+      "default": "8px"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "GroupBox",
+    "label": "Group with title (GroupBox)",
+    "category": "containers",
+    "layout": "group",
+    "container": true,
+    "defaults": {
+     "title": "\"Group\""
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "title",
+      "label": "Title",
+      "kind": "string"
+     },
+     {
+      "name": "content-padding",
+      "label": "Content padding",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "TabWidget",
+    "label": "Tabs (TabWidget)",
+    "category": "containers",
+    "layout": "tabs",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "current-index",
+      "label": "Initial tab (0 = first)",
+      "kind": "int",
+      "default": "0"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [],
+    "bindable": [
+     {
+      "prop": "current-index",
+      "slint": "int"
+     }
+    ]
+   },
+   {
+    "type": "ScrollView",
+    "label": "Scroll area (ScrollView)",
+    "category": "containers",
+    "container": true,
+    "defaults": {
+     "content-height": "400px"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "content-width",
+      "label": "Content width",
+      "kind": "length"
+     },
+     {
+      "name": "content-height",
+      "label": "Content height",
+      "kind": "length"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "scrolled",
+      "label": "On scroll",
+      "params": []
+     }
+    ]
+   },
+   {
+    "type": "TouchArea",
+    "label": "Clickable area (TouchArea)",
+    "category": "containers",
+    "container": true,
+    "defaults": {
+     "mouse-cursor": "pointer"
+    },
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "mouse-cursor",
+      "label": "Cursor",
+      "kind": "enum",
+      "options": [
+       "default",
+       "pointer",
+       "text",
+       "move",
+       "crosshair",
+       "grab",
+       "grabbing",
+       "help",
+       "wait",
+       "progress",
+       "not-allowed",
+       "copy",
+       "ew-resize",
+       "ns-resize"
+      ],
+      "default": "default"
+     },
+     {
+      "name": "enabled",
+      "label": "Enabled",
+      "kind": "bool",
+      "default": "true"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "clicked",
+      "label": "On click",
+      "params": []
+     },
+     {
+      "name": "double-clicked",
+      "label": "On double-click",
+      "params": []
+     },
+     {
+      "name": "moved",
+      "label": "On mouse move with the button pressed",
+      "params": []
+     }
+    ]
+   },
+   {
+    "type": "Timer",
+    "label": "Timer (Timer)",
+    "category": "components",
+    "nonVisual": true,
+    "defaults": {
+     "interval": "1000ms",
+     "running": "true"
+    },
+    "props": [
+     {
+      "name": "interval",
+      "label": "Interval",
+      "kind": "duration",
+      "default": "0ms"
+     },
+     {
+      "name": "running",
+      "label": "Running",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": [
+     {
+      "name": "triggered",
+      "label": "When the interval elapses",
+      "params": []
+     }
+    ],
+    "bindable": [
+     {
+      "prop": "running",
+      "slint": "bool"
+     }
+    ]
+   }
+  ]
+ }
+}

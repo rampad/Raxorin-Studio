@@ -1,0 +1,67 @@
+# Prueba el servidor MCP de Raxorin Studio (`raxorin-studio --mcp`) en macOS, Windows y Linux:
+# una sesión JSON-RPC real que crea un proyecto, compila con error, corrige, prueba, ejecuta y
+# comprueba que no se sale de la carpeta autorizada (tests/mcp/sesion.py).
+name: MCP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src-tauri/src/mcp.rs"
+      - "src-tauri/src/main.rs"
+      - "src-tauri/src/fs_cmds.rs"
+      - "src-tauri/src/samples.rs"
+      - "src-tauri/mcp/**"
+      - "src/designer/widgets.ts"
+      - "scripts/mcp-catalogo.ts"
+      - "tests/mcp/**"
+      - ".github/workflows/mcp.yml"
+  pull_request:
+    paths:
+      - "src-tauri/src/mcp.rs"
+      - "tests/mcp/**"
+  workflow_dispatch:
+
+jobs:
+  sesion:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Dependencias de Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
+
+      # El catálogo de controles que sirve el MCP debe coincidir con el diseñador.
+      - name: Catálogo de controles al día
+        run: node scripts/mcp-catalogo.ts --check
+
+      - name: Pruebas unitarias
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib mcp
+
+      - name: Compilar Raxorin Studio
+        shell: bash
+        run: mkdir -p dist && cargo build --manifest-path src-tauri/Cargo.toml
+
+      - name: Sesión MCP
+        shell: bash
+        run: python tests/mcp/sesion.py src-tauri/target/debug/raxorin-studio$([ "$RUNNER_OS" = Windows ] && echo .exe)
