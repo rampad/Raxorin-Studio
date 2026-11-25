@@ -2,6 +2,7 @@ mod crates;
 mod dap;
 mod fs_cmds;
 mod git;
+mod install_location;
 mod lsp;
 mod monitor;
 mod projects;
@@ -49,6 +50,7 @@ pub fn run() {
             fs_cmds::read_file,
             fs_cmds::write_file,
             fs_cmds::write_file_base64,
+            fs_cmds::read_image_data_url,
             fs_cmds::create_project,
             fs_cmds::create_file,
             fs_cmds::create_dir,
@@ -66,6 +68,8 @@ pub fn run() {
             solution::take_pending_open,
             runner::rust_targets,
             runner::cross_status,
+            install_location::app_location,
+            install_location::move_to_applications,
             terminal::terminal_open,
             terminal::terminal_write,
             terminal::terminal_resize,

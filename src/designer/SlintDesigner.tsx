@@ -23,6 +23,7 @@ import type { ImportResult } from "./figmaImport";
 import { api } from "../api";
 import type { CSSProperties } from "react";
 import WidgetPreview from "./WidgetPreview";
+import { ImageBaseContext, clearImageCache } from "./ImagePreview";
 import PropertyPanel from "./PropertyPanel";
 
 export interface DesignerHost {
@@ -245,6 +246,7 @@ export default function SlintDesigner(p: Props) {
   /** Importa una pantalla de Figma: guarda sus imágenes y reemplaza o agrega los controles. */
   const importFigma = async (r: ImportResult, mode: FigmaMode) => {
     for (const a of r.assets) await api.writeFileBase64(`${slintDir}/${a.path}`, a.base64);
+    if (r.assets.length) clearImageCache(); // pueden reemplazar imágenes que ya se mostraban
     commit((d) => {
       if (r.tokens && !/export\s+global\s+Tema\b/.test(d.before)) d.before = `${d.before.trim()}\n\n${r.tokens}`.trim();
       if (mode === "replace") {
@@ -947,6 +949,7 @@ export default function SlintDesigner(p: Props) {
     });
 
   return (
+    <ImageBaseContext.Provider value={slintDir}>
     <div className="designer" ref={rootRef} tabIndex={0} onKeyDown={onKeyDown}>
       {/* ----- Caja de herramientas + esquema ----- */}
       <div className="toolbox" style={{ width: toolboxSize.size }}>
@@ -1089,6 +1092,7 @@ export default function SlintDesigner(p: Props) {
         )}
       </div>
     </div>
+    </ImageBaseContext.Provider>
   );
 }
 

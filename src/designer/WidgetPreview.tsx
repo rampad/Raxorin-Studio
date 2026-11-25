@@ -3,6 +3,7 @@
 
 import type { CSSProperties } from "react";
 import { Codicon } from "../components/Icon";
+import ImagePreview from "./ImagePreview";
 import {
   getProp, parseBool, parseColor, parseImage, parseLength, parseNumber, parseString, parseStringArray,
   type Element,
@@ -160,15 +161,8 @@ export default function WidgetPreview({ el }: { el: Element }) {
       );
     case "Tab":
       return <div />;
-    case "Image": {
-      const src = parseImage(getProp(el, "source"));
-      return (
-        <div className="w-image">
-          <Codicon name="file-media" />
-          <span>{src ?? "sin imagen"}</span>
-        </div>
-      );
-    }
+    case "Image":
+      return <ImagePreview src={parseImage(getProp(el, "source"))} fit={getProp(el, "image-fit")?.trim()} />;
     default:
       return (
         <div className="w-unknown">

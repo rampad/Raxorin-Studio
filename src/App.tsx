@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { join } from "@tauri-apps/api/path";
-import { ask, open, save } from "@tauri-apps/plugin-dialog";
+import { ask, message, open, save } from "@tauri-apps/plugin-dialog";
 import * as monaco from "monaco-editor";
 import type { OnMount } from "@monaco-editor/react";
 import {
@@ -1641,6 +1641,20 @@ export default function App() {
 
   // ---------- Inicio ----------
   useEffect(() => {
+    // macOS: abierta desde el .dmg (o desde Descargas): ofrecer moverla a Aplicaciones.
+    api
+      .appLocation()
+      .then(async (loc) => {
+        if (!loc.needsMove) return;
+        const yes = await ask(
+          loc.reason === "dmg"
+            ? "Raxorin Studio se está ejecutando desde el instalador (.dmg), así que no está instalada: no aparece en Aplicaciones ni en Launchpad, se cierra al expulsar el disco y no se puede actualizar.\n\n¿La muevo a la carpeta Aplicaciones? Se volverá a abrir desde allí."
+            : "Raxorin Studio no está en la carpeta Aplicaciones, así que macOS la ejecuta desde una copia temporal y no se puede actualizar.\n\n¿La muevo a la carpeta Aplicaciones? Se volverá a abrir desde allí.",
+          { title: "Instalar Raxorin Studio", kind: "info", okLabel: "Mover a Aplicaciones", cancelLabel: "Ahora no" },
+        );
+        if (yes) await api.moveToApplications().catch((e) => void message(String(e), { title: "No se pudo mover", kind: "error" }));
+      })
+      .catch(() => {});
     refreshToolchain();
     // Si falta algo imprescindible (Rust o el compilador de C/C++), abrir el asistente.
     api

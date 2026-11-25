@@ -1,13 +1,12 @@
-## Terminal integrado
-- Nueva pestaña **Terminal** en el panel inferior (**Ver → Terminal** o <kbd>Ctrl</kbd>+<kbd>`</kbd>), con tu shell: zsh o bash en macOS y Linux, PowerShell en Windows.
-- Arranca en la carpeta del proyecto y con `cargo` disponible. Puedes abrir varias terminales, y siguen abiertas aunque ocultes el panel.
-- Mientras escribes en ella, <kbd>Ctrl</kbd>+letra va al shell (<kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>R</kbd>…).
+## macOS
+- **Se corrige «Raxorin Studio está dañado y no se puede abrir»** al descargar la app desde el navegador. La firma de la app no cubría todo el paquete y macOS la trataba como dañada. Ahora la primera vez macOS solo avisa que no puede verificarla: **Configuración del Sistema → Privacidad y seguridad → Abrir de todos modos**.
+- Si abres la app directamente desde el instalador (.dmg), ofrece **moverse a Aplicaciones**. Desde el .dmg no aparece en Aplicaciones ni en Launchpad, y tampoco se puede actualizar ni desinstalar.
+- La ventana del instalador indica con una flecha que hay que arrastrar la app a Aplicaciones.
 
-## Nuevo proyecto con ejemplos
-- **Nuevo proyecto** ahora tiene dos pasos. Primero eliges el tipo (consola, ventana, biblioteca o solución) y después cómo empezar: **en blanco** o **desde un ejemplo** de ese tipo.
-- Empezar desde un ejemplo también funciona para agregar un proyecto a la solución abierta.
+## Diseñador
+- Los controles **Imagen** muestran la imagen real, por ejemplo los logos e íconos importados de Figma, en lugar de un recuadro con la ruta. Si falta el archivo, lo avisa.
 
 ## Instalar
-- macOS: `.dmg` (Apple Silicon o Intel)
+- macOS: `.dmg` (Apple Silicon o Intel). Arrastra la app a Aplicaciones.
 - Windows: `_x64-setup.exe` o `.msi` (x64), `_arm64-setup.exe` (ARM64)
 - Linux: `.AppImage` (se actualiza sola), `.deb` o `.rpm`

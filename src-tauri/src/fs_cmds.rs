@@ -234,6 +234,34 @@ pub fn write_file_base64(path: String, base64: String) -> Result<(), String> {
     std::fs::write(p, bytes).map_err(|e| format!("No se pudo escribir {path}: {e}"))
 }
 
+/// Tipo MIME de una imagen según su extensión (solo las que Slint y el navegador entienden).
+fn image_mime(path: &Path) -> Option<&'static str> {
+    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
+    Some(match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        _ => return None,
+    })
+}
+
+/// Una imagen como `data:` URL, para verla en el diseñador. Solo archivos de imagen, de hasta 20 MB.
+#[tauri::command]
+pub fn read_image_data_url(path: String) -> Result<String, String> {
+    use base64::Engine;
+    let p = Path::new(&path);
+    let mime = image_mime(p).ok_or_else(|| format!("No es una imagen: {path}"))?;
+    let meta = std::fs::metadata(p).map_err(|_| format!("No se encontró {path}"))?;
+    if meta.len() > 20 * 1024 * 1024 {
+        return Err("La imagen pesa más de 20 MB".into());
+    }
+    let bytes = std::fs::read(p).map_err(|e| format!("No se pudo leer {path}: {e}"))?;
+    Ok(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+}
+
 #[tauri::command]
 pub fn create_file(path: String) -> Result<(), String> {
     let p = Path::new(&path);
@@ -305,6 +333,20 @@ pub fn reveal_path(path: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lee_imagenes_como_data_url() {
+        let dir = std::env::temp_dir().join(format!("raxorin-img-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let png = dir.join("logo.png");
+        std::fs::write(&png, [0x89, b'P', b'N', b'G']).unwrap();
+        assert_eq!(read_image_data_url(png.to_string_lossy().into()).unwrap(), "data:image/png;base64,iVBORw==");
+        let txt = dir.join("secreto.txt");
+        std::fs::write(&txt, "x").unwrap();
+        assert!(read_image_data_url(txt.to_string_lossy().into()).unwrap_err().contains("No es una imagen"));
+        assert!(read_image_data_url(dir.join("no.png").to_string_lossy().into()).unwrap_err().contains("No se encontró"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn escribe_base64() {

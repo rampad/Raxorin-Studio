@@ -109,3 +109,18 @@ jobs:
           releaseId: ${{ needs.borrador.outputs.id }}
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+      # macOS rechaza con «está dañado» una app descargada cuya firma no cubre el paquete entero.
+      # La app va firmada ad-hoc (signingIdentity "-" en tauri.conf.json); aquí se comprueba la que
+      # quedó dentro del .dmg con las mismas reglas estrictas. Si falla, no se publica.
+      - name: Verificar la firma del .dmg
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          dmg=$(ls src-tauri/target/*/release/bundle/dmg/*.dmg | head -1)
+          echo "Revisando $dmg"
+          mp=$(yes | PAGER=cat hdiutil attach "$dmg" -nobrowse -noautoopen -mountrandom /tmp | grep -oE '/tmp/dmg\.[A-Za-z0-9]+' | tail -1)
+          app="$mp/Raxorin Studio.app"
+          codesign -dv "$app" 2>&1 | grep -E "Signature|Sealed Resources|flags"
+          codesign --verify --deep --strict -v "$app"
+          hdiutil detach "$mp" -quiet

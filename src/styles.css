@@ -1299,3 +1299,4 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
 .terminal-host .xterm { height: 100%; }
 .terminal-host .xterm-viewport { background: transparent !important; }
 .terminal-wrap { flex: 1; min-height: 0; flex-direction: column; }
+.w-image-img { width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }

@@ -156,6 +156,11 @@ export const api = {
   readFile: (path: string) => invoke<string>("read_file", { path }),
   writeFile: (path: string, contents: string) => invoke<void>("write_file", { path, contents }),
   writeFileBase64: (path: string, base64: string) => invoke<void>("write_file_base64", { path, base64 }),
+  readImageDataUrl: (path: string) => invoke<string>("read_image_data_url", { path }),
+  /** macOS: ¿la app se abrió desde el instalador (.dmg) en vez de desde Aplicaciones? */
+  appLocation: () => invoke<{ needsMove: boolean; reason: "dmg" | "translocated" | null; appPath: string | null }>("app_location"),
+  /** Copia la app a Aplicaciones, la vuelve a abrir desde allí y cierra esta. */
+  moveToApplications: () => invoke<string>("move_to_applications"),
   samplesList: () => invoke<SampleCatalog>("samples_list"),
   sampleCreate: (sample: Sample, parent: string, name: string, online: boolean) =>
     invoke<{ open: string; file: string }>("sample_create", { sample, parent, name, online }),
