@@ -1259,3 +1259,25 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
   .samples-body { grid-template-columns: 1fr; }
 }
 .samples-filters .chip { font-family: inherit; }
+
+/* ---------- Nuevo proyecto: tipo → cómo empezar ---------- */
+.modal.new-project.wide { width: min(860px, calc(100vw - 32px)); height: min(600px, calc(100vh - 32px)); }
+.wizard-steps { display: flex; align-items: center; gap: 6px; color: var(--muted); margin-top: -6px; }
+.wizard-steps .active { color: var(--text-strong); font-weight: 600; }
+.wizard-steps .done { color: var(--accent); }
+.template-count {
+  margin-left: auto; font-size: 11px; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1px 8px; white-space: nowrap;
+}
+.start-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; }
+.start-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.start-section { font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin: 8px 0 2px; }
+.sample-card.blank .sample-icon { color: var(--text-strong); }
+.start-form { display: flex; flex-direction: column; gap: 12px; }
+.start-note { margin: 0; display: flex; gap: 6px; align-items: flex-start; }
+.segmented.vertical { flex-direction: column; }
+.segmented.vertical button + button { border-left: none; border-top: 1px solid var(--border); }
+.segmented.vertical button { text-align: left; padding: 7px 10px; }
+@media (max-width: 700px) {
+  .start-body { grid-template-columns: 1fr; }
+}

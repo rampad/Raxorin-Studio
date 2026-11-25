@@ -15,6 +15,7 @@ import {
   type DebuggerInfo,
   type SolutionInfo,
   type PublishOptions,
+  type Sample,
 } from "./api";
 import Toolbar from "./components/Toolbar";
 import Explorer, { type FileProblems, type SolutionAction } from "./components/Explorer";
@@ -686,7 +687,22 @@ export default function App() {
   }, [openProject, log]);
 
   const createProject = useCallback(
-    async (parent: string, name: string, kind: "bin" | "lib" | "slint" | "solution", addToCurrent: boolean) => {
+    async (
+      parent: string,
+      name: string,
+      kind: "bin" | "lib" | "slint" | "solution",
+      addToCurrent: boolean,
+      start?: { sample: Sample; online: boolean },
+    ) => {
+      // Empezar desde un ejemplo: se copia en vez de crear el proyecto vacío.
+      const fromSample = start ? await api.sampleCreate(start.sample, parent, name, start.online) : null;
+      if (fromSample && kind === "solution") {
+        setShowNew(false);
+        log(`Solución creada desde el ejemplo «${start!.sample.nombre}»: ${fromSample.open}`, "success");
+        await openSolution(fromSample.open);
+        await openFile(fromSample.file).catch(() => {});
+        return;
+      }
       if (kind === "solution") {
         // Solución en blanco: una carpeta con el .rxsln, lista para agregar proyectos.
         const dir = await join(parent, name);
@@ -696,8 +712,14 @@ export default function App() {
         await openSolution(file);
         return;
       }
-      const path = await api.createProject(parent, name, kind);
+      const path = fromSample ? fromSample.open : await api.createProject(parent, name, kind);
       const openDesigner = async () => {
+        if (fromSample) {
+          await openFile(fromSample.file).catch(() => {});
+          log(`Basado en el ejemplo «${start!.sample.nombre}»: lee los comentarios del código y pulsa F5 para ejecutarlo.`, "muted");
+          if (kind === "slint") log("La primera compilación de una ventana (Slint) tarda un par de minutos.", "muted");
+          return;
+        }
         if (kind !== "slint") return;
         await openFile(await join(path, "ui", "app-window.slint"));
         log("Ventana creada: diseña en app-window.slint y escribe el código en main.rs. La primera compilación de Slint tarda un poco.", "muted");
