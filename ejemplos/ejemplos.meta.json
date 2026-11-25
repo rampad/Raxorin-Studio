@@ -8,7 +8,11 @@
     "icono": "flame",
     "tipo": "ventana",
     "abrir": "ui/app-window.slint",
-    "aprenderas": ["Propiedades y callbacks de Slint", "Layouts automáticos", "Convertir texto a número"]
+    "aprenderas": [
+      "Propiedades y callbacks de Slint",
+      "Layouts automáticos",
+      "Convertir texto a número"
+    ]
   },
   {
     "id": "calculadora",
@@ -19,7 +23,12 @@
     "icono": "symbol-operator",
     "tipo": "ventana",
     "abrir": "ui/app-window.slint",
-    "aprenderas": ["GridLayout", "enum y match", "Rc<RefCell<…>> para compartir estado", "Probar la lógica sin la ventana"]
+    "aprenderas": [
+      "GridLayout",
+      "enum y match",
+      "Rc<RefCell<…>> para compartir estado",
+      "Probar la lógica sin la ventana"
+    ]
   },
   {
     "id": "lista_de_tareas",
@@ -30,7 +39,11 @@
     "icono": "checklist",
     "tipo": "ventana",
     "abrir": "ui/app-window.slint",
-    "aprenderas": ["Listas en Slint (for + VecModel)", "Structs compartidos entre Slint y Rust", "Varios callbacks sobre el mismo modelo"]
+    "aprenderas": [
+      "Listas en Slint (for + VecModel)",
+      "Structs compartidos entre Slint y Rust",
+      "Varios callbacks sobre el mismo modelo"
+    ]
   },
   {
     "id": "temporizador_pomodoro",
@@ -41,7 +54,26 @@
     "icono": "watch",
     "tipo": "ventana",
     "abrir": "src/main.rs",
-    "aprenderas": ["slint::Timer", "Estado con Cell y Rc", "Propiedades condicionales en Slint"]
+    "aprenderas": [
+      "slint::Timer",
+      "Estado con Cell y Rc",
+      "Propiedades condicionales en Slint"
+    ]
+  },
+  {
+    "id": "galeria_de_controles",
+    "nombre": "Galería de controles",
+    "descripcion": "Reloj con Timer, lista, tarjeta clicable, deslizador vertical y botones estándar, con sus eventos.",
+    "categoria": "Ventanas",
+    "nivel": "Intermedio",
+    "icono": "symbol-misc",
+    "tipo": "ventana",
+    "abrir": "ui/app-window.slint",
+    "aprenderas": [
+      "Timer y eventos periódicos",
+      "StandardListView y TouchArea",
+      "Sombras, opacidad e íconos coloreados"
+    ]
   },
   {
     "id": "adivina_el_numero",
@@ -52,7 +84,11 @@
     "icono": "question",
     "tipo": "consola",
     "abrir": "src/main.rs",
-    "aprenderas": ["Leer lo que escribe el usuario", "loop y match", "Result al convertir texto"]
+    "aprenderas": [
+      "Leer lo que escribe el usuario",
+      "loop y match",
+      "Result al convertir texto"
+    ]
   },
   {
     "id": "contador_de_palabras",
@@ -63,7 +99,11 @@
     "icono": "whole-word",
     "tipo": "consola",
     "abrir": "src/main.rs",
-    "aprenderas": ["HashMap", "Iteradores y ordenar", "Pruebas unitarias"]
+    "aprenderas": [
+      "HashMap",
+      "Iteradores y ordenar",
+      "Pruebas unitarias"
+    ]
   },
   {
     "id": "juego_de_la_vida",
@@ -74,7 +114,11 @@
     "icono": "symbol-misc",
     "tipo": "consola",
     "abrir": "src/main.rs",
-    "aprenderas": ["struct e impl", "Vectores de dos dimensiones", "Animación en la terminal"]
+    "aprenderas": [
+      "struct e impl",
+      "Vectores de dos dimensiones",
+      "Animación en la terminal"
+    ]
   },
   {
     "id": "encuentra_el_error",
@@ -85,7 +129,11 @@
     "icono": "debug-alt",
     "tipo": "consola",
     "abrir": "src/main.rs",
-    "aprenderas": ["Puntos de interrupción (F9)", "Depurar paso a paso (F5, F10)", "Inspeccionar variables"]
+    "aprenderas": [
+      "Puntos de interrupción (F9)",
+      "Depurar paso a paso (F5, F10)",
+      "Inspeccionar variables"
+    ]
   },
   {
     "id": "geometria",
@@ -96,7 +144,11 @@
     "icono": "library",
     "tipo": "biblioteca",
     "abrir": "src/lib.rs",
-    "aprenderas": ["trait y Box<dyn Trait>", "Option para validar", "Pruebas unitarias"]
+    "aprenderas": [
+      "trait y Box<dyn Trait>",
+      "Option para validar",
+      "Pruebas unitarias"
+    ]
   },
   {
     "id": "tienda",
@@ -108,6 +160,10 @@
     "tipo": "solucion",
     "solucion": "tienda.rxsln",
     "abrir": "caja/src/main.rs",
-    "aprenderas": ["Soluciones (.rxsln) con varios proyectos", "Referencias entre proyectos", "Errores propios con enum y Display"]
+    "aprenderas": [
+      "Soluciones (.rxsln) con varios proyectos",
+      "Referencias entre proyectos",
+      "Errores propios con enum y Display"
+    ]
   }
 ]

@@ -1,0 +1,11 @@
+[package]
+name = "galeria_de_controles"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+slint = "1.19"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[build-dependencies]
+slint-build = "1.19"

@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Codicon } from "../components/Icon";
 import {
-  formatImage, formatLength, formatString, formatStringArray, getProp, parseBool, parseColor, parseImage,
-  parseLength, parseNumber, parseString, parseStringArray, type Element,
+  formatDuration, formatImage, formatItems, formatLength, formatString, formatStringArray, getProp, parseBool,
+  parseColor, parseDuration, parseImage, parseItems, parseLength, parseNumber, parseString, parseStringArray,
+  type Element,
 } from "./slintDoc";
 import { RUST_TYPE, type Bindable, type EventDef, type PropDef, type WidgetDef } from "./widgets";
 
@@ -203,6 +204,8 @@ function isLiteral(pd: PropDef, v: string | undefined): boolean {
     case "enum": return pd.options?.includes(v.trim()) ?? false;
     case "strings": return parseStringArray(v) !== null;
     case "image": return parseImage(v) !== null;
+    case "duration": return parseDuration(v) !== null;
+    case "items": return parseItems(v) !== null;
   }
 }
 
@@ -218,7 +221,7 @@ function Editor({ pd, value, onChange, slintDir }: {
       return <NumberInput value={parseNumber(value)} placeholder={pd.fallback ?? ""} integer={pd.kind === "int"}
         onCommit={(n) => onChange(n === null ? undefined : String(pd.kind === "int" ? Math.round(n) : n))} />;
     case "percent": {
-      const n = parseNumber(value) ?? 0;
+      const n = parseNumber(value) ?? parseNumber(pd.fallback) ?? 0;
       return (
         <div className="row-inline">
           <input type="range" min={0} max={1} step={0.01} value={n} onChange={(e) => onChange(String(Number(e.target.value)))} />
@@ -260,6 +263,14 @@ function Editor({ pd, value, onChange, slintDir }: {
       return (
         <TextInput multiline value={(parseStringArray(value) ?? []).join("\n")} placeholder="Una opción por línea"
           onCommit={(v) => onChange(formatStringArray(v.split("\n").map((x) => x.trim()).filter(Boolean)))} />
+      );
+    case "duration":
+      return <NumberInput value={parseDuration(value)} placeholder={pd.fallback ?? ""} suffix="ms" integer
+        onCommit={(n) => onChange(n === null ? undefined : formatDuration(Math.max(0, n)))} />;
+    case "items":
+      return (
+        <TextInput multiline value={(parseItems(value) ?? []).join("\n")} placeholder="Un elemento por línea"
+          onCommit={(v) => onChange(formatItems(v.split("\n").map((x) => x.trim()).filter(Boolean)))} />
       );
     case "image": {
       const path = parseImage(value);

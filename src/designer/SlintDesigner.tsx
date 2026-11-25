@@ -231,6 +231,19 @@ export default function SlintDesigner(p: Props) {
   const addWidget = (type: string, target?: Ops.DropTarget) => {
     const def = widgetDef(type);
     if (!doc || !def) return;
+    if (def.nonVisual) {
+      // Timer y similares: van directo en la ventana, sin posición ni tamaño.
+      let added: Path = [];
+      commit((d) => {
+        const el = Ops.fromTemplate({ type });
+        el.id = uniqueId(d, def.idBase);
+        d.root.items.push(el);
+        added = [d.root.items.length - 1];
+      });
+      setSel(added);
+      rootRef.current?.focus();
+      return;
+    }
     let newPath: Path = [];
     commit((d) => {
       let t = target ?? defaultTarget(d);
@@ -347,6 +360,7 @@ export default function SlintDesigner(p: Props) {
 
   const nudge = (dx: number, dy: number) => {
     if (!sel || sel.length === 0 || !selected || !doc) return;
+    if (widgetDef(selected.type)?.nonVisual) return; // un Timer no tiene posición
     const kind = parentLayout(doc, sel);
     if (kind === "tabs") return;
     if (kind === "grid") {
@@ -732,6 +746,10 @@ export default function SlintDesigner(p: Props) {
   const winRect = drag && drag.path.length === 0 ? { w: drag.rect.w, h: drag.rect.h } : win;
   const title = getProp(doc.root, "title");
   const titleText = title ? title.replace(/^"|"$/g, "") : doc.name;
+  /** Componentes sin interfaz (Timer) que están directamente en la ventana. */
+  const nonVisual = doc.root.items.flatMap((it, i) =>
+    it.kind === "element" && widgetDef(it.type)?.nonVisual ? [{ el: it, path: [i] as Path }] : [],
+  );
 
   const handles = (path: Path, inLayout: boolean) =>
     ((inLayout ? ["e", "se", "s"] : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]) as DragKind[]).map((k) => (
@@ -815,6 +833,7 @@ export default function SlintDesigner(p: Props) {
 
   const renderNode = (el: Element, path: Path, parentKind?: LayoutKind, parent?: Element, cell?: Ops.Cell): React.ReactNode => {
     const def = widgetDef(el.type);
+    if (def?.nonVisual) return null; // se muestra en la bandeja de componentes
     const key = path.join("/");
     const isDragging = !!drag && samePath(drag.path, path);
     const isSel = samePath(sel, path);
@@ -828,6 +847,10 @@ export default function SlintDesigner(p: Props) {
       const r = isDragging ? drag!.rect : rectOf(el);
       style = { left: r.x, top: r.y, width: r.w, height: r.h };
     }
+    // Opacidad (afecta también a lo que contiene) y "Recortar el contenido", como en Slint.
+    const opacity = parseNumber(getProp(el, "opacity"));
+    if (opacity !== null) style = { ...style, opacity: Math.min(1, Math.max(0, opacity)) };
+    if (getProp(el, "clip")?.trim() === "true") style = { ...style, overflow: "hidden" };
     const absContainer = !!def?.container && !def.layout;
     // Panel interno (sin nombre) de un GroupBox: su fondo pertenece al grupo.
     const groupContent = parentKind === "group" && !el.id && !!def?.container;
@@ -955,8 +978,10 @@ export default function SlintDesigner(p: Props) {
       <div className="toolbox" style={{ width: toolboxSize.size }}>
         <div className="panel-title"><span>CAJA DE HERRAMIENTAS</span></div>
         <div className="toolbox-list">
-          {(["common", "containers"] as const).flatMap((cat) => [
-            <div key={cat} className="toolbox-group">{cat === "common" ? "Controles" : "Contenedores y layouts"}</div>,
+          {(["common", "containers", "components"] as const).flatMap((cat) => [
+            <div key={cat} className="toolbox-group">
+              {cat === "common" ? "Controles" : cat === "containers" ? "Contenedores y layouts" : "Componentes (sin interfaz)"}
+            </div>,
             ...WIDGETS.filter((w) => w.category === cat).map((w) => (
             <div
               key={w.type}
@@ -1053,6 +1078,24 @@ export default function SlintDesigner(p: Props) {
               {drag && drag.path.length === 0 && <span className="d-size">{winRect.w}×{winRect.h}</span>}
             </div>
           </div>
+          {nonVisual.length > 0 && (
+            <div className="d-tray" onPointerDown={(e) => e.stopPropagation()}>
+              <span className="d-tray-title muted small">Componentes</span>
+              {nonVisual.map(({ el, path }) => (
+                <button
+                  key={path.join("/")}
+                  className={"d-tray-item" + (samePath(sel, path) ? " selected" : "")}
+                  onClick={() => {
+                    setSel(path);
+                    rootRef.current?.focus();
+                  }}
+                  title={`${el.id ?? "(sin nombre)"} · ${el.type}`}
+                >
+                  <Codicon name={widgetDef(el.type)?.icon ?? "symbol-misc"} /> {el.id ?? el.type}
+                </button>
+              ))}
+            </div>
+          )}
           {(dragIndicator ?? toolDrop?.indicator) && (
             <div
               className={"d-indicator" + ((dragIndicator ?? toolDrop!.indicator)!.box ? " box" : "")}

@@ -1,0 +1,36 @@
+# Comprueba con el compilador de Slint que todos los controles, propiedades y eventos del
+# diseñador (src/designer/widgets.ts) existen y se escriben bien: genera un .slint que los usa
+# todos y lo compila con la misma versión de Slint que usan los proyectos.
+name: Diseñador
+
+on:
+  push:
+    paths:
+      - "src/designer/widgets.ts"
+      - "tests/catalogo-slint/**"
+      - ".github/workflows/disenador.yml"
+  pull_request:
+    paths:
+      - "src/designer/widgets.ts"
+      - "tests/catalogo-slint/**"
+  workflow_dispatch:
+
+jobs:
+  catalogo:
+    name: Catálogo de controles con Slint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dependencias de Slint
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: tests/catalogo-slint -> target
+      - name: Generar el .slint con todo el catálogo
+        run: node tests/catalogo-slint/generar.ts
+      - name: Compilarlo con Slint
+        run: cargo build --manifest-path tests/catalogo-slint/Cargo.toml

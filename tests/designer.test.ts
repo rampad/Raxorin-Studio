@@ -72,5 +72,22 @@ ok(S.parseString(S.formatString('a "b" \\ {c}')) === 'a "b" \\ {c}', "texto con 
 try { S.parse("component X { }"); ok(false, "error sin Window"); } catch (err) { ok(err instanceof S.SlintParseError, "error: falta export component"); }
 try { S.parse('export component A inherits Window { Text { text: "x"; }'); ok(false, "llave"); } catch (err) { ok(err instanceof S.SlintParseError, "error: llave sin cerrar"); }
 
+// Propiedades incompatibles en Slint: poner una quita la otra.
+{
+  const doc = S.parse(`export component W inherits Window {\n    t := Text {\n        width: 100px;\n        min-height: 10px;\n    }\n}\n`);
+  const t = doc.root.items.find((i) => i.kind === "element") as S.Element;
+  S.setProp(t, "min-width", "50px");
+  ok(S.getProp(t, "width") === undefined && S.getProp(t, "min-width") === "50px", "min-width quita width");
+  S.setProp(t, "height", "20px");
+  ok(S.getProp(t, "min-height") === undefined && S.getProp(t, "height") === "20px", "height quita min-height");
+  S.setProp(t, "width", undefined);
+  ok(S.getProp(t, "min-width") === "50px", "quitar width no toca min-width");
+}
+// Duraciones y elementos de lista.
+ok(S.parseDuration("1.5s") === 1500 && S.formatDuration(250) === "250ms", "duraciones");
+ok(JSON.stringify(S.parseItems(S.formatItems(["Uno", 'Dos "2"']))) === JSON.stringify(["Uno", 'Dos "2"']), "elementos de lista (ida y vuelta)");
+
+
+
 console.log(fails ? `\n${fails} FALLA(S)` : "\nTodo OK");
 process.exit(fails ? 1 : 0);

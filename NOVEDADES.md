@@ -1,10 +1,24 @@
-## macOS
-- **Se corrige «Raxorin Studio está dañado y no se puede abrir»** al descargar la app desde el navegador. La firma de la app no cubría todo el paquete y macOS la trataba como dañada. Ahora la primera vez macOS solo avisa que no puede verificarla: **Configuración del Sistema → Privacidad y seguridad → Abrir de todos modos**.
-- Si abres la app directamente desde el instalador (.dmg), ofrece **moverse a Aplicaciones**. Desde el .dmg no aparece en Aplicaciones ni en Launchpad, y tampoco se puede actualizar ni desinstalar.
-- La ventana del instalador indica con una flecha que hay que arrastrar la app a Aplicaciones.
+## Diseñador visual: más controles, opciones y eventos
+- **Controles nuevos**:
+  - **Botón estándar** (OK, Cancel, Apply…).
+  - **Lista** (StandardListView), con su evento *al cambiar la selección*.
+  - **Área clicable** (TouchArea): convierte cualquier zona en un botón, con *clic*, *doble clic* y el cursor que elijas.
+  - **Temporizador** (Timer): ejecuta un evento cada cierto tiempo. Aparece en la nueva bandeja **Componentes**, debajo del lienzo.
+- **Opciones nuevas**:
+  - **Texto:** fuente, cursiva, espaciado entre letras, "…" cuando no cabe y contorno.
+  - **Panel:** sombra y recortar el contenido.
+  - **Botón:** ícono.
+  - **Imagen:** colorear (para íconos) y escalado pixelado.
+  - **Deslizador:** vertical.
+  - **Número:** tamaño del paso.
+  - **Ventana:** ícono, siempre encima, sin marco y fuente por defecto.
+  - **Todos los controles:** opacidad. **Dentro de los layouts:** tamaños mínimos y máximos.
+- **Eventos nuevos**: deslizador *al soltar*, área con desplazamiento *al desplazarse*, más los de la lista, el área clicable y el temporizador.
+- Todas las propiedades y eventos del diseñador se comprueban con el compilador de Slint.
+- Nuevo ejemplo **Galería de controles** (*Archivo → Ejemplos…*).
 
-## Diseñador
-- Los controles **Imagen** muestran la imagen real, por ejemplo los logos e íconos importados de Figma, en lugar de un recuadro con la ruta. Si falta el archivo, lo avisa.
+## Documentación
+- Nueva sección **Ventanas con Slint** en [raxorin.dev](https://raxorin.dev/slint/introduccion/): conectar con Rust, listas y modelos, animaciones y estados, estilos y temas, y la referencia de todos los controles.
 
 ## Instalar
 - macOS: `.dmg` (Apple Silicon o Intel). Arrastra la app a Aplicaciones.

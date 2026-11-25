@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { Codicon } from "../components/Icon";
 import ImagePreview from "./ImagePreview";
 import {
-  getProp, parseBool, parseColor, parseImage, parseLength, parseNumber, parseString, parseStringArray,
+  getProp, parseBool, parseColor, parseImage, parseItems, parseLength, parseNumber, parseString, parseStringArray,
   type Element,
 } from "./slintDoc";
 
@@ -28,6 +28,10 @@ export default function WidgetPreview({ el }: { el: Element }) {
       const h = getProp(el, "horizontal-alignment")?.trim() ?? "left";
       const v = getProp(el, "vertical-alignment")?.trim() ?? "top";
       const weight = parseNumber(getProp(el, "font-weight"));
+      const wrap = getProp(el, "wrap")?.trim() ?? "no-wrap";
+      const elide = getProp(el, "overflow")?.trim() === "elide";
+      const stroke = parseColor(getProp(el, "stroke"));
+      const strokeW = len(el, "stroke-width") ?? 0;
       return (
         <div
           className="w-text"
@@ -38,24 +42,60 @@ export default function WidgetPreview({ el }: { el: Element }) {
             alignItems: v === "center" ? "center" : v === "bottom" ? "flex-end" : "flex-start",
             textAlign: h as CSSProperties["textAlign"],
             fontWeight: weight ?? undefined,
-            whiteSpace: getProp(el, "wrap")?.trim() === "word-wrap" ? "pre-wrap" : "pre",
+            fontFamily: parseString(getProp(el, "font-family")) || undefined,
+            fontStyle: bool(el, "font-italic") ? "italic" : undefined,
+            letterSpacing: len(el, "letter-spacing") ?? undefined,
+            whiteSpace: wrap === "no-wrap" ? "pre" : "pre-wrap",
+            wordBreak: wrap === "char-wrap" ? "break-all" : undefined,
+            WebkitTextStroke: stroke && strokeW > 0 ? `${strokeW}px ${stroke}` : undefined,
           }}
         >
+          {elide ? <span className="w-elide">{str(el, "text")}</span> : str(el, "text")}
+        </div>
+      );
+    }
+    case "Button": {
+      const icon = parseImage(getProp(el, "icon"));
+      return (
+        <div className={"w-button" + (bool(el, "primary") ? " primary" : "") + (bool(el, "checkable") && bool(el, "checked") ? " checked" : "")} style={base}>
+          {icon && <span className="w-button-icon"><ImagePreview src={icon} fit="contain" /></span>}
           {str(el, "text")}
         </div>
       );
     }
-    case "Button":
+    case "StandardButton": {
+      // Los mismos textos que pone Slint (en inglés, traducibles con @tr).
+      const kind = getProp(el, "kind")?.trim() ?? "ok";
+      const label: Record<string, string> = {
+        ok: "OK", cancel: "Cancel", apply: "Apply", close: "Close", reset: "Reset", help: "Help",
+        yes: "Yes", no: "No", abort: "Abort", retry: "Retry", ignore: "Ignore",
+      };
+      return <div className="w-button" style={base}>{label[kind] ?? kind}</div>;
+    }
+    case "StandardListView": {
+      const items = parseItems(getProp(el, "model")) ?? [];
+      const current = num(el, "current-item", -1);
       return (
-        <div className={"w-button" + (bool(el, "primary") ? " primary" : "")} style={base}>
-          {str(el, "text")}
+        <div className="w-listview" style={base}>
+          {items.map((t, i) => (
+            <div key={i} className={"w-listview-row" + (i === current ? " selected" : "")}>{t}</div>
+          ))}
+          {!items.length && <span className="w-placeholder">(sin elementos)</span>}
+        </div>
+      );
+    }
+    case "TouchArea":
+      return (
+        <div className="w-toucharea" title={`Cursor: ${getProp(el, "mouse-cursor")?.trim() ?? "default"}`}>
+          <Codicon name="target" />
         </div>
       );
     case "LineEdit": {
       const text = str(el, "text");
       const password = getProp(el, "input-type")?.trim() === "password";
+      const align = getProp(el, "horizontal-alignment")?.trim();
       return (
-        <div className="w-lineedit" style={base}>
+        <div className="w-lineedit" style={{ ...base, justifyContent: align === "center" ? "center" : align === "right" ? "flex-end" : undefined }}>
           {text ? <span>{password ? "•".repeat(text.length) : text}</span> : <span className="w-placeholder">{str(el, "placeholder-text")}</span>}
         </div>
       );
@@ -85,6 +125,14 @@ export default function WidgetPreview({ el }: { el: Element }) {
     case "Slider": {
       const min = num(el, "minimum", 0), max = num(el, "maximum", 100);
       const pct = Math.min(1, Math.max(0, (num(el, "value", 0) - min) / (max - min || 1)));
+      if (getProp(el, "orientation")?.trim() === "vertical") {
+        return (
+          <div className="w-slider vertical" style={base}>
+            <div className="w-slider-track"><div style={{ height: `${pct * 100}%` }} /></div>
+            <div className="w-slider-thumb" style={{ bottom: `calc(${pct * 100}% - 9px)` }} />
+          </div>
+        );
+      }
       return (
         <div className="w-slider" style={base}>
           <div className="w-slider-track"><div style={{ width: `${pct * 100}%` }} /></div>
@@ -128,7 +176,6 @@ export default function WidgetPreview({ el }: { el: Element }) {
           style={{
             background: parseColor(getProp(el, "background")) ?? "transparent",
             boxShadow: shadow,
-            opacity: parseNumber(getProp(el, "opacity")) ?? undefined,
             borderTopLeftRadius: corner("border-top-left-radius"),
             borderTopRightRadius: corner("border-top-right-radius"),
             borderBottomRightRadius: corner("border-bottom-right-radius"),
@@ -162,7 +209,14 @@ export default function WidgetPreview({ el }: { el: Element }) {
     case "Tab":
       return <div />;
     case "Image":
-      return <ImagePreview src={parseImage(getProp(el, "source"))} fit={getProp(el, "image-fit")?.trim()} />;
+      return (
+        <ImagePreview
+          src={parseImage(getProp(el, "source"))}
+          fit={getProp(el, "image-fit")?.trim()}
+          colorize={parseColor(getProp(el, "colorize"))}
+          pixelated={getProp(el, "image-rendering")?.trim() === "pixelated"}
+        />
+      );
     default:
       return (
         <div className="w-unknown">

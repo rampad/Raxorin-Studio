@@ -379,7 +379,26 @@ export function getProp(el: Element, name: string): string | undefined {
 }
 
 /** Cambia (o agrega) una propiedad; `undefined` la quita. */
+/**
+ * Propiedades que Slint no admite juntas ("Cannot specify both 'width' and 'min-width'"):
+ * poner una quita las otras.
+ */
+export const CONFLICTS: Record<string, string[]> = {
+  width: ["min-width", "max-width"],
+  "min-width": ["width"],
+  "max-width": ["width"],
+  height: ["min-height", "max-height"],
+  "min-height": ["height"],
+  "max-height": ["height"],
+};
+
 export function setProp(el: Element, name: string, value: string | undefined) {
+  if (value !== undefined) {
+    for (const other of CONFLICTS[name] ?? []) {
+      const j = el.items.findIndex((i) => i.kind === "prop" && i.name === other);
+      if (j >= 0) el.items.splice(j, 1);
+    }
+  }
   const idx = el.items.findIndex((i) => i.kind === "prop" && i.name === name);
   if (value === undefined) {
     if (idx >= 0) el.items.splice(idx, 1);
@@ -465,3 +484,33 @@ export function parseImage(v: string | undefined): string | null {
   return m ? parseString(m[1]) : null;
 }
 export const formatImage = (path: string) => `@image-url(${formatString(path)})`;
+
+/** "500ms" → 500, "1.5s" → 1500 (milisegundos). */
+export function parseDuration(v: string | undefined): number | null {
+  const m = v?.trim().match(/^(-?\d+(?:\.\d+)?)\s*(ms|s)$/);
+  if (!m) return null;
+  return m[2] === "s" ? Number(m[1]) * 1000 : Number(m[1]);
+}
+/** 1500 → "1500ms" (Slint acepta ms y s; ms es exacto). */
+export const formatDuration = (ms: number) => `${Math.round(ms)}ms`;
+
+/** Modelo de un StandardListView: `[{ text: "Uno" }, { text: "Dos" }]` → ["Uno", "Dos"]. */
+export function parseItems(v: string | undefined): string[] | null {
+  const t = v?.trim();
+  if (!t || !t.startsWith("[") || !t.endsWith("]")) return null;
+  const inner = t.slice(1, -1).trim();
+  if (!inner) return [];
+  const out: string[] = [];
+  const re = /\{\s*text\s*:\s*("(?:[^"\\]|\\.)*")\s*\}\s*(,|$)/y;
+  let i = 0;
+  while (i < inner.length) {
+    re.lastIndex = i;
+    const m = re.exec(inner);
+    if (!m) return null;
+    out.push(parseString(m[1]) ?? "");
+    i = re.lastIndex;
+    while (inner[i] === " " || inner[i] === "\n") i++;
+  }
+  return out;
+}
+export const formatItems = (xs: string[]) => `[${xs.map((x) => `{ text: ${formatString(x)} }`).join(", ")}]`;

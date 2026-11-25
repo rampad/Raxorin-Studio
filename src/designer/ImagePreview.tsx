@@ -14,7 +14,13 @@ export const clearImageCache = () => cache.clear();
 /** object-fit de CSS equivalente a image-fit de Slint. */
 const FIT: Record<string, CSSProperties["objectFit"]> = { fill: "fill", contain: "contain", cover: "cover", preserve: "none" };
 
-export default function ImagePreview({ src, fit }: { src: string | null; fit?: string }) {
+export default function ImagePreview({ src, fit, colorize, pixelated }: {
+  src: string | null;
+  fit?: string;
+  /** Pinta la imagen de un color (íconos), como `colorize` de Slint. */
+  colorize?: string | null;
+  pixelated?: boolean;
+}) {
   const base = useContext(ImageBaseContext);
   const path = src ? resolveImagePath(base, src) : null;
   const [url, setUrl] = useState<string | null>(path ? cache.get(path) ?? null : null);
@@ -38,8 +44,18 @@ export default function ImagePreview({ src, fit }: { src: string | null; fit?: s
     };
   }, [path]);
 
+  if (url && colorize) {
+    // La forma de la imagen como máscara, rellena con el color.
+    const size = fit === "cover" ? "cover" : fit === "contain" ? "contain" : fit === "preserve" ? "auto" : "100% 100%";
+    const mask = { maskImage: `url(${url})`, WebkitMaskImage: `url(${url})`, maskSize: size, WebkitMaskSize: size,
+      maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat", maskPosition: "center", WebkitMaskPosition: "center" };
+    return <div className="w-image-img" style={{ background: colorize, ...mask }} />;
+  }
   if (url) {
-    return <img className="w-image-img" src={url} alt="" draggable={false} style={{ objectFit: FIT[fit ?? "fill"] ?? "fill" }} />;
+    return (
+      <img className="w-image-img" src={url} alt="" draggable={false}
+        style={{ objectFit: FIT[fit ?? "fill"] ?? "fill", imageRendering: pixelated ? "pixelated" : undefined }} />
+    );
   }
   return (
     <div className="w-image">

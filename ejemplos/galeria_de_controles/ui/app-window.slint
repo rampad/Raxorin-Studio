@@ -1,0 +1,159 @@
+import { HorizontalBox, Slider, StandardButton, StandardListView, VerticalBox } from "std-widgets.slint";
+
+// Galería de controles: ábrela en el diseñador (pestaña Diseño) para ver cada control y sus
+// propiedades. Los eventos llaman a funciones de src/main.rs.
+
+export component AppWindow inherits Window {
+    title: "Galería de controles";
+    width: 640px;
+    height: 440px;
+    background: #f4f5f8;
+
+    in-out property <string> hora_text <=> hora.text;
+    in-out property <string> estado_text <=> estado.text;
+    in-out property <float> volumen_value <=> volumen.value;
+    callback temporizador1_triggered();
+    callback lista1_current_item_changed(int);
+    callback tarjeta_clicked();
+    callback volumen_released(float);
+    callback aceptar_clicked();
+    callback cancelar_clicked();
+
+    HorizontalBox {
+        padding: 16px;
+        spacing: 16px;
+
+        VerticalBox {
+            padding: 0px;
+            spacing: 10px;
+
+            titulo := Text {
+                text: "Galería de controles";
+                font-size: 22px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                color: #1a1b22;
+            }
+
+            hora := Text {
+                text: "--:--:--";
+                font-size: 32px;
+                font-weight: 300;
+                font-italic: true;
+                color: #791bff;
+            }
+
+            lista1 := StandardListView {
+                vertical-stretch: 1;
+                model: [{ text: "Rojo" }, { text: "Verde" }, { text: "Azul" }, { text: "Naranja" }];
+                current-item: 0;
+                current-item-changed(index) => {
+                    root.lista1_current_item_changed(index);
+                }
+            }
+
+            estado := Text {
+                text: "Elige un color de la lista.";
+                overflow: elide;
+                color: #5b6070;
+            }
+        }
+
+        VerticalBox {
+            padding: 0px;
+            spacing: 12px;
+
+            tarjeta_fondo := Rectangle {
+                height: 120px;
+                background: #ffffff;
+                border-radius: 12px;
+                drop-shadow-color: #00000030;
+                drop-shadow-blur: 14px;
+                drop-shadow-offset-y: 4px;
+
+                tarjeta := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.tarjeta_clicked();
+                    }
+
+                    HorizontalBox {
+                        padding: 16px;
+                        spacing: 12px;
+
+                        icono := Image {
+                            width: 40px;
+                            source: @image-url("estrella.svg");
+                            colorize: #ff641c;
+                            image-fit: contain;
+                        }
+
+                        Text {
+                            text: "Tarjeta clicable (TouchArea)\nHaz clic aquí";
+                            vertical-alignment: center;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+
+            HorizontalBox {
+                padding: 0px;
+                spacing: 12px;
+
+                volumen := Slider {
+                    orientation: vertical;
+                    minimum: 0;
+                    maximum: 100;
+                    value: 40;
+                    released(value) => {
+                        root.volumen_released(value);
+                    }
+                }
+
+                VerticalBox {
+                    padding: 0px;
+                    alignment: center;
+
+                    Text {
+                        text: "Volumen: \{round(volumen.value)}";
+                        font-size: 18px;
+                    }
+
+                    Text {
+                        text: "Arrastra el deslizador vertical y suéltalo.";
+                        wrap: word-wrap;
+                        opacity: 0.7;
+                    }
+                }
+            }
+
+            HorizontalBox {
+                padding: 0px;
+                alignment: end;
+
+                cancelar := StandardButton {
+                    kind: cancel;
+                    clicked => {
+                        root.cancelar_clicked();
+                    }
+                }
+
+                aceptar := StandardButton {
+                    kind: ok;
+                    clicked => {
+                        root.aceptar_clicked();
+                    }
+                }
+            }
+        }
+    }
+
+    temporizador1 := Timer {
+        interval: 1000ms;
+        running: true;
+        triggered => {
+            root.temporizador1_triggered();
+        }
+    }
+}

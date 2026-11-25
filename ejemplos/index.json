@@ -91,6 +91,29 @@
       ]
     },
     {
+      "id": "galeria_de_controles",
+      "nombre": "Galería de controles",
+      "descripcion": "Reloj con Timer, lista, tarjeta clicable, deslizador vertical y botones estándar, con sus eventos.",
+      "categoria": "Ventanas",
+      "nivel": "Intermedio",
+      "icono": "symbol-misc",
+      "tipo": "ventana",
+      "abrir": "ui/app-window.slint",
+      "aprenderas": [
+        "Timer y eventos periódicos",
+        "StandardListView y TouchArea",
+        "Sombras, opacidad e íconos coloreados"
+      ],
+      "archivos": [
+        ".gitignore",
+        "Cargo.toml",
+        "build.rs",
+        "src/main.rs",
+        "ui/app-window.slint",
+        "ui/estrella.svg"
+      ]
+    },
+    {
       "id": "adivina_el_numero",
       "nombre": "Adivina el número",
       "descripcion": "El clásico juego de consola: adivina un número del 1 al 100.",

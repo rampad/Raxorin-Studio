@@ -1300,3 +1300,36 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
 .terminal-host .xterm-viewport { background: transparent !important; }
 .terminal-wrap { flex: 1; min-height: 0; flex-direction: column; }
 .w-image-img { width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; }
+
+/* Bandeja de componentes sin interfaz (Timer), debajo de la ventana */
+.d-tray {
+  position: absolute; left: 16px; right: 16px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 6px 10px; border: 1px dashed var(--border); border-radius: 6px; background: var(--panel);
+}
+.d-tray-title { margin-right: 4px; }
+.d-tray-item {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; font-size: 12px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text);
+}
+.d-tray-item:hover { border-color: var(--accent); }
+.d-tray-item.selected { border-color: var(--accent); background: var(--selection); color: var(--text-strong); }
+
+/* Controles nuevos del diseñador */
+.w-elide { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-button-icon { width: 16px; height: 16px; display: inline-flex; margin-right: 6px; flex-shrink: 0; }
+.w-button.checked { background: #e1e1e1; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15); }
+.w-listview {
+  width: 100%; height: 100%; overflow: hidden; background: #fff; border: 1px solid #d1d1d1; border-radius: 4px;
+  padding: 4px; display: flex; flex-direction: column; gap: 1px; font-size: 13px; color: #1a1a1a;
+}
+.w-listview-row { padding: 5px 8px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-listview-row.selected { background: #e5f0fb; box-shadow: inset 3px 0 0 #0067c0; }
+.w-toucharea {
+  width: 100%; height: 100%; display: grid; place-items: center; color: rgba(0, 103, 192, 0.55);
+  border: 1px dashed rgba(0, 103, 192, 0.5); border-radius: 4px; background: rgba(0, 103, 192, 0.04);
+}
+.w-toucharea .codicon { font-size: 20px; }
+.w-slider.vertical { flex-direction: column; justify-content: center; align-items: center; }
+.w-slider.vertical .w-slider-track { width: 4px; height: 100%; display: flex; flex-direction: column-reverse; }
+.w-slider.vertical .w-slider-track > div { width: 100%; }
+.w-slider.vertical .w-slider-thumb { left: calc(50% - 9px); top: auto; }
