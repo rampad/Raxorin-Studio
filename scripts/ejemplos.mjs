@@ -5,8 +5,10 @@
 //   node scripts/ejemplos.mjs --check   → falla si el índice no está al día (CI)
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const base = new URL("../ejemplos/", import.meta.url).pathname;
+// fileURLToPath: en Windows, .pathname daría "/D:/…".
+const base = fileURLToPath(new URL("../ejemplos/", import.meta.url));
 const meta = JSON.parse(readFileSync(join(base, "ejemplos.meta.json"), "utf8"));
 const IGNORAR = new Set(["target", "Cargo.lock", ".DS_Store"]);
 
