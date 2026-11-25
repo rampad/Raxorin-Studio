@@ -1,8 +1,9 @@
 // Lista los textos con letras del español que siguen sin t(): candidatos a revisar a mano.
 import ts from "typescript";
+import { fileURLToPath } from "node:url";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-const ROOT = new URL("../../src/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../../src/", import.meta.url));
 const files = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(n) ? [p] : []; });
 for (const f of files(ROOT)) {
   const rel = relative(ROOT, f);

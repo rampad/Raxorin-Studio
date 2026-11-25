@@ -8,10 +8,11 @@
 //   node scripts/i18n/extraer.mjs --faltan   → JSON con las claves sin traducir
 //   node scripts/i18n/extraer.mjs --check    → falla si falta alguna (para CI)
 import ts from "typescript";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const ROOT = new URL("../../", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const walk = (d, re) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p, re) : re.test(n) ? [p] : []; });
 
 export function frontendKeys() {
@@ -64,8 +65,8 @@ export function backendKeys() {
 }
 
 async function main() {
-  const { EN } = await import(join(ROOT, "src/i18n/en.ts"));
-  const { BACKEND_EN } = await import(join(ROOT, "src/i18n/backend-en.ts"));
+  const { EN } = await import(pathToFileURL(join(ROOT, "src/i18n/en.ts")).href);
+  const { BACKEND_EN } = await import(pathToFileURL(join(ROOT, "src/i18n/backend-en.ts")).href);
   const fk = frontendKeys();
   const bk = backendKeys();
   const missF = [...fk].filter(([k]) => !(k in EN));

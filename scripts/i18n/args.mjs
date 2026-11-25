@@ -1,8 +1,9 @@
 // Envuelve en t() los textos en español que van como argumentos de otro t("…{0}…", "texto").
 import ts from "typescript";
+import { fileURLToPath } from "node:url";
 import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-const ROOT = new URL("../../src/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../../src/", import.meta.url));
 const walk = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(n) ? [p] : []; });
 let total = 0;
 for (const f of walk(ROOT)) {

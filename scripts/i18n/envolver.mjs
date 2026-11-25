@@ -4,11 +4,12 @@
 //   node scripts/i18n/envolver.mjs            → muestra qué cambiaría (sin escribir)
 //   node scripts/i18n/envolver.mjs --escribir → aplica los cambios
 import ts from "typescript";
+import { fileURLToPath } from "node:url";
 import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 
 const WRITE = process.argv.includes("--escribir");
-const ROOT = new URL("../../src/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../../src/", import.meta.url));
 const SKIP_FILES = ["i18n/", "monaco-setup", "designer/slintLanguage.ts", "designer/slintDoc.ts", "vite-env.d.ts"];
 
 // Atributos JSX y propiedades de objetos que muestran texto al usuario.
