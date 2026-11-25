@@ -1,0 +1,78 @@
+/* Raxorin Studio Lite: diseño de la página (reutiliza los estilos del IDE). */
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); }
+.lite-app { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.lite-toolbar { flex-wrap: wrap; row-gap: 4px; }
+.lite-toolbar a.tb-btn { text-decoration: none; color: inherit; }
+.lite-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 6px; margin-left: 4px; border-radius: 8px; background: var(--purple-border); color: var(--text-strong); vertical-align: middle; }
+.lite-projects { max-width: 180px; }
+
+.lite-welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 16px; text-align: center; overflow: auto; }
+.lite-welcome h1 { margin: 0; font-size: 26px; color: var(--text-strong); }
+.lite-welcome > p { max-width: 560px; margin: 0; line-height: 1.5; }
+.lite-welcome-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
+.lite-recent { width: min(460px, 100%); margin-top: 14px; text-align: left; }
+.lite-recent h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 6px; }
+.lite-recent-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; background: none; border: 1px solid transparent; border-radius: 5px; color: var(--text); cursor: pointer; }
+.lite-recent-item:hover { background: var(--hover); border-color: var(--border); }
+.lite-recent-item .small { margin-left: auto; }
+
+.lite-main { flex: 1; display: flex; min-height: 0; }
+.lite-files { width: 230px; flex-shrink: 0; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--border); font-size: 13px; }
+.lite-files-head { display: flex; align-items: center; gap: 2px; padding: 6px 6px 6px 10px; font-weight: 600; color: var(--text-strong); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+.lite-files-head > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lite-file { display: flex; align-items: center; gap: 6px; padding: 3px 6px; cursor: pointer; white-space: nowrap; }
+.lite-file:hover { background: var(--hover); }
+.lite-file.active { background: var(--selection); color: var(--text-strong); }
+.lite-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lite-file-del { visibility: hidden; }
+.lite-file:hover .lite-file-del { visibility: visible; }
+
+.lite-center { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lite-editor { flex: 1; min-height: 0; display: flex; }
+.lite-editor > * { flex: 1; min-width: 0; }
+.lite-output { height: 34%; min-height: 120px; display: flex; flex-direction: column; border-top: 1px solid var(--border); background: var(--panel); }
+.lite-output-head { display: flex; align-items: center; gap: 8px; padding: 4px 10px; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--border); }
+.lite-output-body { flex: 1; overflow: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; user-select: text; -webkit-user-select: text; }
+.lite-out { margin: 0; font: 12px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.lite-out.info { color: var(--info); }
+.lite-out.stderr { color: var(--muted); }
+.lite-out.error { color: var(--error); }
+.lite-out.success { color: var(--success); }
+.lite-out.warning { color: var(--warning); }
+.lite-diag { display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left; background: none; border: none; padding: 2px 0; color: var(--text); font-size: 12px; cursor: pointer; }
+.lite-diag:hover { background: var(--hover); }
+.lite-diag.error .codicon { color: var(--error); }
+.lite-diag.warning .codicon { color: var(--warning); }
+.lite-diag > span:nth-child(2) { flex: 1; min-width: 0; }
+
+.lite-side { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--border); background: var(--panel); }
+.lite-side-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.lite-side-head select { max-width: 260px; }
+.lite-side-show { width: 28px; flex-shrink: 0; background: var(--panel); border: none; border-left: 1px solid var(--border); color: var(--muted); cursor: pointer; }
+.lite-preview { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.lite-preview-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
+.lite-preview-head .small { font-weight: 400; flex-basis: 100%; }
+.lite-preview-stage { flex: 1; min-height: 0; overflow: auto; padding: 12px; background: var(--canvas-bg); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: 16px 16px; }
+.lite-preview-canvas canvas { display: block; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); border-radius: 4px; outline: none; }
+.lite-preview-msg { padding: 8px; }
+.lite-preview-diags { max-height: 30%; overflow: auto; padding: 6px 10px; border-top: 1px solid var(--border); }
+
+.modal.lite-samples { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+.lite-samples-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.lite-sample { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; }
+.lite-sample:hover:not(:disabled) { border-color: var(--accent); }
+.lite-sample-head { display: flex; align-items: center; gap: 6px; width: 100%; }
+.lite-sample-head strong { flex: 1; color: var(--text-strong); }
+.lite-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--active); color: var(--muted); }
+.lite-sample-cat { color: var(--info); }
+
+/* Pantallas angostas: archivos y vista previa debajo. */
+@media (max-width: 900px) {
+  .lite-main { flex-direction: column; overflow-y: auto; }
+  .lite-files { width: auto; max-height: 160px; border-right: none; border-bottom: 1px solid var(--border); }
+  .lite-center { min-height: 70vh; }
+  .lite-side { width: auto; min-height: 360px; border-left: none; border-top: 1px solid var(--border); }
+}
+.lite-slint-credit { margin-left: auto; color: var(--info); font-weight: 400; text-decoration: none; }
+.lite-preview-head .lite-slint-credit { flex-basis: auto; }

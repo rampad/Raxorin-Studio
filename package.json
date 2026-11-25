@@ -8,7 +8,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "node scripts/ejemplos.mjs --check && node scripts/i18n/extraer.mjs --check && node scripts/mcp-catalogo.ts --check && node tests/images.test.ts && node tests/designer.test.ts && node tests/layouts.test.ts && node tests/figma.test.ts && node tests/toolbar.test.ts && node tests/settings.test.ts"
+    "test": "node scripts/ejemplos.mjs --check && node scripts/i18n/extraer.mjs --check && node scripts/mcp-catalogo.ts --check && node scripts/lite-plantillas.mjs --check && node tests/lite.test.ts && node tests/images.test.ts && node tests/designer.test.ts && node tests/layouts.test.ts && node tests/figma.test.ts && node tests/toolbar.test.ts && node tests/settings.test.ts",
+    "lite:slint": "node scripts/lite-slint.mjs",
+    "lite:dev": "node scripts/lite-slint.mjs && vite --config vite.lite.config.ts",
+    "lite:build": "node scripts/lite-slint.mjs && tsc --noEmit && vite build --config vite.lite.config.ts && node -e \"require('fs').renameSync('dist-lite/lite.html','dist-lite/index.html')\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",

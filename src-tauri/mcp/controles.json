@@ -1660,6 +1660,183 @@
     "events": []
    },
    {
+    "type": "VerticalLayout",
+    "label": "Columna sin márgenes (VerticalLayout)",
+    "category": "containers",
+    "layout": "vertical",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Margen interior",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "spacing",
+      "label": "Separación",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribución",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "HorizontalLayout",
+    "label": "Fila sin márgenes (HorizontalLayout)",
+    "category": "containers",
+    "layout": "horizontal",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Margen interior",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "spacing",
+      "label": "Separación",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribución",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "GridLayout",
+    "label": "Cuadrícula sin márgenes (GridLayout)",
+    "category": "containers",
+    "layout": "grid",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Ancho",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Alto",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Margen interior",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "spacing",
+      "label": "Separación",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
     "type": "GroupBox",
     "label": "Grupo con título (GroupBox)",
     "category": "containers",
@@ -3588,6 +3765,183 @@
       "label": "Spacing",
       "kind": "length",
       "default": "8px"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "VerticalLayout",
+    "label": "Column without margins (VerticalLayout)",
+    "category": "containers",
+    "layout": "vertical",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Padding",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "spacing",
+      "label": "Spacing",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribution",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "HorizontalLayout",
+    "label": "Row without margins (HorizontalLayout)",
+    "category": "containers",
+    "layout": "horizontal",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Padding",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "spacing",
+      "label": "Spacing",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "alignment",
+      "label": "Distribution",
+      "kind": "enum",
+      "options": [
+       "stretch",
+       "start",
+       "center",
+       "end",
+       "space-between",
+       "space-around",
+       "space-evenly"
+      ],
+      "default": "stretch"
+     },
+     {
+      "name": "visible",
+      "label": "Visible",
+      "kind": "bool",
+      "default": "true"
+     }
+    ],
+    "events": []
+   },
+   {
+    "type": "GridLayout",
+    "label": "Grid without margins (GridLayout)",
+    "category": "containers",
+    "layout": "grid",
+    "container": true,
+    "defaults": {},
+    "props": [
+     {
+      "name": "x",
+      "label": "X",
+      "kind": "length"
+     },
+     {
+      "name": "y",
+      "label": "Y",
+      "kind": "length"
+     },
+     {
+      "name": "width",
+      "label": "Width",
+      "kind": "length"
+     },
+     {
+      "name": "height",
+      "label": "Height",
+      "kind": "length"
+     },
+     {
+      "name": "padding",
+      "label": "Padding",
+      "kind": "length",
+      "default": "0px"
+     },
+     {
+      "name": "spacing",
+      "label": "Spacing",
+      "kind": "length",
+      "default": "0px"
      },
      {
       "name": "visible",

@@ -103,6 +103,11 @@ const BOX: PropDef[] = [
   { name: "padding", label: t("Margen interior"), kind: "length", group: "Diseño", fallback: "8px" },
   { name: "spacing", label: t("Separación"), kind: "length", group: "Diseño", fallback: "8px" },
 ];
+/** Los layouts básicos de Slint (VerticalLayout…) no tienen márgenes ni separación por defecto. */
+const BARE_LAYOUT: PropDef[] = [
+  { name: "padding", label: t("Margen interior"), kind: "length", group: "Diseño", fallback: "0px" },
+  { name: "spacing", label: t("Separación"), kind: "length", group: "Diseño", fallback: "0px" },
+];
 const ALIGNMENT: PropDef = {
   name: "alignment", label: t("Distribución"), kind: "enum", group: "Diseño",
   options: ["stretch", "start", "center", "end", "space-between", "space-around", "space-evenly"], fallback: "stretch",
@@ -369,6 +374,31 @@ export const WIDGETS: WidgetDef[] = [
     defaults: {},
     container: true,
     props: [...LAYOUT, ...BOX, VISIBLE],
+    events: [],
+  },
+  // Los mismos layouts sin estilo (elementos básicos de Slint, sin import): sin márgenes por defecto.
+  {
+    type: "VerticalLayout", stretch: [1, 1], category: "containers", layout: "vertical",
+    label: t("Columna sin márgenes (VerticalLayout)"), icon: "split-vertical", idBase: "columna", size: [240, 180],
+    defaults: {},
+    container: true,
+    props: [...LAYOUT, ...BARE_LAYOUT, ALIGNMENT, VISIBLE],
+    events: [],
+  },
+  {
+    type: "HorizontalLayout", stretch: [1, 1], category: "containers", layout: "horizontal",
+    label: t("Fila sin márgenes (HorizontalLayout)"), icon: "split-horizontal", idBase: "fila", size: [320, 40],
+    defaults: {},
+    container: true,
+    props: [...LAYOUT, ...BARE_LAYOUT, ALIGNMENT, VISIBLE],
+    events: [],
+  },
+  {
+    type: "GridLayout", stretch: [1, 1], category: "containers", layout: "grid",
+    label: t("Cuadrícula sin márgenes (GridLayout)"), icon: "table", idBase: "cuadricula", size: [300, 120],
+    defaults: {},
+    container: true,
+    props: [...LAYOUT, ...BARE_LAYOUT, VISIBLE],
     events: [],
   },
   {

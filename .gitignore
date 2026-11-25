@@ -6,3 +6,7 @@ src-tauri/gen/
 
 # Programa de prueba del depurador
 tests/dap/ejemplo/target/
+
+# Raxorin Studio Lite
+/dist-lite
+/public-lite/slint
