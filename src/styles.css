@@ -1434,3 +1434,15 @@ body.resizing iframe, body.resizing .monaco-editor { pointer-events: none; }
 .ai-auth.no .codicon { color: var(--warning); }
 .ai-version { font-family: var(--mono); font-size: 11px; opacity: 0.8; }
 .ai-cli-hint { display: flex; gap: 6px; align-items: flex-start; margin: 0; color: var(--info); }
+/* Segunda barra de herramientas (opcional) */
+.toolbar.toolbar-second { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+.tb-empty { padding: 0 6px; font-style: italic; }
+.modal label.tb-second { padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); align-items: flex-start; }
+.tb-row-pick { margin-left: auto; flex-shrink: 0; flex-grow: 0; }
+.tb-row-pick button { min-width: 24px; }
+/* Casillas dentro de los diálogos: tamaño natural y en fila con su texto (las reglas generales de
+   .modal input y .modal label son para los campos de texto). */
+.modal input[type="checkbox"], .modal input[type="radio"] { flex: none; padding: 0; }
+.modal label.check-line { flex-direction: row; align-items: center; color: var(--text); }
+.tb-item:not(.sep) .tb-row-pick { margin-left: 8px; }
+.tb-item.sep .tb-row-pick + .icon-btn { margin-left: 8px; }

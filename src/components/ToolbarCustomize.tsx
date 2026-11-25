@@ -23,6 +23,17 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
 
   const update = (next: ToolItem[]) => setToolbarConfig({ ...config, items: next });
   const toggle = (i: number) => update(items.map((it, k) => (k === i ? { ...it, on: !it.on } : it)));
+  const setRow = (i: number, row: 1 | 2) =>
+    update(items.map((it, k) => (k === i ? (row === 2 ? { ...it, row: 2 as const } : { id: it.id, on: it.on }) : it)));
+  const two = config.secondRow;
+  /** Selector 1 | 2 de la barra de cada control (con la segunda barra activada). */
+  const rowPicker = (it: ToolItem, i: number) =>
+    two && (
+      <div className="segmented small tb-row-pick" onClick={(e) => e.stopPropagation()} title={t("En qué barra va")}>
+        <button className={it.row !== 2 ? "active" : ""} onClick={() => setRow(i, 1)}>1</button>
+        <button className={it.row === 2 ? "active" : ""} onClick={() => setRow(i, 2)}>2</button>
+      </div>
+    );
   const move = (from: number, to: number) => {
     if (to < 0 || to >= items.length || from === to) return;
     const next = [...items];
@@ -57,6 +68,13 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
           
           {t("Marca los controles que quieres ver y ordénalos con las flechas o arrastrándolos. Los cambios se aplican al momento.")}
         </p>
+        <label className="check-line tb-second">
+          <input type="checkbox" checked={two} onChange={(e) => setToolbarConfig({ ...config, secondRow: e.target.checked })} />
+          <span>
+            <strong>{t("Mostrar segunda barra")}</strong>{" "}
+            <span className="muted small">{t("Para repartir los controles en dos filas: elige 1 o 2 en cada uno.")}</span>
+          </span>
+        </label>
 
         <div className="tb-list" role="listbox" aria-label={t("Controles de la barra")}>
           {items.map((it, i) => {
@@ -91,6 +109,7 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
                   <>
                     <span className="tb-sep-preview" />
                     <span className="tb-item-name muted">{t("Separador")}</span>
+                    {rowPicker(it, i)}
                     <button className="icon-btn" title={t("Quitar separador")} onClick={() => removeSeparator(i)}>
                       <Codicon name="close" />
                     </button>
@@ -107,6 +126,7 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
                     <Codicon name={def!.icon} className="tb-item-icon" />
                     <span className="tb-item-name">{def!.name}</span>
                     <span className="tb-item-desc muted">{def!.desc}</span>
+                    {rowPicker(it, i)}
                   </>
                 )}
               </div>
@@ -136,7 +156,11 @@ export default function ToolbarCustomize({ onClose }: { onClose: () => void }) {
           <button className="btn" onClick={resetToolbarConfig}>
             <Codicon name="discard" /> {" "}{t("Restablecer")}
           </button>
-          <span className="muted small">{shown} {" "}{t("controles visibles")}</span>
+          <span className="muted small">
+            {two
+              ? t("{0} en la barra 1 · {1} en la barra 2", items.filter((i) => i.on && !isSep(i.id) && i.row !== 2).length, items.filter((i) => i.on && !isSep(i.id) && i.row === 2).length)
+              : `${shown} ${t("controles visibles")}`}
+          </span>
           <span className="spacer" />
           <button className="btn primary" onClick={onClose} autoFocus>
             

@@ -1891,6 +1891,13 @@ export default function App() {
     <div className="app">
       <MenuBar menus={menus} />
       <Toolbar
+        aiOpen={aiOpen}
+        onToggleAi={() => setAiOpen((o) => !o)}
+        onTerminal={() => {
+          setBottomVisible(true);
+          setBottomTab("terminal");
+        }}
+        onGit={() => showGit()}
         hasProject={!!project}
         running={running}
         canSave={!!activeTab && activeTab.content !== activeTab.saved}

@@ -1,4 +1,4 @@
-import { defaultConfig, isSep, normalize, newSepId, TOOLS } from "../src/toolbarConfig.ts";
+import { defaultConfig, isSep, normalize, newSepId, rowItems, TOOLS } from "../src/toolbarConfig.ts";
 let fails = 0;
 const ok = (cond: boolean, msg: string) => { console.log((cond ? "✔ " : "✖ ") + msg); if (!cond) fails++; };
 
@@ -20,6 +20,16 @@ ok(old.items.filter((i) => !["build", "run", "|1"].includes(i.id)).every((i) => 
 ok(old.labels === false, "respeta 'sin textos'");
 ok(normalize(null).items.length === def.items.length && normalize("basura").labels, "valores inválidos → configuración inicial");
 ok(newSepId(def.items) === "|3", "id libre para un separador nuevo");
+
+// Segunda barra.
+ok(def.secondRow === false && rowItems(def, 2).length === 0 && rowItems(def, 1).length === def.items.length, "sin segunda barra al inicio: todo en la primera");
+ok(["ai", "terminal", "git"].every((t) => def.items.find((i) => i.id === t)?.on === false), "Chat con IA, Terminal y Git disponibles pero ocultos");
+const two = normalize({ ...def, secondRow: true, items: def.items.map((i) => (["diag", "theme"].includes(i.id) ? { ...i, row: 2 } : i)) });
+ok(two.secondRow && rowItems(two, 2).map((i) => i.id).join(",") === "diag,theme", "los controles marcados van a la segunda barra, en orden");
+ok(!rowItems(two, 1).some((i) => i.id === "diag"), "y no se repiten en la primera");
+const off = normalize({ ...two, secondRow: false });
+ok(rowItems(off, 1).some((i) => i.id === "diag") && off.items.find((i) => i.id === "diag")?.row === 2, "al apagar la segunda barra todo vuelve a la primera, sin olvidar el reparto");
+ok(normalize({ items: [{ id: "build", on: true, row: 7 }] }).items[0].row === undefined, "fila inválida → primera barra");
 
 console.log(fails ? `\n${fails} FALLA(S)` : "\nTodo OK");
 if (fails) process.exit(1);

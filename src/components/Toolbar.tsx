@@ -1,10 +1,10 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import type { ProjectInfo, Task } from "../api";
 import { relative } from "../util";
 import { Codicon, FileIcon } from "./Icon";
 import raxorinMark from "../assets/brand/raxorin-mark.svg";
 import { setThemePref, toggleTheme, useTheme, type ThemePref } from "../theme";
-import { isSep, TOOLS, useToolbarConfig, type ToolId } from "../toolbarConfig";
+import { isSep, rowItems, TOOLS, useToolbarConfig, type ToolId, type ToolItem } from "../toolbarConfig";
 import { resetLayout } from "../layout";
 import { t } from "../i18n/index.ts";
 
@@ -47,6 +47,10 @@ interface Props {
   onToggleBottom: () => void;
   onCustomize: () => void;
   onSettings: () => void;
+  aiOpen: boolean;
+  onToggleAi: () => void;
+  onTerminal: () => void;
+  onGit: () => void;
   buildConfig: "debug" | "release";
   onBuildConfig: (c: "debug" | "release") => void;
   onPublish: () => void;
@@ -263,6 +267,20 @@ export default function Toolbar(p: Props) {
             className={"toggle" + (p.sidebarVisible ? " on" : "")}
           />
         );
+      case "ai":
+        return (
+          <Btn
+            icon="sparkle"
+            label={lbl(id)}
+            title={(p.aiOpen ? t("Ocultar") : t("Mostrar")) + t(" el chat con IA (Ctrl/⌘+Shift+I)")}
+            onClick={p.onToggleAi}
+            className={"toggle" + (p.aiOpen ? " on" : "")}
+          />
+        );
+      case "terminal":
+        return <Btn icon="terminal" label={lbl(id)} title={t("Abrir el terminal integrado (Ctrl+`)")} onClick={p.onTerminal} />;
+      case "git":
+        return <Btn icon="source-control" label={lbl(id)} title={t("Git: cambios, commits y ramas (Ctrl/⌘+Shift+G)")} onClick={p.onGit} />;
       case "bottom":
         return (
           <Btn
@@ -275,43 +293,47 @@ export default function Toolbar(p: Props) {
     }
   };
 
-  // Armar la barra según la configuración. Durante la depuración, los controles
+  // Armar cada barra según la configuración. Durante la depuración, los controles
   // de depurar/ejecutar/detener se reemplazan por la barra de depuración.
-  const out: ReactNode[] = [];
   let debugPlaced = false;
-  let lastWasSep = true; // evita separadores al principio o repetidos
-  for (const item of config.items) {
-    if (!item.on) continue;
-    if (isSep(item.id)) {
-      if (!lastWasSep) out.push(<span className="tb-sep" key={item.id} />);
-      lastWasSep = true;
-      continue;
+  const build = (items: ToolItem[]) => {
+    const out: ReactNode[] = [];
+    let lastWasSep = true; // evita separadores al principio o repetidos
+    for (const item of items) {
+      if (!item.on) continue;
+      if (isSep(item.id)) {
+        if (!lastWasSep) out.push(<span className="tb-sep" key={item.id} />);
+        lastWasSep = true;
+        continue;
+      }
+      const id = item.id;
+      if (debugging && (id === "debug" || id === "run" || id === "stop")) {
+        if (!debugPlaced) out.push(debugBar);
+        debugPlaced = true;
+        lastWasSep = false;
+        continue;
+      }
+      const node = render(id);
+      if (node) {
+        out.push(<Fragment key={id}>{node}</Fragment>);
+        lastWasSep = false;
+      }
     }
-    const id = item.id;
-    if (debugging && (id === "debug" || id === "run" || id === "stop")) {
-      if (!debugPlaced) out.push(debugBar);
-      debugPlaced = true;
-      lastWasSep = false;
-      continue;
-    }
-    const node = render(id);
-    if (node) {
-      out.push(<Fragment key={id}>{node}</Fragment>);
-      lastWasSep = false;
-    }
-  }
+    if (out.length && lastWasSep) out.pop();
+    return out;
+  };
+  const out = build(rowItems(config, 1));
+  const second = build(rowItems(config, 2));
   // La barra de depuración siempre aparece, aunque se hayan quitado esos controles.
   if (debugging && !debugPlaced) out.push(debugBar);
-  if (out.length && lastWasSep) out.pop();
+  const customize = (e: MouseEvent) => {
+    e.preventDefault();
+    p.onCustomize();
+  };
 
   return (
-    <div
-      className="toolbar"
-      onContextMenu={(e) => {
-        e.preventDefault();
-        p.onCustomize();
-      }}
-    >
+    <>
+    <div className="toolbar" onContextMenu={customize}>
       <span className="brand">
         <img src={raxorinMark} height={18} alt="" />
         <span className="brand-name"><span className="brand-accent">{t("Raxorin")}</span> {" "}{t("Studio")}</span>
@@ -390,5 +412,11 @@ export default function Toolbar(p: Props) {
         )}
       </div>
     </div>
+    {config.secondRow && (
+      <div className="toolbar toolbar-second" onContextMenu={customize}>
+        {second.length ? second : <span className="muted small tb-empty">{t("Segunda barra vacía: clic derecho para elegir sus controles")}</span>}
+      </div>
+    )}
+    </>
   );
 }

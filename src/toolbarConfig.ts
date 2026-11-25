@@ -1,4 +1,5 @@
-// Configuración de la barra de herramientas: qué controles se muestran y en qué orden.
+// Configuración de la barra de herramientas: qué controles se muestran, en qué orden y en cuál de
+// las dos barras (la segunda es opcional, para repartir los controles).
 
 import { useSyncExternalStore } from "react";
 import { t } from "./i18n/index.ts";
@@ -23,7 +24,10 @@ export type ToolId =
   | "diag"
   | "theme"
   | "sidebar"
-  | "bottom";
+  | "bottom"
+  | "ai"
+  | "terminal"
+  | "git";
 
 export interface ToolDef {
   icon: string;
@@ -55,18 +59,25 @@ export const TOOLS: Record<ToolId, ToolDef> = {
   theme: { icon: "color-mode", name: t("Tema claro/oscuro"), desc: t("Cambiar entre el tema claro y el oscuro") },
   sidebar: { icon: "layout-sidebar-left", name: t("Explorador"), desc: t("Mostrar u ocultar el explorador (Ctrl/⌘+B)") },
   bottom: { icon: "layout-panel", name: t("Panel inferior"), desc: t("Mostrar u ocultar la salida y errores (Ctrl/⌘+J)") },
+  ai: { icon: "sparkle", label: t("Chat IA"), name: t("Chat con IA"), desc: t("Mostrar u ocultar el chat con IA (Ctrl/⌘+Shift+I)") },
+  terminal: { icon: "terminal", label: t("Terminal"), name: t("Terminal"), desc: t("Abrir el terminal integrado (Ctrl+`)") },
+  git: { icon: "source-control", label: t("Git"), name: t("Git"), desc: t("Cambios, commits y ramas (Ctrl/⌘+Shift+G)") },
 };
 
 /** Un control o un separador ("|" seguido de un número). */
 export interface ToolItem {
   id: ToolId | `|${number}`;
   on: boolean;
+  /** 2: va en la segunda barra (si está activada). Sin valor: la primera. */
+  row?: 2;
 }
 
 export interface ToolbarConfig {
   items: ToolItem[];
   /** Mostrar el texto junto al ícono en los botones que lo tienen. */
   labels: boolean;
+  /** Mostrar la segunda barra. Si está apagada, todo va en la primera (sin olvidar el reparto). */
+  secondRow: boolean;
 }
 
 export const isSep = (id: ToolItem["id"]): id is `|${number}` => id.startsWith("|");
@@ -82,7 +93,13 @@ export function defaultConfig(): ToolbarConfig {
   const items: ToolItem[] = DEFAULT_ORDER.map((id) => (id === "|" ? { id: `|${++n}` as const, on: true } : { id, on: true }));
   // Los controles opcionales quedan disponibles, pero ocultos.
   for (const id of Object.keys(TOOLS) as ToolId[]) if (!items.some((i) => i.id === id)) items.push({ id, on: false });
-  return { items, labels: true };
+  return { items, labels: true, secondRow: false };
+}
+
+/** Los controles de una barra, en orden. Sin segunda barra, la primera los tiene todos. */
+export function rowItems(c: ToolbarConfig, row: 1 | 2): ToolItem[] {
+  if (!c.secondRow) return row === 1 ? c.items : [];
+  return c.items.filter((i) => (i.row === 2) === (row === 2));
 }
 
 const KEY = "raxorinstudio.toolbar";
@@ -97,7 +114,11 @@ export function normalize(raw: unknown): ToolbarConfig {
     (i) => i && typeof i.id === "string" && (isSep(i.id) || i.id in TOOLS) && !seen.has(i.id) && seen.add(i.id),
   );
   for (const d of def.items) if (!isSep(d.id) && !seen.has(d.id)) items.push({ id: d.id, on: false });
-  return { items: items.map((i) => ({ id: i.id, on: !!i.on })), labels: r.labels !== false };
+  return {
+    items: items.map((i) => ({ id: i.id, on: !!i.on, ...(i.row === 2 ? { row: 2 as const } : {}) })),
+    labels: r.labels !== false,
+    secondRow: r.secondRow === true,
+  };
 }
 
 function read(): ToolbarConfig {
@@ -129,6 +150,7 @@ export function useToolbarConfig() {
       listeners.add(l);
       return () => listeners.delete(l);
     },
+    () => config,
     () => config,
   );
 }

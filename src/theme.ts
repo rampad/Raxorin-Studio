@@ -64,7 +64,7 @@ const subscribe = (l: () => void) => {
 };
 
 export function useTheme() {
-  return useSyncExternalStore(subscribe, () => snapshot);
+  return useSyncExternalStore(subscribe, () => snapshot, () => snapshot);
 }
 
 /** Tema de Monaco que corresponde. */
