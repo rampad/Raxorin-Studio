@@ -1,0 +1,113 @@
+[
+  {
+    "id": "conversor_de_temperatura",
+    "nombre": "Conversor de temperatura",
+    "descripcion": "Dos campos que se actualizan entre sí: Celsius y Fahrenheit.",
+    "categoria": "Ventanas",
+    "nivel": "Principiante",
+    "icono": "flame",
+    "tipo": "ventana",
+    "abrir": "ui/app-window.slint",
+    "aprenderas": ["Propiedades y callbacks de Slint", "Layouts automáticos", "Convertir texto a número"]
+  },
+  {
+    "id": "calculadora",
+    "nombre": "Calculadora",
+    "descripcion": "Una calculadora con teclado en cuadrícula y la lógica separada en un struct.",
+    "categoria": "Ventanas",
+    "nivel": "Principiante",
+    "icono": "symbol-operator",
+    "tipo": "ventana",
+    "abrir": "ui/app-window.slint",
+    "aprenderas": ["GridLayout", "enum y match", "Rc<RefCell<…>> para compartir estado", "Probar la lógica sin la ventana"]
+  },
+  {
+    "id": "lista_de_tareas",
+    "nombre": "Lista de tareas",
+    "descripcion": "Agrega tareas, márcalas como hechas y bórralas.",
+    "categoria": "Ventanas",
+    "nivel": "Intermedio",
+    "icono": "checklist",
+    "tipo": "ventana",
+    "abrir": "ui/app-window.slint",
+    "aprenderas": ["Listas en Slint (for + VecModel)", "Structs compartidos entre Slint y Rust", "Varios callbacks sobre el mismo modelo"]
+  },
+  {
+    "id": "temporizador_pomodoro",
+    "nombre": "Temporizador Pomodoro",
+    "descripcion": "25 minutos de concentración y 5 de descanso, con barra de progreso.",
+    "categoria": "Ventanas",
+    "nivel": "Intermedio",
+    "icono": "watch",
+    "tipo": "ventana",
+    "abrir": "src/main.rs",
+    "aprenderas": ["slint::Timer", "Estado con Cell y Rc", "Propiedades condicionales en Slint"]
+  },
+  {
+    "id": "adivina_el_numero",
+    "nombre": "Adivina el número",
+    "descripcion": "El clásico juego de consola: adivina un número del 1 al 100.",
+    "categoria": "Consola",
+    "nivel": "Principiante",
+    "icono": "question",
+    "tipo": "consola",
+    "abrir": "src/main.rs",
+    "aprenderas": ["Leer lo que escribe el usuario", "loop y match", "Result al convertir texto"]
+  },
+  {
+    "id": "contador_de_palabras",
+    "nombre": "Contador de palabras",
+    "descripcion": "Cuenta las palabras de un texto y dibuja las más frecuentes.",
+    "categoria": "Consola",
+    "nivel": "Principiante",
+    "icono": "whole-word",
+    "tipo": "consola",
+    "abrir": "src/main.rs",
+    "aprenderas": ["HashMap", "Iteradores y ordenar", "Pruebas unitarias"]
+  },
+  {
+    "id": "juego_de_la_vida",
+    "nombre": "Juego de la vida",
+    "descripcion": "El autómata de Conway animado en la consola.",
+    "categoria": "Consola",
+    "nivel": "Intermedio",
+    "icono": "symbol-misc",
+    "tipo": "consola",
+    "abrir": "src/main.rs",
+    "aprenderas": ["struct e impl", "Vectores de dos dimensiones", "Animación en la terminal"]
+  },
+  {
+    "id": "encuentra_el_error",
+    "nombre": "Encuentra el error",
+    "descripcion": "Un programa con un error escondido para aprender a usar el depurador.",
+    "categoria": "Depuración",
+    "nivel": "Principiante",
+    "icono": "debug-alt",
+    "tipo": "consola",
+    "abrir": "src/main.rs",
+    "aprenderas": ["Puntos de interrupción (F9)", "Depurar paso a paso (F5, F10)", "Inspeccionar variables"]
+  },
+  {
+    "id": "geometria",
+    "nombre": "Geometría",
+    "descripcion": "Una biblioteca con figuras, un trait común y pruebas.",
+    "categoria": "Bibliotecas",
+    "nivel": "Intermedio",
+    "icono": "library",
+    "tipo": "biblioteca",
+    "abrir": "src/lib.rs",
+    "aprenderas": ["trait y Box<dyn Trait>", "Option para validar", "Pruebas unitarias"]
+  },
+  {
+    "id": "tienda",
+    "nombre": "Tienda (solución)",
+    "descripcion": "Una solución con dos proyectos: la biblioteca inventario y el programa caja.",
+    "categoria": "Soluciones",
+    "nivel": "Intermedio",
+    "icono": "layers",
+    "tipo": "solucion",
+    "solucion": "tienda.rxsln",
+    "abrir": "caja/src/main.rs",
+    "aprenderas": ["Soluciones (.rxsln) con varios proyectos", "Referencias entre proyectos", "Errores propios con enum y Display"]
+  }
+]

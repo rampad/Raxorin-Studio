@@ -66,6 +66,13 @@ línea de comandos de `cargo`.
 - En **Windows** (y en Linux si falta lldb-dap) usa [CodeLLDB](https://github.com/vadimcn/codelldb), que se instala
   desde *Ayuda → Herramientas necesarias*.
 
+### Ejemplos
+
+*Archivo → Ejemplos…* abre un hub de aplicaciones de muestra listas para ejecutar: calculadora, lista de tareas,
+conversor y temporizador con ventana (Slint), juegos y herramientas de consola, una biblioteca con pruebas,
+una solución con dos proyectos y un programa con un error escondido para aprender a depurar. Están en
+[`ejemplos/`](ejemplos/); los nuevos aparecen en el hub sin actualizar la app.
+
 ### Git y GitHub
 
 <p align="center">

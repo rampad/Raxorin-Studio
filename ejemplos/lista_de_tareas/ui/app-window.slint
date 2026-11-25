@@ -1,0 +1,58 @@
+import { Button, CheckBox, LineEdit, ListView } from "std-widgets.slint";
+
+// Una tarea de la lista (en Rust es el struct `Tarea` que genera Slint).
+export struct Tarea {
+    texto: string,
+    hecha: bool,
+}
+
+export component AppWindow inherits Window {
+    title: "Lista de tareas";
+    width: 420px;
+    height: 480px;
+
+    in property <[Tarea]> tareas;
+    in property <string> resumen;
+    callback agregar(string);
+    callback marcar(int, bool);
+    callback borrar(int);
+    callback borrar_hechas();
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 10px;
+
+        Text { text: "Mis tareas"; font-size: 22px; font-weight: 600; }
+
+        HorizontalLayout {
+            spacing: 8px;
+            nueva := LineEdit {
+                placeholder-text: "¿Qué tienes que hacer?";
+                accepted(t) => { root.agregar(t); self.text = ""; }
+            }
+            Button {
+                text: "Agregar";
+                primary: true;
+                clicked => { root.agregar(nueva.text); nueva.text = ""; }
+            }
+        }
+
+        ListView {
+            for tarea[i] in root.tareas: HorizontalLayout {
+                padding: 4px;
+                spacing: 8px;
+                CheckBox {
+                    text: tarea.texto;
+                    checked: tarea.hecha;
+                    toggled => { root.marcar(i, self.checked); }
+                }
+                Button { text: "✕"; width: 36px; clicked => { root.borrar(i); } }
+            }
+        }
+
+        HorizontalLayout {
+            Text { text: root.resumen; vertical-alignment: center; color: #888; }
+            Button { text: "Borrar las hechas"; clicked => { root.borrar_hechas(); } }
+        }
+    }
+}

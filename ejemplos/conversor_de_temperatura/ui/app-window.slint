@@ -1,0 +1,44 @@
+import { LineEdit } from "std-widgets.slint";
+
+// Escribe en cualquiera de los dos campos: el otro se actualiza solo.
+export component AppWindow inherits Window {
+    title: "Conversor de temperatura";
+    width: 380px;
+    height: 200px;
+
+    in-out property <string> celsius;
+    in-out property <string> fahrenheit;
+    callback celsius_cambiado(string);
+    callback fahrenheit_cambiado(string);
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 12px;
+
+        Text {
+            text: "Conversor de temperatura";
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        HorizontalLayout {
+            spacing: 12px;
+            Text { text: "Celsius"; vertical-alignment: center; min-width: 90px; }
+            LineEdit {
+                text <=> root.celsius;
+                placeholder-text: "°C";
+                edited(t) => { root.celsius_cambiado(t); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 12px;
+            Text { text: "Fahrenheit"; vertical-alignment: center; min-width: 90px; }
+            LineEdit {
+                text <=> root.fahrenheit;
+                placeholder-text: "°F";
+                edited(t) => { root.fahrenheit_cambiado(t); }
+            }
+        }
+    }
+}

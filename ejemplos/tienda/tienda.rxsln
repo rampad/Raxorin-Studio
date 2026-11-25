@@ -1,0 +1,10 @@
+# Solución de Raxorin Studio. Ábrela con Raxorin Studio o edítala a mano.
+
+[solucion]
+nombre = "Tienda"
+
+[[proyecto]]
+ruta = "inventario"
+
+[[proyecto]]
+ruta = "caja"

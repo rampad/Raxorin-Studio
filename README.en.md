@@ -67,6 +67,13 @@ ready-to-share program — without having to learn the `cargo` command line.
 - On **Windows** (and on Linux if lldb-dap is missing) it uses [CodeLLDB](https://github.com/vadimcn/codelldb),
   installed from *Ayuda → Herramientas necesarias* (Help → Required tools).
 
+### Samples
+
+*Archivo → Ejemplos…* (File → Samples) opens a hub of ready-to-run sample apps: a calculator, a to-do list,
+a converter and a timer with windows (Slint), console games and tools, a library with tests, a two-project
+solution and a program with a hidden bug to learn debugging. They live in [`ejemplos/`](ejemplos/); new ones
+show up in the hub without updating the app.
+
 ### Git and GitHub
 
 <p align="center">

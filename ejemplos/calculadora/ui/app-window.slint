@@ -1,0 +1,62 @@
+import { Button } from "std-widgets.slint";
+
+// Las teclas llaman a `tecla(texto)`; la lógica está en src/main.rs.
+export component AppWindow inherits Window {
+    title: "Calculadora";
+    width: 300px;
+    height: 400px;
+
+    in property <string> pantalla: "0";
+    callback tecla(string);
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 10px;
+
+        Rectangle {
+            height: 64px;
+            border-radius: 8px;
+            background: #1e1f24;
+            Text {
+                text: root.pantalla;
+                color: white;
+                font-size: 32px;
+                horizontal-alignment: right;
+                width: parent.width - 24px;
+            }
+        }
+
+        GridLayout {
+            spacing: 8px;
+            Row {
+                Button { text: "C"; clicked => { root.tecla(self.text); } }
+                Button { text: "±"; clicked => { root.tecla(self.text); } }
+                Button { text: "%"; clicked => { root.tecla(self.text); } }
+                Button { text: "÷"; clicked => { root.tecla(self.text); } }
+            }
+            Row {
+                Button { text: "7"; clicked => { root.tecla(self.text); } }
+                Button { text: "8"; clicked => { root.tecla(self.text); } }
+                Button { text: "9"; clicked => { root.tecla(self.text); } }
+                Button { text: "×"; clicked => { root.tecla(self.text); } }
+            }
+            Row {
+                Button { text: "4"; clicked => { root.tecla(self.text); } }
+                Button { text: "5"; clicked => { root.tecla(self.text); } }
+                Button { text: "6"; clicked => { root.tecla(self.text); } }
+                Button { text: "−"; clicked => { root.tecla(self.text); } }
+            }
+            Row {
+                Button { text: "1"; clicked => { root.tecla(self.text); } }
+                Button { text: "2"; clicked => { root.tecla(self.text); } }
+                Button { text: "3"; clicked => { root.tecla(self.text); } }
+                Button { text: "+"; clicked => { root.tecla(self.text); } }
+            }
+            Row {
+                Button { text: "0"; colspan: 2; clicked => { root.tecla(self.text); } }
+                Button { text: "."; clicked => { root.tecla(self.text); } }
+                Button { text: "="; primary: true; clicked => { root.tecla(self.text); } }
+            }
+        }
+    }
+}

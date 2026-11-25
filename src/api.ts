@@ -156,6 +156,9 @@ export const api = {
   readFile: (path: string) => invoke<string>("read_file", { path }),
   writeFile: (path: string, contents: string) => invoke<void>("write_file", { path, contents }),
   writeFileBase64: (path: string, base64: string) => invoke<void>("write_file_base64", { path, base64 }),
+  samplesList: () => invoke<SampleCatalog>("samples_list"),
+  sampleCreate: (sample: Sample, parent: string, name: string, online: boolean) =>
+    invoke<{ open: string; file: string }>("sample_create", { sample, parent, name, online }),
   createProject: (parent: string, name: string, kind: "bin" | "lib" | "slint") =>
     invoke<string>("create_project", { parent, name, kind }),
   startTask: (project: string, task: Task, external = false, release = false, publish: PublishOptions | null = null) =>
@@ -250,3 +253,24 @@ export const api = {
   crateRemove: (project: string, name: string, kind: string) =>
     invoke<void>("crate_remove", { project, name, kind }),
 };
+
+/** Una aplicación de muestra del hub de ejemplos (ejemplos/index.json). */
+export interface Sample {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  categoria: string;
+  nivel: string;
+  icono: string;
+  tipo: "ventana" | "consola" | "biblioteca" | "solucion";
+  abrir: string;
+  solucion?: string;
+  aprenderas: string[];
+  archivos: string[];
+}
+
+export interface SampleCatalog {
+  samples: Sample[];
+  /** El catálogo vino de GitHub (si no, los incluidos en la app). */
+  online: boolean;
+}

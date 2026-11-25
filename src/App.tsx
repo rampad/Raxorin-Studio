@@ -21,6 +21,7 @@ import Explorer, { type FileProblems, type SolutionAction } from "./components/E
 import EditorArea, { type Tab } from "./components/EditorArea";
 import BottomPanel, { type BottomTab } from "./components/BottomPanel";
 import NewProjectDialog from "./components/NewProjectDialog";
+import SamplesDialog from "./components/SamplesDialog";
 import PackagesDialog from "./components/packages/PackagesDialog";
 import ReferenceDialog from "./components/ReferenceDialog";
 import ToolchainBanner from "./components/ToolchainBanner";
@@ -164,6 +165,7 @@ export default function App() {
   const { pref: themePref } = useTheme();
   const [bottomVisible, setBottomVisible] = usePanelVisible("bottom");
   const [showNew, setShowNew] = useState(false);
+  const [showSamples, setShowSamples] = useState(false);
   const [packagesFor, setPackagesFor] = useState<string | null>(null);
   const [referenceFor, setReferenceFor] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
@@ -1380,6 +1382,7 @@ export default function App() {
       items: [
         { label: "Nuevo proyecto o solución…", icon: "new-folder", shortcut: "Mod+Shift+N", onClick: () => setShowNew(true) },
         { label: "Nuevo archivo…", icon: "new-file", shortcut: "Mod+N", onClick: newFile, disabled: !project },
+        { label: "Ejemplos…", icon: "beaker", onClick: () => setShowSamples(true) },
         "sep",
         { label: "Abrir archivo…", icon: "go-to-file", shortcut: "Mod+O", onClick: openFileDialog },
         { label: "Abrir carpeta…", icon: "folder-opened", onClick: () => void offerSaveAll().then(openFolder) },
@@ -1523,6 +1526,7 @@ export default function App() {
       label: "Ayuda",
       items: [
         { label: "Documentación", icon: "book", shortcut: "F1", onClick: () => void openUrl("https://raxorin.dev") },
+        { label: "Ejemplos…", icon: "beaker", onClick: () => setShowSamples(true) },
         "sep",
         { label: "Repositorio en GitHub", icon: "github", onClick: () => void openUrl(GITHUB_URL) },
         { label: "Reportar un problema", icon: "bug", onClick: () => void openUrl(GITHUB_URL + "/issues/new") },
@@ -1949,7 +1953,12 @@ export default function App() {
               designer={designerHost}
             />
           ) : (
-            <Welcome onNew={() => setShowNew(true)} onOpen={openFolder} onOpenSolution={openSolutionDialog} />
+            <Welcome
+              onNew={() => setShowNew(true)}
+              onOpen={openFolder}
+              onOpenSolution={openSolutionDialog}
+              onSamples={() => setShowSamples(true)}
+            />
           )}
           {bottomVisible && (
           <>
@@ -2068,6 +2077,19 @@ export default function App() {
           onClose={() => setBpDraft(null)}
         />
       )}
+      {showSamples && (
+        <SamplesDialog
+          onCancel={() => setShowSamples(false)}
+          onCreated={async (sample, created) => {
+            await offerSaveAll();
+            setShowSamples(false);
+            await (sample.tipo === "solucion" ? openSolution(created.open) : openProject(created.open));
+            await openFile(created.file).catch(() => {});
+            log(`Ejemplo «${sample.nombre}» creado en ${created.open}. Pulsa F5 para ejecutarlo.`, "success");
+            if (sample.tipo === "ventana") log("La primera compilación de una ventana (Slint) tarda un par de minutos.", "muted");
+          }}
+        />
+      )}
       {showNew && (
         <NewProjectDialog
           currentRoot={project}
@@ -2100,7 +2122,17 @@ export default function App() {
   );
 }
 
-function Welcome({ onNew, onOpen, onOpenSolution }: { onNew: () => void; onOpen: () => void; onOpenSolution: () => void }) {
+function Welcome({
+  onNew,
+  onOpen,
+  onOpenSolution,
+  onSamples,
+}: {
+  onNew: () => void;
+  onOpen: () => void;
+  onOpenSolution: () => void;
+  onSamples: () => void;
+}) {
   return (
     <div className="welcome">
       <img className="welcome-logo" src={raxorinMark} height={96} alt="" />
@@ -2112,7 +2144,7 @@ function Welcome({ onNew, onOpen, onOpenSolution }: { onNew: () => void; onOpen:
         <button className="welcome-card" onClick={onNew}>
           <Codicon name="new-file" className="welcome-icon" />
           <strong>Nuevo proyecto</strong>
-          <small>Consola o biblioteca</small>
+          <small>Consola, ventana o biblioteca</small>
         </button>
         <button className="welcome-card" onClick={onOpen}>
           <Codicon name="folder-opened" className="welcome-icon" />
@@ -2123,6 +2155,11 @@ function Welcome({ onNew, onOpen, onOpenSolution }: { onNew: () => void; onOpen:
           <Codicon name="layers" className="welcome-icon" />
           <strong>Abrir solución</strong>
           <small>Varios proyectos (.rxsln)</small>
+        </button>
+        <button className="welcome-card" onClick={onSamples}>
+          <Codicon name="beaker" className="welcome-icon" />
+          <strong>Ejemplos</strong>
+          <small>Aplicaciones listas para probar</small>
         </button>
       </div>
       <div className="shortcuts muted">

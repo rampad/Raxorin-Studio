@@ -1,0 +1,35 @@
+import { Button, ProgressIndicator } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "Temporizador Pomodoro";
+    width: 360px;
+    height: 300px;
+
+    in property <string> tiempo: "25:00";
+    in property <string> fase: "Concentración";
+    in property <float> progreso: 0;
+    in property <bool> corriendo: false;
+    callback iniciar_pausar();
+    callback reiniciar();
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 14px;
+        alignment: center;
+
+        Text { text: root.fase; font-size: 18px; horizontal-alignment: center; color: #f02d58; }
+        Text { text: root.tiempo; font-size: 64px; font-weight: 700; horizontal-alignment: center; }
+        ProgressIndicator { progress: root.progreso; height: 8px; }
+
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: center;
+            Button {
+                text: root.corriendo ? "Pausar" : "Iniciar";
+                primary: true;
+                clicked => { root.iniciar_pausar(); }
+            }
+            Button { text: "Reiniciar"; clicked => { root.reiniciar(); } }
+        }
+    }
+}

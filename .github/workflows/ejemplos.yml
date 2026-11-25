@@ -1,0 +1,41 @@
+# Comprueba que los ejemplos del hub (ejemplos/) compilan y sus pruebas pasan,
+# y que ejemplos/index.json está al día.
+name: Ejemplos
+
+on:
+  push:
+    paths: ["ejemplos/**", "scripts/ejemplos.mjs", ".github/workflows/ejemplos.yml"]
+  pull_request:
+    paths: ["ejemplos/**", "scripts/ejemplos.mjs"]
+  workflow_dispatch:
+
+jobs:
+  ejemplos:
+    name: Compilar los ejemplos
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Índice al día
+        run: node scripts/ejemplos.mjs --check
+      - name: Dependencias de Slint
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ejemplos -> ../target-ejemplos
+      - name: Compilar y probar cada ejemplo
+        shell: bash
+        env:
+          # Un solo target/ para todos: Slint se compila una vez.
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-ejemplos
+        run: |
+          set -e
+          for toml in $(find ejemplos -name Cargo.toml | sort); do
+            dir=$(dirname "$toml")
+            echo "::group::$dir"
+            (cd "$dir" && cargo build --all-targets && cargo test)
+            echo "::endgroup::"
+          done

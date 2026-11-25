@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "node tests/designer.test.ts && node tests/layouts.test.ts && node tests/figma.test.ts && node tests/toolbar.test.ts && node tests/settings.test.ts"
+    "test": "node scripts/ejemplos.mjs --check && node tests/designer.test.ts && node tests/layouts.test.ts && node tests/figma.test.ts && node tests/toolbar.test.ts && node tests/settings.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
